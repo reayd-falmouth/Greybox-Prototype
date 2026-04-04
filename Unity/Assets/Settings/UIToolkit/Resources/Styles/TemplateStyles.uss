@@ -1,6 +1,42 @@
 VisualElement {
 }
 
+.screen-root {
+    width: 100%;
+    height: 100%;
+    flex-grow: 1;
+    flex-shrink: 0;
+    min-width: 0;
+    min-height: 0;
+}
+
+.panel-fill {
+    width: 100%;
+    height: 100%;
+    flex-grow: 1;
+    flex-shrink: 0;
+    min-width: 0;
+    min-height: 0;
+}
+
+.template-roll-button {
+    width: 12%;
+    min-width: 140px;
+    max-width: 240px;
+    height: 9%;
+    min-height: 52px;
+    max-height: 96px;
+}
+
+.template-lower-right {
+    width: 18%;
+    min-width: 200px;
+    max-width: 420px;
+    height: 16%;
+    min-height: 120px;
+    max-height: 220px;
+}
+
 .unity-text-element {
     color: rgb(255, 255, 255);
     font-size: 50px;
@@ -28,4 +64,105 @@ VisualElement {
     -unity-background-image-tint-color: rgba(255, 255, 255, 0);
     min-width: 150px;
     -unity-text-align: upper-right;
+}
+
+.m16font {
+    -unity-font-definition: url("project://database/Assets/Art/Fonts/m6x11plus.ttf?fileID=12800000&guid=3c43190a8f9802341bb7f7cdeb8a765d&type=3#m6x11plus");
+    color: rgb(255, 255, 255);
+    text-shadow: 0 0 0 rgba(0, 0, 0, 0);
+}
+
+.side-panel {
+}
+
+.rounded-button-large {
+    min-width: 80px;
+    margin: 2px;
+    align-self: auto;
+    align-items: center;
+    align-content: auto;
+    font-size: 30px;
+    width: 205px;
+    height: 130px;
+    -unity-text-align: upper-center;
+    text-shadow: 2px 2px 1px rgba(0, 0, 0, 0);
+    padding-top: 14px;
+    margin-right: 16px;
+    border-top-left-radius: 14px;
+    border-bottom-left-radius: 14px;
+    border-top-right-radius: 14px;
+    border-bottom-right-radius: 14px;
+    background-color: rgb(83, 82, 82);
+    background-size: 50px 100%;
+    max-width: 300px;
+}
+
+.rounded-button-small {
+    min-width: 80px;
+    margin: 2px;
+    align-self: auto;
+    align-items: center;
+    align-content: auto;
+    font-size: 24px;
+    width: 82px;
+    height: 64px;
+    -unity-text-align: upper-center;
+    text-shadow: 2px 2px 1px rgba(0, 0, 0, 0);
+    border-top-left-radius: 14px;
+    border-bottom-left-radius: 14px;
+    border-top-right-radius: 14px;
+    border-bottom-right-radius: 14px;
+}
+
+.sub-panel {
+    flex-grow: 1;
+    align-self: center;
+    width: 100%;
+    height: 50px;
+    background-color: rgb(31, 41, 43);
+    border-top-left-radius: 14px;
+    border-bottom-left-radius: 14px;
+    border-top-right-radius: 14px;
+    border-bottom-right-radius: 14px;
+    padding-bottom: 12px;
+    -unity-text-align: upper-center;
+    justify-content: center;
+}
+
+.rounded-large-button-label {
+    font-size: 32px;
+}
+
+.rounded-view-panel {
+    flex-grow: 1;
+    background-color: rgba(83, 82, 82, 0);
+    border-top-width: 4px;
+    border-top-color: rgb(255, 255, 255);
+    border-left-width: 4px;
+    border-bottom-width: 4px;
+    border-right-width: 4px;
+    border-left-color: rgb(255, 255, 255);
+    border-bottom-color: rgb(255, 255, 255);
+    border-right-color: rgb(255, 255, 255);
+}
+
+.button-rounded-large {
+    -unity-text-outline-color: rgb(255, 255, 255);
+    border-left-width: 0;
+    border-top-width: 0;
+    border-right-width: 0;
+    border-bottom-width: 0;
+}
+
+.heading-panel {
+    margin-bottom: 12px;
+    background-color: rgb(1, 103, 167);
+    max-height: 64px;
+}
+
+.rounded {
+    border-top-left-radius: 14px;
+    border-bottom-left-radius: 14px;
+    border-top-right-radius: 14px;
+    border-bottom-right-radius: 14px;
 }

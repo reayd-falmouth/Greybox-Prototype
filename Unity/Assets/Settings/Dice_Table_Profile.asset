@@ -1,0 +1,46 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 3935c0704bb84522baf81cc407077b40, type: 3}
+  m_Name: Dice_Table_Profile
+  m_EditorClassIdentifier: 
+  impactClips:
+  - {fileID: 8300000, guid: bfda405374dd7734085006ae6340b0b1, type: 3}
+  - {fileID: 8300000, guid: 0679d8ed834959a42b04fe0fe5c9c130, type: 3}
+  - {fileID: 8300000, guid: 7588bb6059fc40e40bd47fd4bf16a53d, type: 3}
+  - {fileID: 8300000, guid: 0e309ee1e95381845970cc900673b561, type: 3}
+  - {fileID: 8300000, guid: 78b5657400530c046ad773c1cb65f858, type: 3}
+  - {fileID: 8300000, guid: 1a1a31ad8e3d455409bfea586be7c651, type: 3}
+  - {fileID: 8300000, guid: d69343d5823dd6c40996fdd681c54d1e, type: 3}
+  - {fileID: 8300000, guid: 14f9a230ebb560d43b3fcf161be4a391, type: 3}
+  - {fileID: 8300000, guid: a23f6f6fe9206b4468f26bc5225daf77, type: 3}
+  - {fileID: 8300000, guid: 5d09e5ef46d33e346a43a6a8634eff26, type: 3}
+  - {fileID: 8300000, guid: e5eb7c08974fe024d8d1a677693f114c, type: 3}
+  - {fileID: 8300000, guid: 97a80adb4a5995c44ad1238912f03d44, type: 3}
+  - {fileID: 8300000, guid: 276814d3c149f594482489faf37dcb11, type: 3}
+  - {fileID: 8300000, guid: faae056f173d5484ea766389bffac000, type: 3}
+  - {fileID: 8300000, guid: 0b0adc60c2ff77d48becb00a42068ff0, type: 3}
+  - {fileID: 8300000, guid: dc08d7e17ae0a604c9a5eb1ba05bba2d, type: 3}
+  - {fileID: 8300000, guid: 188aa2e322633ca4c92b90fe819a1366, type: 3}
+  - {fileID: 8300000, guid: 3df15ad2f25050b4c83d38ec6e0ea98c, type: 3}
+  - {fileID: 8300000, guid: b7dbcf8a409871e47b5dd16be22e887b, type: 3}
+  - {fileID: 8300000, guid: 9cce048e5b6edfc439c1e0bd6fe950a0, type: 3}
+  - {fileID: 8300000, guid: 992827e4d0b04a941b9acad3a857c70a, type: 3}
+  - {fileID: 8300000, guid: d8acb08eda5379048a4b2935f20fe63b, type: 3}
+  - {fileID: 8300000, guid: c6261c1f091baf24894921cf1cccc67a, type: 3}
+  - {fileID: 8300000, guid: 49dbecb62a8026f4184aa00e9f575ed5, type: 3}
+  - {fileID: 8300000, guid: e415ff362688de7459281f9502173933, type: 3}
+  - {fileID: 8300000, guid: 8dae7e49ea6595748a2b7a30004db669, type: 3}
+  - {fileID: 8300000, guid: a5c5bdcc1c6d33a4f981d7b0132f2e65, type: 3}
+  - {fileID: 8300000, guid: 60aca6391ae313849b80179550d537dc, type: 3}
+  - {fileID: 8300000, guid: 8c86b1dfebd3e7e46a28d9a0479c05e5, type: 3}
+  - {fileID: 8300000, guid: e9f0465693ea9a9408c700590c80de67, type: 3}
+  baseVolume: 1
