@@ -1,0 +1,29 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements" xmlns:uie="UnityEditor.UIElements" xsi="http://www.w3.org/2001/XMLSchema-instance" engine="UnityEngine.UIElements" editor="UnityEditor.UIElements" noNamespaceSchemaLocation="../../../../UIElementsSchema/UIElements.xsd" editor-extension-mode="False">
+    <Style src="project://database/Assets/Settings/UIToolkit/Resources/Styles/TemplateStyles.uss?fileID=7433441132597879392&amp;guid=6ebbbe798c96bf344b8b9360316b9108&amp;type=3#TemplateStyles" />
+    <ui:VisualElement name="BackgammonRoot" style="flex-grow: 1;">
+        <ui:VisualElement name="TopBar" style="flex-direction: row; justify-content: space-between; padding: 8px; background-color: rgba(0,0,0,0.55);">
+            <ui:Label name="StatusLabel" text="Backgammon" style="font-size: 16px; color: white;" />
+            <ui:Label name="DiceLabel" text="Dice: —" style="font-size: 16px; color: white;" />
+        </ui:VisualElement>
+        <ui:VisualElement name="SidePanel" style="position: absolute; right: 8px; top: 48px; width: 320px; max-height: 70%; background-color: rgba(0,0,0,0.65); padding: 8px; border-radius: 6px;">
+            <ui:Label text="Legal moves (tap to play)" style="color: rgb(200,200,200); margin-bottom: 6px;" />
+            <ui:ScrollView name="LegalMovesScroll" mode="Vertical" style="max-height: 220px; margin-bottom: 8px;" />
+            <ui:VisualElement style="flex-direction: row; flex-wrap: wrap;">
+                <ui:Button name="RollButton" text="Roll" style="min-width: 80px; margin: 2px;" />
+                <ui:Button name="NewGameButton" text="New game" style="min-width: 100px; margin: 2px;" />
+                <ui:Button name="SettingsToggleButton" text="Settings" style="min-width: 90px; margin: 2px;" />
+            </ui:VisualElement>
+            <ui:VisualElement name="SettingsPanel" style="margin-top: 10px; display: none;">
+                <ui:Label text="Move anim (sec)" style="color: rgb(180,180,180);" />
+                <ui:FloatField name="MoveAnimField" value="0.3" />
+                <ui:Label text="AI search depth (1–3)" style="color: rgb(180,180,180); margin-top: 6px;" />
+                <ui:IntegerField name="AiDepthField" value="1" />
+                <ui:Toggle name="OpponentAiToggle" label="Opponent is AI" value="true" style="margin-top: 6px;" />
+                <ui:Label text="Audio (linear 0–1)" style="color: rgb(180,180,180); margin-top: 8px;" />
+                <ui:Slider name="MasterVolSlider" low-value="0" high-value="1" value="1" />
+                <ui:Slider name="SfxVolSlider" low-value="0" high-value="1" value="1" />
+            </ui:VisualElement>
+            <ui:Label name="PositionIdLabel" text="PID: —" style="font-size: 11px; color: rgb(160,160,160); margin-top: 8px; white-space: normal;" />
+        </ui:VisualElement>
+    </ui:VisualElement>
+</ui:UXML>
