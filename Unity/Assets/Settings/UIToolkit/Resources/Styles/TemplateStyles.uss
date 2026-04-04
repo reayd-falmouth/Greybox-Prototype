@@ -112,6 +112,15 @@ VisualElement {
     border-bottom-left-radius: 14px;
     border-top-right-radius: 14px;
     border-bottom-right-radius: 14px;
+    background-color: rgb(83, 82, 82);
+}
+
+.rounded-button-small:hover {
+    background-color: rgb(115, 114, 114);
+}
+
+.rounded-button-small:active {
+    background-color: rgb(60, 60, 60);
 }
 
 .sub-panel {

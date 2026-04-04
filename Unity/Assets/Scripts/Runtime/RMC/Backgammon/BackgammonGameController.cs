@@ -41,6 +41,12 @@ public class BackgammonGameController : MonoBehaviour
 
     public bool AwaitingDoubleResponse => _awaitingDoubleResponse;
 
+    /// <summary>False until the first opening roll is resolved (non-tie). After that, normal turns use two dice together.</summary>
+    public bool OpeningRollResolved => _openingRollResolved;
+
+    /// <summary>Last opening roll was a tie; player should roll again.</summary>
+    public bool OpeningRollAwaitingReroll => !_openingRollResolved && _openingRollTieAwaitingReroll;
+
     public event Action OnStateChanged;
 
     private readonly List<Turn> _legalTurns = new();
@@ -49,6 +55,8 @@ public class BackgammonGameController : MonoBehaviour
     private bool _busy;
     private bool _awaitingDoubleResponse;
     private int _doubleOfferedByPlayer;
+    private bool _openingRollResolved;
+    private bool _openingRollTieAwaitingReroll;
 
     private void Awake()
     {
@@ -96,6 +104,8 @@ public class BackgammonGameController : MonoBehaviour
         State.Dice1 = 0;
         State.Dice2 = 0;
         _rolledThisTurn = false;
+        _openingRollResolved = false;
+        _openingRollTieAwaitingReroll = false;
         _legalTurns.Clear();
         RollsThisGame = 0;
         TurnsCompletedThisGame = 0;
@@ -103,6 +113,7 @@ public class BackgammonGameController : MonoBehaviour
         BackgammonGameRules.SyncBoardArrayFromCheckerArrays(State);
         SyncMatchFromState();
         boardManager?.ClearAllPointHighlights();
+        boardManager?.EnsureBoardGenerated();
         boardManager?.SyncCheckersFromGameState(State);
         hud?.SetDoubleOfferVisible(false);
         OnStateChanged?.Invoke();
@@ -118,6 +129,37 @@ public class BackgammonGameController : MonoBehaviour
     private void OnDiceRollFinished(int d1, int d2)
     {
         if (_busy) return;
+
+        if (!_openingRollResolved)
+        {
+            if (!BackgammonOpeningRollRules.TryApplyOpeningDice(d1, d2, State))
+            {
+                _openingRollTieAwaitingReroll = true;
+                State.Dice1 = 0;
+                State.Dice2 = 0;
+                OnStateChanged?.Invoke();
+                hud?.RefreshAll(this);
+                return;
+            }
+
+            _openingRollTieAwaitingReroll = false;
+            _openingRollResolved = true;
+            _rolledThisTurn = true;
+            RollsThisGame++;
+            BackgammonGameRules.SyncBoardArrayFromCheckerArrays(State);
+            SyncMatchFromState();
+            RefreshLegals();
+            if (_legalTurns.Count == 0)
+                PassTurnNoMoves();
+            else
+            {
+                OnStateChanged?.Invoke();
+                hud?.RefreshAll(this);
+                MaybeStartAiTurn();
+            }
+            return;
+        }
+
         State.Dice1 = d1;
         State.Dice2 = d2;
         _rolledThisTurn = true;
@@ -167,7 +209,7 @@ public class BackgammonGameController : MonoBehaviour
     /// <summary>Offer double before rolling. Opponent responds via HUD (or AI auto-responds).</summary>
     public void OfferDouble()
     {
-        if (_busy || IsGameOver(out _) || State.CubeValue >= 64 || _awaitingDoubleResponse || _rolledThisTurn) return;
+        if (!_openingRollResolved || _busy || IsGameOver(out _) || State.CubeValue >= 64 || _awaitingDoubleResponse || _rolledThisTurn) return;
 
         _doubleOfferedByPlayer = State.PlayerOnRoll;
         _awaitingDoubleResponse = true;
@@ -309,7 +351,8 @@ public class BackgammonGameController : MonoBehaviour
 
     private void MaybeStartAiTurn()
     {
-        if (!BackgammonSettings.OpponentIsAi || IsGameOver(out _)) return;
+        if (IsGameOver(out _)) return;
+        if (!BackgammonSettings.OpponentIsAi || State.PlayerOnRoll != 1) return;
         StartCoroutine(CoAiTurn());
     }
 
@@ -317,10 +360,14 @@ public class BackgammonGameController : MonoBehaviour
     {
         _busy = true;
         yield return new WaitForSeconds(0.35f);
-        State.Dice1 = UnityEngine.Random.Range(1, 7);
-        State.Dice2 = UnityEngine.Random.Range(1, 7);
-        _rolledThisTurn = true;
-        RollsThisGame++;
+        bool needNewRoll = State.Dice1 <= 0 || State.Dice2 <= 0 || !_rolledThisTurn;
+        if (needNewRoll)
+        {
+            State.Dice1 = UnityEngine.Random.Range(1, 7);
+            State.Dice2 = UnityEngine.Random.Range(1, 7);
+            _rolledThisTurn = true;
+            RollsThisGame++;
+        }
         RefreshLegals();
         OnStateChanged?.Invoke();
         hud?.RefreshAll(this);
@@ -384,6 +431,8 @@ public class BackgammonGameController : MonoBehaviour
         if (_busy) return;
         State.Dice1 = Mathf.Clamp(d1, 1, 6);
         State.Dice2 = Mathf.Clamp(d2, 1, 6);
+        _openingRollResolved = true;
+        _openingRollTieAwaitingReroll = false;
         _rolledThisTurn = true;
         RollsThisGame++;
         RefreshLegals();

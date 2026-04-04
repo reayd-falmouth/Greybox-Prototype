@@ -248,13 +248,27 @@ public class BackgammonHudController : MonoBehaviour
         {
             if (ctrl.IsGameOver(out string w))
                 _statusLabel.text = "Game over — " + w;
+            else if (!ctrl.OpeningRollResolved)
+            {
+                if (ctrl.OpeningRollAwaitingReroll)
+                    _statusLabel.text = "Opening: tied — roll again";
+                else
+                    _statusLabel.text = "Opening: each player one die — roll";
+            }
             else
                 _statusLabel.text = ctrl.State.PlayerOnRoll == 0 ? "Turn: Player 0" : "Turn: Player 1";
         }
 
         if (_diceLabel != null)
         {
-            if (ctrl.State.Dice1 > 0 && ctrl.State.Dice2 > 0)
+            if (!ctrl.OpeningRollResolved)
+            {
+                if (ctrl.OpeningRollAwaitingReroll)
+                    _diceLabel.text = "Dice: tie";
+                else
+                    _diceLabel.text = "Dice: — (opening roll)";
+            }
+            else if (ctrl.State.Dice1 > 0 && ctrl.State.Dice2 > 0)
                 _diceLabel.text = $"Dice: {ctrl.State.Dice1}-{ctrl.State.Dice2}";
             else
                 _diceLabel.text = "Dice: — (roll)";
@@ -320,7 +334,7 @@ public class BackgammonHudController : MonoBehaviour
 
         if (_doublePanel != null)
         {
-            bool showDouble = !ctrl.IsGameOver(out _) && !ctrl.IsBusy && !ctrl.HasRolledThisTurn && !ctrl.AwaitingDoubleResponse && ctrl.State.CubeValue < 64;
+            bool showDouble = ctrl.OpeningRollResolved && !ctrl.IsGameOver(out _) && !ctrl.IsBusy && !ctrl.HasRolledThisTurn && !ctrl.AwaitingDoubleResponse && ctrl.State.CubeValue < 64;
             _doublePanel.style.display = showDouble ? DisplayStyle.Flex : DisplayStyle.None;
         }
 

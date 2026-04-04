@@ -1,4 +1,5 @@
 using NUnit.Framework;
+using UnityEditor;
 using UnityEngine;
 using UnityEngine.UIElements;
 
@@ -7,11 +8,22 @@ using UnityEngine.UIElements;
 /// </summary>
 public class BackgammonHudUxmlEditModeTests
 {
+    private const string UxmlAssetPath = "Assets/Settings/UIToolkit/Resources/Layouts/BackgammonHUD.uxml";
+    private const string UxmlGuid = "b0b8cf66be4ba1d43babb0555293673b";
+
     [Test]
     public void BackgammonHUD_Resources_Loads_And_HasRequiredNamedElements()
     {
-        var vta = Resources.Load<VisualTreeAsset>("Layouts/BackgammonHUD");
-        Assert.IsNotNull(vta, "Expected VisualTreeAsset at Resources path Layouts/BackgammonHUD");
+        // Prefer GUID (stable if the file moves), then path, then Resources.
+        string pathByGuid = AssetDatabase.GUIDToAssetPath(UxmlGuid);
+        var vta = string.IsNullOrEmpty(pathByGuid)
+            ? null
+            : AssetDatabase.LoadAssetAtPath<VisualTreeAsset>(pathByGuid);
+        if (vta == null)
+            vta = AssetDatabase.LoadAssetAtPath<VisualTreeAsset>(UxmlAssetPath);
+        if (vta == null)
+            vta = Resources.Load<VisualTreeAsset>("Layouts/BackgammonHUD");
+        Assert.IsNotNull(vta, "Expected VisualTreeAsset (GUID " + UxmlGuid + "), path " + UxmlAssetPath + ", or Resources Layouts/BackgammonHUD");
 
         VisualElement root = vta.CloneTree();
         Assert.IsNotNull(root.Q<VisualElement>("ScreenRoot"));

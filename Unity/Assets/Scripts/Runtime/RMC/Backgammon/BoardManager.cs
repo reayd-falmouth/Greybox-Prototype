@@ -54,6 +54,22 @@ public class BoardManager : MonoBehaviour
         SpawnInitialCheckers();
     }
 
+    /// <summary>True if at least one <see cref="BoardPoint"/> exists (runtime equivalent of board geometry from Full Setup).</summary>
+    public bool HasBoardPoints()
+    {
+        if (allPoints == null) return false;
+        for (int i = 0; i < allPoints.Length; i++)
+            if (allPoints[i] != null) return true;
+        return false;
+    }
+
+    /// <summary>Creates points if missing. Does not spawn editor test checkers — sync from <see cref="GameState"/> afterward.</summary>
+    public void EnsureBoardGenerated()
+    {
+        if (HasBoardPoints()) return;
+        GenerateBoard();
+    }
+
     public void GenerateBoard()
     {
         ClearPoints();
@@ -151,7 +167,14 @@ public class BoardManager : MonoBehaviour
         {
             if (floor == null) continue;
             for (int i = floor.childCount - 1; i >= 0; i--)
-                if (floor.GetChild(i).GetComponent<BoardPoint>()) DestroyImmediate(floor.GetChild(i).gameObject);
+            {
+                Transform ch = floor.GetChild(i);
+                if (!ch.GetComponent<BoardPoint>()) continue;
+                if (Application.isPlaying)
+                    Destroy(ch.gameObject);
+                else
+                    DestroyImmediate(ch.gameObject);
+            }
         }
         System.Array.Clear(allPoints, 0, allPoints.Length);
     }
