@@ -97,6 +97,14 @@ VisualElement {
     max-width: 300px;
 }
 
+.rounded-button-large:hover {
+    background-color: rgb(115, 114, 114);
+}
+
+.rounded-button-large:active {
+    background-color: rgb(60, 60, 60);
+}
+
 .rounded-button-small {
     min-width: 80px;
     margin: 2px;

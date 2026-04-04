@@ -188,7 +188,8 @@ public class BoardManager : MonoBehaviour
             while (allPoints[i].checkers.Count > 0)
             {
                 GameObject top = allPoints[i].RemoveTopChecker();
-                if (top != null) Destroy(top);
+                if (top != null)
+                    DestroyImmediate(top);
             }
         }
 
@@ -200,7 +201,7 @@ public class BoardManager : MonoBehaviour
     {
         if (anchor == null) return;
         for (int c = anchor.childCount - 1; c >= 0; c--)
-            Destroy(anchor.GetChild(c).gameObject);
+            DestroyImmediate(anchor.GetChild(c).gameObject);
     }
 
     /// <summary>Rebuild checker stacks from the current logical engine state (P1 = white, P2 = black).</summary>
@@ -216,9 +217,10 @@ public class BoardManager : MonoBehaviour
             if (boardIdx < 0 || boardIdx >= allPoints.Length || allPoints[boardIdx] == null) continue;
 
             int p1 = state.Player1Checkers[enginePoint];
-            int p2 = state.Player2Checkers[enginePoint];
+            // EngineCore: same physical point as P1[enginePoint] uses P2[23 - enginePoint] (see MoveGenerator / GameStateExtensions).
+            int p2 = state.Player2Checkers[23 - enginePoint];
             if (p1 > 0 && p2 > 0)
-                Debug.LogWarning($"BoardManager: both players on engine point {enginePoint} — invalid position.");
+                Debug.LogWarning($"BoardManager: both players on physical point (P1 idx {enginePoint}, P2 idx {23 - enginePoint}, board {boardIdx}) — invalid position.");
 
             BoardPoint bp = allPoints[boardIdx];
             for (int i = 0; i < p1; i++)
