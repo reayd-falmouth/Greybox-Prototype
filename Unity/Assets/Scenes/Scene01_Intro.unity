@@ -1128,7 +1128,7 @@ PrefabInstance:
       value: 0.75
       objectReference: {fileID: 0}
     - target: {fileID: 5532951670208852040, guid: b9ed2ff38d88ef141aa33e1fb13c1c3d, type: 3}
-      propertyPath: SuppressRollButtonBinding
+      propertyPath: diceCount
       value: 1
       objectReference: {fileID: 0}
     - target: {fileID: 5532951670208852040, guid: b9ed2ff38d88ef141aa33e1fb13c1c3d, type: 3}
@@ -1154,6 +1154,14 @@ PrefabInstance:
     - target: {fileID: 5532951670208852040, guid: b9ed2ff38d88ef141aa33e1fb13c1c3d, type: 3}
       propertyPath: diceBodyColor.r
       value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 5532951670208852040, guid: b9ed2ff38d88ef141aa33e1fb13c1c3d, type: 3}
+      propertyPath: SuppressRollButtonBinding
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 5532951670208852040, guid: b9ed2ff38d88ef141aa33e1fb13c1c3d, type: 3}
+      propertyPath: manualRollValues.Array.size
+      value: 1
       objectReference: {fileID: 0}
     - target: {fileID: 5545060696979380368, guid: b9ed2ff38d88ef141aa33e1fb13c1c3d, type: 3}
       propertyPath: m_Layer
@@ -1233,6 +1241,28 @@ Transform:
   m_CorrespondingSourceObject: {fileID: 4001978903349310679, guid: b9ed2ff38d88ef141aa33e1fb13c1c3d, type: 3}
   m_PrefabInstance: {fileID: 630556374}
   m_PrefabAsset: {fileID: 0}
+--- !u!114 &745026618 stripped
+MonoBehaviour:
+  m_CorrespondingSourceObject: {fileID: 5532951670208852040, guid: b9ed2ff38d88ef141aa33e1fb13c1c3d, type: 3}
+  m_PrefabInstance: {fileID: 630556374}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c5fbe831892611443b48694e186f69d4, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+--- !u!114 &1052184484 stripped
+MonoBehaviour:
+  m_CorrespondingSourceObject: {fileID: 5532951670208852040, guid: b9ed2ff38d88ef141aa33e1fb13c1c3d, type: 3}
+  m_PrefabInstance: {fileID: 474295086483565721}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c5fbe831892611443b48694e186f69d4, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
 --- !u!1 &1076804870
 GameObject:
   m_ObjectHideFlags: 0
@@ -2402,6 +2432,9 @@ MonoBehaviour:
   edgePaddingX: 0.1
   darkColor: {r: 0.3679245, g: 0.3679245, b: 0.3679245, a: 1}
   lightColor: {r: 0.9, g: 0.9, b: 0.9, a: 1}
+  boardViewPivot: {fileID: 0}
+  horizontalBoardEuler: {x: 0, y: 0, z: 0}
+  verticalBoardEuler: {x: 0, y: 0, z: 90}
   whiteBaseColor: {r: 1, g: 0.6257986, b: 0, a: 1}
   whiteEmissionColor: {r: 1, g: 0.92156863, b: 0.015686275, a: 1}
   whiteEmissionIntensity: 0
@@ -2421,7 +2454,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   boardManager: {fileID: 1554234146}
-  diceManager: {fileID: 0}
+  diceManagerPlayer0: {fileID: 745026618}
+  diceManagerPlayer1: {fileID: 1052184484}
   hud: {fileID: 1756644691}
   rollDiceViaHudOnly: 1
 --- !u!850595691 &1645886220
@@ -3271,17 +3305,13 @@ PrefabInstance:
       value: 0.75
       objectReference: {fileID: 0}
     - target: {fileID: 5532951670208852040, guid: b9ed2ff38d88ef141aa33e1fb13c1c3d, type: 3}
-      propertyPath: SuppressRollButtonBinding
+      propertyPath: diceCount
       value: 1
       objectReference: {fileID: 0}
     - target: {fileID: 5532951670208852040, guid: b9ed2ff38d88ef141aa33e1fb13c1c3d, type: 3}
       propertyPath: uiDocument
       value: 
       objectReference: {fileID: 1756644692}
-    - target: {fileID: 5532951670208852040, guid: b9ed2ff38d88ef141aa33e1fb13c1c3d, type: 3}
-      propertyPath: rollButtonName
-      value: RollButton
-      objectReference: {fileID: 0}
     - target: {fileID: 5532951670208852040, guid: b9ed2ff38d88ef141aa33e1fb13c1c3d, type: 3}
       propertyPath: dicePipColor.b
       value: 0
@@ -3295,6 +3325,10 @@ PrefabInstance:
       value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 5532951670208852040, guid: b9ed2ff38d88ef141aa33e1fb13c1c3d, type: 3}
+      propertyPath: rollButtonName
+      value: RollButton
+      objectReference: {fileID: 0}
+    - target: {fileID: 5532951670208852040, guid: b9ed2ff38d88ef141aa33e1fb13c1c3d, type: 3}
       propertyPath: diceBodyColor.b
       value: 1
       objectReference: {fileID: 0}
@@ -3304,6 +3338,14 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 5532951670208852040, guid: b9ed2ff38d88ef141aa33e1fb13c1c3d, type: 3}
       propertyPath: diceBodyColor.r
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 5532951670208852040, guid: b9ed2ff38d88ef141aa33e1fb13c1c3d, type: 3}
+      propertyPath: SuppressRollButtonBinding
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 5532951670208852040, guid: b9ed2ff38d88ef141aa33e1fb13c1c3d, type: 3}
+      propertyPath: manualRollValues.Array.size
       value: 1
       objectReference: {fileID: 0}
     - target: {fileID: 5545060696979380368, guid: b9ed2ff38d88ef141aa33e1fb13c1c3d, type: 3}

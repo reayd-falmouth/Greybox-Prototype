@@ -6,6 +6,7 @@ using Runtime.RMC._MyProject_.Dice;
 using Runtime.RMC.Backgammon.Core;
 using Runtime.RMC.Backgammon.Settings;
 using UnityEngine;
+using UnityEngine.Serialization;
 
 /// <summary>
 /// Owns <see cref="GameState"/>, dice → legals → apply → swap (EngineCLI convention).
@@ -14,11 +15,12 @@ using UnityEngine;
 public class BackgammonGameController : MonoBehaviour
 {
     [SerializeField] private BoardManager boardManager;
-    [SerializeField] private DiceManager diceManager;
-    [Header("Opening roll (optional)")]
-    [Tooltip("When both are set, opening uses one die each; first index = player 0, second = player 1.")]
-    [SerializeField] private DiceManager diceManagerOpeningPlayer0;
-    [SerializeField] private DiceManager diceManagerOpeningPlayer1;
+    [Header("Dice (required)")]
+    [Tooltip("One die per manager. Opening: P0 vs P1. Later turns: both roll for the current player’s two values.")]
+    [FormerlySerializedAs("diceManagerOpeningPlayer0")]
+    [SerializeField] private DiceManager diceManagerPlayer0;
+    [FormerlySerializedAs("diceManagerOpeningPlayer1")]
+    [SerializeField] private DiceManager diceManagerPlayer1;
     [SerializeField] private BackgammonHudController hud;
     [Tooltip("When true, DiceManager does not bind its own roll button; use HUD Roll.")]
     [SerializeField] private bool rollDiceViaHudOnly = true;
@@ -61,8 +63,8 @@ public class BackgammonGameController : MonoBehaviour
     private int _doubleOfferedByPlayer;
     private bool _openingRollResolved;
     private bool _openingRollTieAwaitingReroll;
-    private int? _openingBufferedDie0;
-    private int? _openingBufferedDie1;
+    private int? _diceBufferedDie0;
+    private int? _diceBufferedDie1;
 
     private void Awake()
     {
@@ -78,52 +80,27 @@ public class BackgammonGameController : MonoBehaviour
     {
         if (hud == null)
             hud = FindFirstObjectByType<BackgammonHudController>();
-        if (diceManager == null && boardManager != null)
+        TryAutoAssignDiceManagersFromBoard();
+        if (rollDiceViaHudOnly)
         {
-            DiceManager[] found = boardManager.GetComponentsInChildren<DiceManager>(true);
-            if (found != null)
-            {
-                foreach (DiceManager dm in found)
-                {
-                    if (dm == diceManagerOpeningPlayer0 || dm == diceManagerOpeningPlayer1) continue;
-                    diceManager = dm;
-                    break;
-                }
-            }
+            if (diceManagerPlayer0 != null) diceManagerPlayer0.SuppressRollButtonBinding = true;
+            if (diceManagerPlayer1 != null) diceManagerPlayer1.SuppressRollButtonBinding = true;
         }
-        if (diceManager == null)
-        {
-            DiceManager[] all = FindObjectsByType<DiceManager>(FindObjectsInactive.Include, FindObjectsSortMode.None);
-            foreach (DiceManager dm in all)
-            {
-                if (dm == diceManagerOpeningPlayer0 || dm == diceManagerOpeningPlayer1) continue;
-                diceManager = dm;
-                break;
-            }
-        }
-        if (diceManager != null && rollDiceViaHudOnly)
-            diceManager.SuppressRollButtonBinding = true;
-        if (diceManagerOpeningPlayer0 != null && rollDiceViaHudOnly)
-            diceManagerOpeningPlayer0.SuppressRollButtonBinding = true;
-        if (diceManagerOpeningPlayer1 != null && rollDiceViaHudOnly)
-            diceManagerOpeningPlayer1.SuppressRollButtonBinding = true;
-        if (diceManager != null)
-            diceManager.OnDiceRollFinished += OnDiceRollFinished;
-        if (diceManagerOpeningPlayer0 != null)
-            diceManagerOpeningPlayer0.OnDiceRollFinished += OnOpeningDicePlayer0Finished;
-        if (diceManagerOpeningPlayer1 != null)
-            diceManagerOpeningPlayer1.OnDiceRollFinished += OnOpeningDicePlayer1Finished;
+        if (diceManagerPlayer0 != null)
+            diceManagerPlayer0.OnDiceRollFinished += OnDiceManagerPlayer0Finished;
+        if (diceManagerPlayer1 != null)
+            diceManagerPlayer1.OnDiceRollFinished += OnDiceManagerPlayer1Finished;
+        if (!HasTwoDiceManagers())
+            Debug.LogError("BackgammonGameController: assign Dice Manager Player 0 and Player 1 (two DiceManager instances).");
         NewGame();
     }
 
     private void OnDestroy()
     {
-        if (diceManager != null)
-            diceManager.OnDiceRollFinished -= OnDiceRollFinished;
-        if (diceManagerOpeningPlayer0 != null)
-            diceManagerOpeningPlayer0.OnDiceRollFinished -= OnOpeningDicePlayer0Finished;
-        if (diceManagerOpeningPlayer1 != null)
-            diceManagerOpeningPlayer1.OnDiceRollFinished -= OnOpeningDicePlayer1Finished;
+        if (diceManagerPlayer0 != null)
+            diceManagerPlayer0.OnDiceRollFinished -= OnDiceManagerPlayer0Finished;
+        if (diceManagerPlayer1 != null)
+            diceManagerPlayer1.OnDiceRollFinished -= OnDiceManagerPlayer1Finished;
     }
 
     public void NewGame()
@@ -139,8 +116,8 @@ public class BackgammonGameController : MonoBehaviour
         _rolledThisTurn = false;
         _openingRollResolved = false;
         _openingRollTieAwaitingReroll = false;
-        _openingBufferedDie0 = null;
-        _openingBufferedDie1 = null;
+        _diceBufferedDie0 = null;
+        _diceBufferedDie1 = null;
         _legalTurns.Clear();
         RollsThisGame = 0;
         TurnsCompletedThisGame = 0;
@@ -158,53 +135,84 @@ public class BackgammonGameController : MonoBehaviour
     public void RequestRollDice()
     {
         if (_busy || _rolledThisTurn || _awaitingDoubleResponse) return;
+        if (!HasTwoDiceManagers()) return;
 
-        if (!_openingRollResolved && UsesDualOpeningDiceManagers())
+        _diceBufferedDie0 = null;
+        _diceBufferedDie1 = null;
+        diceManagerPlayer0.SetDiceCount(1);
+        diceManagerPlayer1.SetDiceCount(1);
+        diceManagerPlayer0.RequestRoll();
+        diceManagerPlayer1.RequestRoll();
+    }
+
+    private bool HasTwoDiceManagers()
+    {
+        return diceManagerPlayer0 != null
+               && diceManagerPlayer1 != null
+               && diceManagerPlayer0 != diceManagerPlayer1;
+    }
+
+    private void TryAutoAssignDiceManagersFromBoard()
+    {
+        if (HasTwoDiceManagers()) return;
+        if (boardManager == null) return;
+        DiceManager[] found = boardManager.GetComponentsInChildren<DiceManager>(true);
+        if (found == null || found.Length < 2) return;
+        if (diceManagerPlayer0 == null) diceManagerPlayer0 = found[0];
+        if (diceManagerPlayer1 == null)
         {
-            _openingBufferedDie0 = null;
-            _openingBufferedDie1 = null;
-            diceManagerOpeningPlayer0.SetDiceCount(1);
-            diceManagerOpeningPlayer1.SetDiceCount(1);
-            diceManagerOpeningPlayer0.RequestRoll();
-            diceManagerOpeningPlayer1.RequestRoll();
-            return;
+            for (int i = 0; i < found.Length; i++)
+            {
+                if (found[i] != null && found[i] != diceManagerPlayer0)
+                {
+                    diceManagerPlayer1 = found[i];
+                    break;
+                }
+            }
         }
-
-        if (!_openingRollResolved && diceManager != null)
-            diceManager.SetDiceCount(2);
-
-        diceManager?.RequestRoll();
     }
 
-    private bool UsesDualOpeningDiceManagers()
+    private void OnDiceManagerPlayer0Finished(int d1, int d2)
     {
-        return diceManagerOpeningPlayer0 != null
-               && diceManagerOpeningPlayer1 != null
-               && diceManagerOpeningPlayer0 != diceManagerOpeningPlayer1;
+        if (_busy || !HasTwoDiceManagers()) return;
+        _diceBufferedDie0 = d1;
+        TryCompleteBufferedDiceRoll();
     }
 
-    private void OnOpeningDicePlayer0Finished(int d1, int d2)
+    private void OnDiceManagerPlayer1Finished(int d1, int d2)
     {
-        if (_busy || _openingRollResolved || !UsesDualOpeningDiceManagers()) return;
-        _openingBufferedDie0 = d1;
-        TryCompleteBufferedOpeningRoll();
+        if (_busy || !HasTwoDiceManagers()) return;
+        _diceBufferedDie1 = d1;
+        TryCompleteBufferedDiceRoll();
     }
 
-    private void OnOpeningDicePlayer1Finished(int d1, int d2)
+    private void TryCompleteBufferedDiceRoll()
     {
-        if (_busy || _openingRollResolved || !UsesDualOpeningDiceManagers()) return;
-        _openingBufferedDie1 = d1;
-        TryCompleteBufferedOpeningRoll();
+        if (!_diceBufferedDie0.HasValue || !_diceBufferedDie1.HasValue) return;
+        int v0 = _diceBufferedDie0.Value;
+        int v1 = _diceBufferedDie1.Value;
+        _diceBufferedDie0 = null;
+        _diceBufferedDie1 = null;
+        if (!_openingRollResolved)
+            ApplyOpeningRollFromDice(v0, v1);
+        else
+            ApplyNormalRollFromDice(v0, v1);
     }
 
-    private void TryCompleteBufferedOpeningRoll()
+    private void ApplyNormalRollFromDice(int d1, int d2)
     {
-        if (!_openingBufferedDie0.HasValue || !_openingBufferedDie1.HasValue) return;
-        int v0 = _openingBufferedDie0.Value;
-        int v1 = _openingBufferedDie1.Value;
-        _openingBufferedDie0 = null;
-        _openingBufferedDie1 = null;
-        ApplyOpeningRollFromDice(v0, v1);
+        State.Dice1 = d1;
+        State.Dice2 = d2;
+        _rolledThisTurn = true;
+        RollsThisGame++;
+        RefreshLegals();
+        if (_legalTurns.Count == 0)
+            PassTurnNoMoves();
+        else
+        {
+            OnStateChanged?.Invoke();
+            hud?.RefreshAll(this);
+        }
     }
 
     private void ApplyOpeningRollFromDice(int dieForPlayer0, int dieForPlayer1)
@@ -233,33 +241,6 @@ public class BackgammonGameController : MonoBehaviour
             OnStateChanged?.Invoke();
             hud?.RefreshAll(this);
             MaybeStartAiTurn();
-        }
-    }
-
-    private void OnDiceRollFinished(int d1, int d2)
-    {
-        if (_busy) return;
-
-        if (!_openingRollResolved)
-        {
-            if (UsesDualOpeningDiceManagers())
-                return;
-
-            ApplyOpeningRollFromDice(d1, d2);
-            return;
-        }
-
-        State.Dice1 = d1;
-        State.Dice2 = d2;
-        _rolledThisTurn = true;
-        RollsThisGame++;
-        RefreshLegals();
-        if (_legalTurns.Count == 0)
-            PassTurnNoMoves();
-        else
-        {
-            OnStateChanged?.Invoke();
-            hud?.RefreshAll(this);
         }
     }
 

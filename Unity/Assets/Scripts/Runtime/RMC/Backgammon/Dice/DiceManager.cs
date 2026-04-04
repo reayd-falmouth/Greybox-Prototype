@@ -116,7 +116,7 @@ namespace Runtime.RMC._MyProject_.Dice
         [HideInInspector] 
         public List<Vector3> initialDicePositions = new();
 
-        /// <summary>Fired after playback completes with the two dice values (die1, die2).</summary>
+        /// <summary>Fired after playback completes. With one die, die2 equals die1.</summary>
         public event System.Action<int, int> OnDiceRollFinished;
 
         private Button _rollButton;
