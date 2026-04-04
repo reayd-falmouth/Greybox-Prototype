@@ -466,6 +466,16 @@ namespace Runtime.RMC._MyProject_.Dice
             OnRollButtonClicked();
         }
 
+        /// <summary>Runtime dice count (clamped 1–5). Resizes manual values and respawns dice.</summary>
+        public void SetDiceCount(int count)
+        {
+            diceCount = Mathf.Clamp(count, 1, 5);
+            if (manualRollValues == null) manualRollValues = new List<int>();
+            while (manualRollValues.Count < diceCount) manualRollValues.Add(1);
+            while (manualRollValues.Count > diceCount) manualRollValues.RemoveAt(manualRollValues.Count - 1);
+            SpawnDice();
+        }
+
         /// <summary>
         ///     Clears the recorded animation data for all dice.
         /// </summary>
