@@ -24,11 +24,31 @@ public class BackgammonGameController : MonoBehaviour
 
     public IReadOnlyList<Turn> CurrentLegalTurns => _legalTurns;
 
+    /// <summary>True after dice are set for the current turn until a move is applied or turn passes.</summary>
+    public bool HasRolledThisTurn => _rolledThisTurn;
+
+    public bool IsBusy => _busy;
+
+    public bool CanUndo => !_busy && _undoStack.Count > 0;
+
+    public int RollsThisGame { get; private set; }
+
+    /// <summary>Increments each <see cref="NewGame"/> (session counter).</summary>
+    public int GameRoundIndex { get; private set; }
+
+    /// <summary>Completed turn boundaries this game (move applied or pass).</summary>
+    public int TurnsCompletedThisGame { get; private set; }
+
+    public bool AwaitingDoubleResponse => _awaitingDoubleResponse;
+
     public event Action OnStateChanged;
 
     private readonly List<Turn> _legalTurns = new();
+    private readonly Stack<UndoFrame> _undoStack = new();
     private bool _rolledThisTurn;
     private bool _busy;
+    private bool _awaitingDoubleResponse;
+    private int _doubleOfferedByPlayer;
 
     private void Awake()
     {
@@ -38,15 +58,22 @@ public class BackgammonGameController : MonoBehaviour
             JacobyRule = true,
             BeaversAllowed = true
         };
-
-        if (diceManager != null && rollDiceViaHudOnly)
-            diceManager.SuppressRollButtonBinding = true;
     }
 
     private void Start()
     {
         if (hud == null)
             hud = FindFirstObjectByType<BackgammonHudController>();
+        if (diceManager == null && boardManager != null)
+        {
+            DiceManager[] found = boardManager.GetComponentsInChildren<DiceManager>(true);
+            if (found != null && found.Length > 0)
+                diceManager = found[0];
+        }
+        if (diceManager == null)
+            diceManager = FindFirstObjectByType<DiceManager>();
+        if (diceManager != null && rollDiceViaHudOnly)
+            diceManager.SuppressRollButtonBinding = true;
         if (diceManager != null)
             diceManager.OnDiceRollFinished += OnDiceRollFinished;
         NewGame();
@@ -63,21 +90,28 @@ public class BackgammonGameController : MonoBehaviour
         StopAllCoroutines();
         BackgammonAIService.ClearSearchEngineCache();
         _busy = false;
+        _awaitingDoubleResponse = false;
+        _undoStack.Clear();
         State = PositionId.Decode("4HPwATDgc/ABMA");
         State.Dice1 = 0;
         State.Dice2 = 0;
         _rolledThisTurn = false;
         _legalTurns.Clear();
+        RollsThisGame = 0;
+        TurnsCompletedThisGame = 0;
+        GameRoundIndex++;
         BackgammonGameRules.SyncBoardArrayFromCheckerArrays(State);
+        SyncMatchFromState();
         boardManager?.ClearAllPointHighlights();
         boardManager?.SyncCheckersFromGameState(State);
+        hud?.SetDoubleOfferVisible(false);
         OnStateChanged?.Invoke();
         hud?.RefreshAll(this);
     }
 
     public void RequestRollDice()
     {
-        if (_busy || _rolledThisTurn) return;
+        if (_busy || _rolledThisTurn || _awaitingDoubleResponse) return;
         diceManager?.RequestRoll();
     }
 
@@ -87,6 +121,7 @@ public class BackgammonGameController : MonoBehaviour
         State.Dice1 = d1;
         State.Dice2 = d2;
         _rolledThisTurn = true;
+        RollsThisGame++;
         RefreshLegals();
         if (_legalTurns.Count == 0)
             PassTurnNoMoves();
@@ -108,12 +143,114 @@ public class BackgammonGameController : MonoBehaviour
     {
         if (_busy || !_rolledThisTurn || index < 0 || index >= _legalTurns.Count) return;
         Turn turn = _legalTurns[index];
+        PushUndoFrame();
         ApplyTurnAndAdvance(turn);
+    }
+
+    /// <summary>Revert the last player-visible state change (move or forced pass).</summary>
+    public bool TryUndoLastMove()
+    {
+        if (_busy || _undoStack.Count == 0) return false;
+        UndoFrame f = _undoStack.Pop();
+        RestoreUndoFrame(f);
+        RefreshLegals();
+        boardManager?.ClearAllPointHighlights();
+        boardManager?.SyncCheckersFromGameState(State);
+        _awaitingDoubleResponse = false;
+        hud?.SetDoubleOfferVisible(false);
+        TurnsCompletedThisGame = Mathf.Max(0, TurnsCompletedThisGame - 1);
+        OnStateChanged?.Invoke();
+        hud?.RefreshAll(this);
+        return true;
+    }
+
+    /// <summary>Offer double before rolling. Opponent responds via HUD (or AI auto-responds).</summary>
+    public void OfferDouble()
+    {
+        if (_busy || IsGameOver(out _) || State.CubeValue >= 64 || _awaitingDoubleResponse || _rolledThisTurn) return;
+
+        _doubleOfferedByPlayer = State.PlayerOnRoll;
+        _awaitingDoubleResponse = true;
+        SyncMatchFromState();
+        hud?.SetDoubleOfferVisible(true);
+        hud?.RefreshAll(this);
+
+        if (BackgammonSettings.OpponentIsAi)
+            StartCoroutine(CoAiRespondDouble());
+    }
+
+    public void RespondDoubleTake()
+    {
+        if (!_awaitingDoubleResponse || _busy) return;
+
+        int newVal = Mathf.Min(64, State.CubeValue * 2);
+        State.CubeValue = newVal;
+        int responder = OpponentIndex(_doubleOfferedByPlayer);
+        State.CubeOwner = responder;
+        Match.Cube = newVal;
+        Match.CubeOwner = responder;
+        Match.Doubled = true;
+        _awaitingDoubleResponse = false;
+        hud?.SetDoubleOfferVisible(false);
+        OnStateChanged?.Invoke();
+        hud?.RefreshAll(this);
+    }
+
+    public void RespondDoubleDrop()
+    {
+        if (!_awaitingDoubleResponse || _busy) return;
+
+        Debug.LogWarning($"[Backgammon] Double dropped — player {_doubleOfferedByPlayer}'s opponent declined. Starting new game.");
+        _awaitingDoubleResponse = false;
+        hud?.SetDoubleOfferVisible(false);
+        NewGame();
+    }
+
+    public void SetBoardViewHorizontal(bool horizontal)
+    {
+        boardManager?.SetBoardViewHorizontal(horizontal);
+    }
+
+    private IEnumerator CoAiRespondDouble()
+    {
+        _busy = true;
+        yield return new WaitForSeconds(0.4f);
+        _busy = false;
+        if (!_awaitingDoubleResponse) yield break;
+        if (UnityEngine.Random.value < 0.72f)
+            RespondDoubleTake();
+        else
+            RespondDoubleDrop();
+    }
+
+    private static int OpponentIndex(int playerOnRoll) => playerOnRoll == 0 ? 1 : 0;
+
+    private void PushUndoFrame()
+    {
+        _undoStack.Push(UndoFrame.Capture(State, _rolledThisTurn));
+    }
+
+    private void RestoreUndoFrame(UndoFrame f)
+    {
+        f.ApplyTo(State);
+        _rolledThisTurn = f.RolledThisTurn;
+    }
+
+    private void SyncMatchFromState()
+    {
+        if (State == null || Match == null) return;
+        Match.Cube = State.CubeValue;
+        Match.CubeOwner = State.CubeOwner == 3 ? -1 : State.CubeOwner;
+        Match.Player0Score = State.Player1Score;
+        Match.Player1Score = State.Player2Score;
+        Match.PlayerOnRoll = State.PlayerOnRoll;
+        Match.MatchLength = State.MatchLength;
     }
 
     private void PassTurnNoMoves()
     {
         if (!_rolledThisTurn) return;
+        PushUndoFrame();
         _busy = true;
         BackgammonGameRules.SwapSidesForNextTurn(State);
         BackgammonGameRules.SyncBoardArrayFromCheckerArrays(State);
@@ -124,6 +261,8 @@ public class BackgammonGameController : MonoBehaviour
         boardManager?.ClearAllPointHighlights();
         boardManager?.SyncCheckersFromGameState(State);
         _busy = false;
+        SyncMatchFromState();
+        TurnsCompletedThisGame++;
         OnStateChanged?.Invoke();
         hud?.RefreshAll(this);
         MaybeStartAiTurn();
@@ -142,6 +281,8 @@ public class BackgammonGameController : MonoBehaviour
         boardManager?.ClearAllPointHighlights();
         boardManager?.SyncCheckersFromGameState(State);
         _busy = false;
+        SyncMatchFromState();
+        TurnsCompletedThisGame++;
 
         if (IsGameOver(out _))
         {
@@ -178,6 +319,8 @@ public class BackgammonGameController : MonoBehaviour
         yield return new WaitForSeconds(0.35f);
         State.Dice1 = UnityEngine.Random.Range(1, 7);
         State.Dice2 = UnityEngine.Random.Range(1, 7);
+        _rolledThisTurn = true;
+        RollsThisGame++;
         RefreshLegals();
         OnStateChanged?.Invoke();
         hud?.RefreshAll(this);
@@ -209,6 +352,8 @@ public class BackgammonGameController : MonoBehaviour
         boardManager?.ClearAllPointHighlights();
         boardManager?.SyncCheckersFromGameState(State);
         _busy = false;
+        SyncMatchFromState();
+        TurnsCompletedThisGame++;
         OnStateChanged?.Invoke();
         hud?.RefreshAll(this);
     }
@@ -240,6 +385,7 @@ public class BackgammonGameController : MonoBehaviour
         State.Dice1 = Mathf.Clamp(d1, 1, 6);
         State.Dice2 = Mathf.Clamp(d2, 1, 6);
         _rolledThisTurn = true;
+        RollsThisGame++;
         RefreshLegals();
         OnStateChanged?.Invoke();
         hud?.RefreshAll(this);
@@ -255,5 +401,55 @@ public class BackgammonGameController : MonoBehaviour
     {
         if (State == null) return;
         GameStateExtensions.PrintBoard(State);
+    }
+
+    private readonly struct UndoFrame
+    {
+        public readonly int[] P1;
+        public readonly int[] P2;
+        public readonly int Dice1;
+        public readonly int Dice2;
+        public readonly bool RolledThisTurn;
+        public readonly int PlayerOnRoll;
+        public readonly int CubeValue;
+        public readonly int CubeOwner;
+        public readonly int Player1Score;
+        public readonly int Player2Score;
+
+        private UndoFrame(int[] p1, int[] p2, int d1, int d2, bool rolled, int por, int cv, int co, int s1, int s2)
+        {
+            P1 = p1;
+            P2 = p2;
+            Dice1 = d1;
+            Dice2 = d2;
+            RolledThisTurn = rolled;
+            PlayerOnRoll = por;
+            CubeValue = cv;
+            CubeOwner = co;
+            Player1Score = s1;
+            Player2Score = s2;
+        }
+
+        public static UndoFrame Capture(GameState s, bool rolledThisTurn)
+        {
+            var p1 = new int[25];
+            var p2 = new int[25];
+            Array.Copy(s.Player1Checkers, p1, 25);
+            Array.Copy(s.Player2Checkers, p2, 25);
+            return new UndoFrame(p1, p2, s.Dice1, s.Dice2, rolledThisTurn, s.PlayerOnRoll, s.CubeValue, s.CubeOwner, s.Player1Score, s.Player2Score);
+        }
+
+        public void ApplyTo(GameState s)
+        {
+            Array.Copy(P1, s.Player1Checkers, 25);
+            Array.Copy(P2, s.Player2Checkers, 25);
+            s.Dice1 = Dice1;
+            s.Dice2 = Dice2;
+            s.PlayerOnRoll = PlayerOnRoll;
+            s.CubeValue = CubeValue;
+            s.CubeOwner = CubeOwner;
+            s.Player1Score = Player1Score;
+            s.Player2Score = Player2Score;
+        }
     }
 }

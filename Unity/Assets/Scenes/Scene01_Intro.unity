@@ -1128,6 +1128,10 @@ PrefabInstance:
       value: 0.75
       objectReference: {fileID: 0}
     - target: {fileID: 5532951670208852040, guid: b9ed2ff38d88ef141aa33e1fb13c1c3d, type: 3}
+      propertyPath: SuppressRollButtonBinding
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 5532951670208852040, guid: b9ed2ff38d88ef141aa33e1fb13c1c3d, type: 3}
       propertyPath: uiDocument
       value: 
       objectReference: {fileID: 1756644692}
@@ -1137,7 +1141,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 5532951670208852040, guid: b9ed2ff38d88ef141aa33e1fb13c1c3d, type: 3}
       propertyPath: rollButtonName
-      value: RollButton_Left
+      value: RollButton
       objectReference: {fileID: 0}
     - target: {fileID: 5532951670208852040, guid: b9ed2ff38d88ef141aa33e1fb13c1c3d, type: 3}
       propertyPath: diceBodyColor.b
@@ -2308,6 +2312,7 @@ GameObject:
   - component: {fileID: 1554234144}
   - component: {fileID: 1554234143}
   - component: {fileID: 1554234146}
+  - component: {fileID: 1554234147}
   m_Layer: 0
   m_Name: GameManager
   m_TagString: Untagged
@@ -2403,6 +2408,22 @@ MonoBehaviour:
   blackBaseColor: {r: 0, g: 0, b: 0, a: 1}
   blackEmissionColor: {r: 0.3679245, g: 0.3679245, b: 0.3679245, a: 1}
   blackEmissionIntensity: 0
+--- !u!114 &1554234147
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1554234142}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 2e39d5cdd1bf4704a8a024ebc87dd1f1, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  boardManager: {fileID: 1554234146}
+  diceManager: {fileID: 0}
+  hud: {fileID: 1756644691}
+  rollDiceViaHudOnly: 1
 --- !u!850595691 &1645886220
 LightingSettings:
   m_ObjectHideFlags: 0
@@ -2487,7 +2508,7 @@ GameObject:
   - component: {fileID: 1756644692}
   - component: {fileID: 1756644691}
   m_Layer: 0
-  m_Name: HudUI
+  m_Name: BackgammonHud
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -2502,10 +2523,11 @@ MonoBehaviour:
   m_GameObject: {fileID: 1756644690}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 7d4530ca4a3b9b24d95a5e5b970e6a4e, type: 3}
+  m_Script: {fileID: 11500000, guid: deee419d6efd8a448b5216fb5e3d921c, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  _uiDocument: {fileID: 1756644692}
+  uiDocument: {fileID: 1756644692}
+  gameController: {fileID: 1554234147}
 --- !u!114 &1756644692
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -3249,9 +3271,17 @@ PrefabInstance:
       value: 0.75
       objectReference: {fileID: 0}
     - target: {fileID: 5532951670208852040, guid: b9ed2ff38d88ef141aa33e1fb13c1c3d, type: 3}
+      propertyPath: SuppressRollButtonBinding
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 5532951670208852040, guid: b9ed2ff38d88ef141aa33e1fb13c1c3d, type: 3}
       propertyPath: uiDocument
       value: 
       objectReference: {fileID: 1756644692}
+    - target: {fileID: 5532951670208852040, guid: b9ed2ff38d88ef141aa33e1fb13c1c3d, type: 3}
+      propertyPath: rollButtonName
+      value: RollButton
+      objectReference: {fileID: 0}
     - target: {fileID: 5532951670208852040, guid: b9ed2ff38d88ef141aa33e1fb13c1c3d, type: 3}
       propertyPath: dicePipColor.b
       value: 0

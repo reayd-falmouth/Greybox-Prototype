@@ -4,8 +4,9 @@ using UnityEngine.UIElements;
 namespace RMC.MyProject.UI
 {
     /// <summary>
-    /// Renders the <see cref="PlayerData"/> in the Unity Game Window.
+    /// Legacy template HUD (corner labels). Backgammon uses <see cref="BackgammonHudController"/> + BackgammonHUD.uxml instead.
     /// </summary>
+    [System.Obsolete("Use BackgammonHudController with BackgammonHUD.uxml for backgammon scenes.")]
     public class HudUI : MonoBehaviour
     {
         //  Properties ------------------------------------

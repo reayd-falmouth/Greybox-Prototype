@@ -32,6 +32,12 @@ public class BoardManager : MonoBehaviour
     public Color darkColor = new Color(0.1f, 0.1f, 0.1f);
     public Color lightColor = new Color(0.9f, 0.9f, 0.9f);
 
+    [Header("Board view (HUD Horiz / Vert)")]
+    [Tooltip("Rotated for horizontal vs vertical table view. Assign e.g. parent of both floor halves.")]
+    [SerializeField] private Transform boardViewPivot;
+    [SerializeField] private Vector3 horizontalBoardEuler = Vector3.zero;
+    [SerializeField] private Vector3 verticalBoardEuler = new Vector3(0f, 0f, 90f);
+
     [Header("Checker Visuals (HDR)")]
     public Color whiteBaseColor = new Color(1f, 0.42f, 0f);
     public Color whiteEmissionColor = Color.yellow;
@@ -230,5 +236,12 @@ public class BoardManager : MonoBehaviour
     {
         for (int i = 0; i < allPoints.Length; i++)
             allPoints[i]?.SetHighlighted(false);
+    }
+
+    /// <summary>HUD "Change view" — rotates an optional pivot (assign in Inspector).</summary>
+    public void SetBoardViewHorizontal(bool horizontal)
+    {
+        if (boardViewPivot == null) return;
+        boardViewPivot.localRotation = Quaternion.Euler(horizontal ? horizontalBoardEuler : verticalBoardEuler);
     }
 }
