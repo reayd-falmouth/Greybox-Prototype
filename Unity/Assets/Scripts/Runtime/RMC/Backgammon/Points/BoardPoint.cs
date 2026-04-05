@@ -61,13 +61,14 @@ public class BoardPoint : MonoBehaviour
         return pos;
     }
 
-    public void AddChecker(GameObject checkerObj)
+    /// <param name="animated">Pass false when spawning from <c>Instantiate</c> at world origin (board sync / initial layout).</param>
+    public void AddChecker(GameObject checkerObj, bool animated = true)
     {
         Checker checker = checkerObj.GetComponent<Checker>();
         Vector3 targetPos = GetNextStackPosition();
-        
+
         checkers.Add(checkerObj);
-        checker.MoveToPosition(targetPos, this.transform);
+        checker.MoveToPosition(targetPos, transform, animated);
     }
 
     public GameObject RemoveTopChecker()

@@ -14,12 +14,19 @@ public class Checker : MonoBehaviour
 
     private Coroutine moveCoroutine;
 
-    // Call this from your BoardManager instead of setting transform.position directly
-    public void MoveToPosition(Vector3 targetPosition, Transform newParent)
+    /// <param name="animated">False for full board rebuild (e.g. sync from <c>GameState</c>) so checkers do not lerp from world origin.</param>
+    public void MoveToPosition(Vector3 targetPosition, Transform newParent, bool animated = true)
     {
         if (moveCoroutine != null) StopCoroutine(moveCoroutine);
-        
+        moveCoroutine = null;
+
         transform.SetParent(newParent);
+        if (!animated)
+        {
+            transform.position = targetPosition;
+            return;
+        }
+
         moveCoroutine = StartCoroutine(AnimateMove(targetPosition));
     }
 

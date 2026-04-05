@@ -129,7 +129,7 @@ public class BoardManager : MonoBehaviour
                 ApplyCheckerVisuals(checkerObj, color);
                 checkerObj.GetComponent<Checker>().color = color;
                 
-                targetPoint.AddChecker(checkerObj); 
+                targetPoint.AddChecker(checkerObj, animated: false);
             }
         }
     }
@@ -189,7 +189,12 @@ public class BoardManager : MonoBehaviour
             {
                 GameObject top = allPoints[i].RemoveTopChecker();
                 if (top != null)
-                    DestroyImmediate(top);
+                {
+                    if (Application.isPlaying)
+                        Destroy(top);
+                    else
+                        DestroyImmediate(top);
+                }
             }
         }
 
@@ -201,7 +206,13 @@ public class BoardManager : MonoBehaviour
     {
         if (anchor == null) return;
         for (int c = anchor.childCount - 1; c >= 0; c--)
-            DestroyImmediate(anchor.GetChild(c).gameObject);
+        {
+            GameObject ch = anchor.GetChild(c).gameObject;
+            if (Application.isPlaying)
+                Destroy(ch);
+            else
+                DestroyImmediate(ch);
+        }
     }
 
     /// <summary>Rebuild checker stacks from the current logical engine state (P1 = white, P2 = black).</summary>
@@ -254,7 +265,7 @@ public class BoardManager : MonoBehaviour
         GameObject checkerObj = Instantiate(prefab);
         ApplyCheckerVisuals(checkerObj, color);
         checkerObj.GetComponent<Checker>().color = color;
-        bp.AddChecker(checkerObj);
+        bp.AddChecker(checkerObj, animated: false);
     }
 
     public void ClearAllPointHighlights()
