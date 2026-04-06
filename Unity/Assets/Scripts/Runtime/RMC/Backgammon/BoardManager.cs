@@ -89,6 +89,8 @@ public class BoardManager : MonoBehaviour
     [Tooltip("Fraction of each cycle that is solid; the rest is gap.")]
     [SerializeField] [Range(0.05f, 0.95f)] private float movePreviewDashFill = 0.45f;
     [SerializeField] private float movePreviewHeightOffset = 0.05f;
+    [Tooltip("Lifts the Bezier control along the board normal (chord length × factor). 0 = lateral arc only.")]
+    [SerializeField] [Range(0f, 0.5f)] private float movePreviewVerticalBulgeFactor = 0.15f;
     [Tooltip("Optional world position for bear-off (-1) line ends. If unset, a point near P1 home edge is used.")]
     [SerializeField] private Transform bearOffLineEnd;
 
@@ -191,6 +193,14 @@ public class BoardManager : MonoBehaviour
         if (boardViewPivot != null)
             return boardViewPivot.up;
         return Vector3.up;
+    }
+
+    /// <summary>World top-center of checker mesh (or collider fallback) plus clearance along board normal.</summary>
+    private static Vector3 GetMovePreviewLineStartWorld(MeshRenderer mr, Collider collider, Vector3 clearance)
+    {
+        Bounds b = mr != null ? mr.bounds : collider.bounds;
+        var topCenter = new Vector3(b.center.x, b.max.y, b.center.z);
+        return topCenter + clearance;
     }
 
     private Shader ResolveMovePreviewLineShader()
@@ -308,15 +318,16 @@ public class BoardManager : MonoBehaviour
         MeshRenderer mr = ch.GetComponentInChildren<MeshRenderer>();
         SetMovableHoverRenderer(mr);
 
-        Vector3 up = Vector3.up * movePreviewHeightOffset;
-        Vector3 start = checkerHit.collider.bounds.center + up;
+        Vector3 boardUp = GetMovePreviewArcPlaneNormal();
+        Vector3 clearance = boardUp * movePreviewHeightOffset;
+        Vector3 start = GetMovePreviewLineStartWorld(mr, checkerHit.collider, clearance);
         int lineIdx = 0;
         foreach (int engineTo in _moveDestScratch)
         {
             if (lineIdx >= _movePreviewLines.Length) break;
             if (!TryGetWorldPositionForMoveDestination(engineTo, out Vector3 end))
                 continue;
-            end += up;
+            end += clearance;
 
             LineRenderer lr = _movePreviewLines[lineIdx++];
             int slot = lineIdx - 1;
@@ -335,7 +346,14 @@ public class BoardManager : MonoBehaviour
                 float heightFactor = movePreviewArcFactorBase + slot * movePreviewArcFactorPerLine;
                 Vector3 planeNormal = GetMovePreviewArcPlaneNormal();
                 nPos = BackgammonMovePreviewCurve.FillMoveVisualizerStyleBezier(
-                    start, end, heightFactor, seg, slot, planeNormal, _movePreviewCurveBuffer);
+                    start,
+                    end,
+                    heightFactor,
+                    seg,
+                    slot,
+                    planeNormal,
+                    _movePreviewCurveBuffer,
+                    movePreviewVerticalBulgeFactor);
             }
 
             if (nPos <= 0)

@@ -90,4 +90,20 @@ public class BackgammonMovePreviewCurveEditModeTests
         // fanIndex 0 vs 1 should offset control in opposite directions along Z for chord along X
         Assert.That(Mathf.Abs(c0.z - c1.z), Is.GreaterThan(1e-4f));
     }
+
+    [Test]
+    public void GetMoveVisualizerStyleControlPoint_VerticalBulgeOffsetsAlongPlaneNormal()
+    {
+        var p0 = Vector3.zero;
+        var p2 = new Vector3(4f, 0f, 0f);
+        Vector3 planeNormal = Vector3.up;
+        Vector3 flat = BackgammonMovePreviewCurve.GetMoveVisualizerStyleControlPoint(
+            p0, p2, 0f, 0, planeNormal, verticalBulgeFactor: 0f);
+        Vector3 lifted = BackgammonMovePreviewCurve.GetMoveVisualizerStyleControlPoint(
+            p0, p2, 0f, 0, planeNormal, verticalBulgeFactor: 0.2f);
+        float dist = (p2 - p0).magnitude;
+        Assert.AreEqual(flat.y + dist * 0.2f, lifted.y, 1e-4f);
+        Assert.AreEqual(flat.x, lifted.x, 1e-4f);
+        Assert.AreEqual(flat.z, lifted.z, 1e-4f);
+    }
 }

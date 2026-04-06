@@ -25,12 +25,14 @@ namespace Runtime.RMC.Backgammon.Core
         /// and spread <c>1 + fanIndex/2</c> (integer division).
         /// </summary>
         /// <param name="planeNormal">Board normal; perpendicular is <c>Cross(planeNormal, chordDir)</c>.</param>
+        /// <param name="verticalBulgeFactor">Adds <c>normalize(planeNormal) × chordLength × factor</c> so the arc lifts off the board plane (0 = lateral-only).</param>
         public static Vector3 GetMoveVisualizerStyleControlPoint(
             Vector3 p0,
             Vector3 p2,
             float heightFactor,
             int fanIndex,
-            Vector3 planeNormal)
+            Vector3 planeNormal,
+            float verticalBulgeFactor = 0f)
         {
             Vector3 chord = p2 - p0;
             float dist = chord.magnitude;
@@ -47,7 +49,8 @@ namespace Runtime.RMC.Backgammon.Core
             float height = dist * heightFactor;
             float direction = (fanIndex % 2 == 0) ? 1f : -1f;
             float spread = 1f + fanIndex / 2;
-            return mid + perp * height * direction * spread;
+            Vector3 n = planeNormal.sqrMagnitude > 1e-8f ? planeNormal.normalized : Vector3.up;
+            return mid + perp * height * direction * spread + n * (dist * verticalBulgeFactor);
         }
 
         /// <summary>
@@ -61,9 +64,11 @@ namespace Runtime.RMC.Backgammon.Core
             int segmentCount,
             int fanIndex,
             Vector3 planeNormal,
-            Vector3[] outPositions)
+            Vector3[] outPositions,
+            float verticalBulgeFactor = 0f)
         {
-            Vector3 control = GetMoveVisualizerStyleControlPoint(p0, p2, heightFactor, fanIndex, planeNormal);
+            Vector3 control = GetMoveVisualizerStyleControlPoint(
+                p0, p2, heightFactor, fanIndex, planeNormal, verticalBulgeFactor);
             return FillQuadraticBezier(p0, control, p2, outPositions, segmentCount);
         }
 
