@@ -47,6 +47,10 @@ public class BoardManager : MonoBehaviour
     public Color blackEmissionColor = Color.red;
     public float blackEmissionIntensity = 2.0f;
 
+    [Header("Movable highlight (human turn)")]
+    [Tooltip("Multiplies HDR emission when a checker can start a legal turn.")]
+    [SerializeField] private float movableEmissionMultiplier = 1.35f;
+
     [ContextMenu("Full Setup")]
     public void FullSetup()
     {
@@ -146,7 +150,7 @@ public class BoardManager : MonoBehaviour
         return (mr != null) ? mr.bounds.size.x : 0.45f;
     }
 
-    private void ApplyCheckerVisuals(GameObject obj, PlayerColor color)
+    private void ApplyCheckerVisuals(GameObject obj, PlayerColor color, bool movableHighlight = false)
     {
         MeshRenderer mr = obj.GetComponentInChildren<MeshRenderer>();
         if (mr == null) return;
@@ -156,9 +160,78 @@ public class BoardManager : MonoBehaviour
         Color emissCol = (color == PlayerColor.White) ? whiteEmissionColor : blackEmissionColor;
         float intensity = (color == PlayerColor.White) ? whiteEmissionIntensity : blackEmissionIntensity;
 
+        Color emission = emissCol * Mathf.Pow(2f, intensity);
+        if (movableHighlight)
+            emission *= movableEmissionMultiplier;
+
         props.SetColor("_BaseColor", baseCol);
-        props.SetColor("_EmissionColor", emissCol * Mathf.Pow(2, intensity));
+        props.SetColor("_EmissionColor", emission);
         mr.SetPropertyBlock(props);
+    }
+
+    /// <summary>Reset all checker materials to baseline (no movable boost).</summary>
+    public void ClearMovableCheckerHighlights()
+    {
+        for (int i = 0; i < allPoints.Length; i++)
+        {
+            if (allPoints[i] == null) continue;
+            foreach (GameObject go in allPoints[i].checkers)
+            {
+                if (go == null) continue;
+                Checker c = go.GetComponent<Checker>();
+                if (c != null) ApplyCheckerVisuals(go, c.color, false);
+            }
+        }
+
+        ReapplyBarCheckerBaselines(barWhiteAnchor);
+        ReapplyBarCheckerBaselines(barBlackAnchor);
+    }
+
+    private void ReapplyBarCheckerBaselines(Transform anchor)
+    {
+        if (anchor == null) return;
+        for (int c = 0; c < anchor.childCount; c++)
+        {
+            GameObject go = anchor.GetChild(c).gameObject;
+            Checker ch = go.GetComponent<Checker>();
+            if (ch != null) ApplyCheckerVisuals(go, ch.color, false);
+        }
+    }
+
+    /// <summary>Highlight logical P1 checkers that can start a legal turn (engine <paramref name="engineFromPoints"/>).</summary>
+    public void ApplyMovableCheckerHighlights(IReadOnlyCollection<int> engineFromPoints)
+    {
+        ClearMovableCheckerHighlights();
+        if (engineFromPoints == null || engineFromPoints.Count == 0) return;
+
+        foreach (int from in engineFromPoints)
+        {
+            if (from == BackgammonBoardLayout.BarEngineIndex)
+            {
+                if (barWhiteAnchor == null) continue;
+                for (int c = 0; c < barWhiteAnchor.childCount; c++)
+                {
+                    GameObject go = barWhiteAnchor.GetChild(c).gameObject;
+                    Checker ch = go.GetComponent<Checker>();
+                    if (ch != null) ApplyCheckerVisuals(go, ch.color, true);
+                }
+                continue;
+            }
+
+            if (from < 0 || from > 23) continue;
+
+            int boardIdx = BackgammonBoardLayout.EnginePointToBoardIndex(from);
+            if (boardIdx < 0 || boardIdx >= allPoints.Length || allPoints[boardIdx] == null) continue;
+
+            BoardPoint bp = allPoints[boardIdx];
+            foreach (GameObject go in bp.checkers)
+            {
+                if (go == null) continue;
+                Checker checker = go.GetComponent<Checker>();
+                if (checker != null && checker.color == PlayerColor.White)
+                    ApplyCheckerVisuals(go, checker.color, true);
+            }
+        }
     }
 
     public void ClearPoints()

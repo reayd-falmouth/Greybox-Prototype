@@ -56,6 +56,7 @@ public class BackgammonGameController : MonoBehaviour
     public event Action OnStateChanged;
 
     private readonly List<Turn> _legalTurns = new();
+    private readonly HashSet<int> _movableFromScratch = new();
     private readonly Stack<UndoFrame> _undoStack = new();
     private bool _rolledThisTurn;
     private bool _busy;
@@ -130,6 +131,7 @@ public class BackgammonGameController : MonoBehaviour
         hud?.SetDoubleOfferVisible(false);
         OnStateChanged?.Invoke();
         hud?.RefreshAll(this);
+        RefreshMovableCheckerHighlights();
     }
 
     public void RequestRollDice()
@@ -212,6 +214,7 @@ public class BackgammonGameController : MonoBehaviour
         {
             OnStateChanged?.Invoke();
             hud?.RefreshAll(this);
+            RefreshMovableCheckerHighlights();
         }
     }
 
@@ -224,6 +227,7 @@ public class BackgammonGameController : MonoBehaviour
             State.Dice2 = 0;
             OnStateChanged?.Invoke();
             hud?.RefreshAll(this);
+            RefreshMovableCheckerHighlights();
             return;
         }
 
@@ -240,6 +244,7 @@ public class BackgammonGameController : MonoBehaviour
         {
             OnStateChanged?.Invoke();
             hud?.RefreshAll(this);
+            RefreshMovableCheckerHighlights();
             MaybeStartAiTurn();
         }
     }
@@ -248,6 +253,26 @@ public class BackgammonGameController : MonoBehaviour
     {
         _legalTurns.Clear();
         _legalTurns.AddRange(MoveGenerator.GenerateLegalTurns(State));
+    }
+
+    private bool ShouldShowMovableCheckerHighlights()
+    {
+        if (State == null || !_rolledThisTurn || _busy || _legalTurns.Count == 0) return false;
+        if (!BackgammonSettings.OpponentIsAi) return false;
+        return State.PlayerOnRoll == 1;
+    }
+
+    private void RefreshMovableCheckerHighlights()
+    {
+        if (boardManager == null) return;
+        if (!ShouldShowMovableCheckerHighlights())
+        {
+            boardManager.ClearMovableCheckerHighlights();
+            return;
+        }
+
+        BackgammonMovableFromPoints.CollectMovableFromEnginePoints(_legalTurns, _movableFromScratch);
+        boardManager.ApplyMovableCheckerHighlights(_movableFromScratch);
     }
 
     /// <summary>Apply a full legal turn by index from <see cref="CurrentLegalTurns"/>.</summary>
@@ -273,6 +298,7 @@ public class BackgammonGameController : MonoBehaviour
         TurnsCompletedThisGame = Mathf.Max(0, TurnsCompletedThisGame - 1);
         OnStateChanged?.Invoke();
         hud?.RefreshAll(this);
+        RefreshMovableCheckerHighlights();
         return true;
     }
 
@@ -377,6 +403,7 @@ public class BackgammonGameController : MonoBehaviour
         TurnsCompletedThisGame++;
         OnStateChanged?.Invoke();
         hud?.RefreshAll(this);
+        RefreshMovableCheckerHighlights();
         MaybeStartAiTurn();
     }
 
@@ -400,11 +427,13 @@ public class BackgammonGameController : MonoBehaviour
         {
             OnStateChanged?.Invoke();
             hud?.RefreshAll(this);
+            RefreshMovableCheckerHighlights();
             return;
         }
 
         OnStateChanged?.Invoke();
         hud?.RefreshAll(this);
+        RefreshMovableCheckerHighlights();
         MaybeStartAiTurn();
     }
 
@@ -473,6 +502,7 @@ public class BackgammonGameController : MonoBehaviour
         TurnsCompletedThisGame++;
         OnStateChanged?.Invoke();
         hud?.RefreshAll(this);
+        RefreshMovableCheckerHighlights();
     }
 
     public void PreviewTurnHighlights(Turn turn)
@@ -508,6 +538,7 @@ public class BackgammonGameController : MonoBehaviour
         RefreshLegals();
         OnStateChanged?.Invoke();
         hud?.RefreshAll(this);
+        RefreshMovableCheckerHighlights();
     }
 
     public void DebugForcePassTurn()
