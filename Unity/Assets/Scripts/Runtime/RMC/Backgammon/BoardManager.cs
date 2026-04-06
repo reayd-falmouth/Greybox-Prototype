@@ -47,9 +47,21 @@ public class BoardManager : MonoBehaviour
     public Color blackEmissionColor = Color.red;
     public float blackEmissionIntensity = 2.0f;
 
-    [Header("Movable highlight (human turn)")]
-    [Tooltip("Multiplies HDR emission when a checker can start a legal turn.")]
-    [SerializeField] private float movableEmissionMultiplier = 1.35f;
+    [Header("Movable highlight (neon pulse)")]
+    [SerializeField] private Color movableNeonBaseColor = new Color(0.15f, 0.65f, 1f, 1f);
+    [SerializeField] private Color movableNeonEmissionColor = new Color(0.3f, 0.85f, 1f, 1f);
+    [Tooltip("HDR emission exponent, same convention as whiteEmissionIntensity.")]
+    [SerializeField] private float movableNeonEmissionIntensity = 2.5f;
+    [SerializeField] private float movablePulseFrequency = 1.15f;
+    [SerializeField] private float movablePulseEmissionMinScale = 0.55f;
+    [SerializeField] private float movablePulseEmissionMaxScale = 1.45f;
+
+    private readonly List<MovablePulseTarget> _movablePulseTargets = new();
+
+    private struct MovablePulseTarget
+    {
+        public MeshRenderer Renderer;
+    }
 
     [ContextMenu("Full Setup")]
     public void FullSetup()
@@ -150,7 +162,7 @@ public class BoardManager : MonoBehaviour
         return (mr != null) ? mr.bounds.size.x : 0.45f;
     }
 
-    private void ApplyCheckerVisuals(GameObject obj, PlayerColor color, bool movableHighlight = false)
+    private void ApplyCheckerVisuals(GameObject obj, PlayerColor color)
     {
         MeshRenderer mr = obj.GetComponentInChildren<MeshRenderer>();
         if (mr == null) return;
@@ -161,17 +173,53 @@ public class BoardManager : MonoBehaviour
         float intensity = (color == PlayerColor.White) ? whiteEmissionIntensity : blackEmissionIntensity;
 
         Color emission = emissCol * Mathf.Pow(2f, intensity);
-        if (movableHighlight)
-            emission *= movableEmissionMultiplier;
 
         props.SetColor("_BaseColor", baseCol);
         props.SetColor("_EmissionColor", emission);
         mr.SetPropertyBlock(props);
     }
 
-    /// <summary>Reset all checker materials to baseline (no movable boost).</summary>
+    private static float ComputePulseScale(float time, float frequency, float minS, float maxS)
+    {
+        float w = Mathf.Sin(time * (Mathf.PI * 2f) * frequency);
+        return Mathf.Lerp(minS, maxS, 0.5f + 0.5f * w);
+    }
+
+    private void RefreshMovablePulseVisuals()
+    {
+        if (_movablePulseTargets.Count == 0) return;
+        float pulse = ComputePulseScale(Time.time, movablePulseFrequency, movablePulseEmissionMinScale, movablePulseEmissionMaxScale);
+        Color emission = movableNeonEmissionColor * (Mathf.Pow(2f, movableNeonEmissionIntensity) * pulse);
+
+        var props = new MaterialPropertyBlock();
+        props.SetColor("_BaseColor", movableNeonBaseColor);
+        props.SetColor("_EmissionColor", emission);
+
+        for (int i = 0; i < _movablePulseTargets.Count; i++)
+        {
+            MeshRenderer mr = _movablePulseTargets[i].Renderer;
+            if (mr == null) continue;
+            mr.SetPropertyBlock(props);
+        }
+    }
+
+    private void LateUpdate()
+    {
+        RefreshMovablePulseVisuals();
+    }
+
+    private void AddMovablePulseTarget(GameObject go)
+    {
+        MeshRenderer mr = go.GetComponentInChildren<MeshRenderer>();
+        if (mr == null) return;
+        _movablePulseTargets.Add(new MovablePulseTarget { Renderer = mr });
+    }
+
+    /// <summary>Reset all checker materials to baseline (no movable neon).</summary>
     public void ClearMovableCheckerHighlights()
     {
+        _movablePulseTargets.Clear();
+
         for (int i = 0; i < allPoints.Length; i++)
         {
             if (allPoints[i] == null) continue;
@@ -179,7 +227,7 @@ public class BoardManager : MonoBehaviour
             {
                 if (go == null) continue;
                 Checker c = go.GetComponent<Checker>();
-                if (c != null) ApplyCheckerVisuals(go, c.color, false);
+                if (c != null) ApplyCheckerVisuals(go, c.color);
             }
         }
 
@@ -194,7 +242,7 @@ public class BoardManager : MonoBehaviour
         {
             GameObject go = anchor.GetChild(c).gameObject;
             Checker ch = go.GetComponent<Checker>();
-            if (ch != null) ApplyCheckerVisuals(go, ch.color, false);
+            if (ch != null) ApplyCheckerVisuals(go, ch.color);
         }
     }
 
@@ -213,7 +261,7 @@ public class BoardManager : MonoBehaviour
                 {
                     GameObject go = barWhiteAnchor.GetChild(c).gameObject;
                     Checker ch = go.GetComponent<Checker>();
-                    if (ch != null) ApplyCheckerVisuals(go, ch.color, true);
+                    if (ch != null) AddMovablePulseTarget(go);
                 }
                 continue;
             }
@@ -229,9 +277,11 @@ public class BoardManager : MonoBehaviour
                 if (go == null) continue;
                 Checker checker = go.GetComponent<Checker>();
                 if (checker != null && checker.color == PlayerColor.White)
-                    ApplyCheckerVisuals(go, checker.color, true);
+                    AddMovablePulseTarget(go);
             }
         }
+
+        RefreshMovablePulseVisuals();
     }
 
     public void ClearPoints()
@@ -292,6 +342,7 @@ public class BoardManager : MonoBehaviour
     public void SyncCheckersFromGameState(GameState state)
     {
         if (state == null) return;
+        _movablePulseTargets.Clear();
         ClearAllPointHighlights();
         ClearAllCheckersFromBoard();
 

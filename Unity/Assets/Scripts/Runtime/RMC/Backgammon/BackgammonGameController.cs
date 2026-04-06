@@ -255,11 +255,13 @@ public class BackgammonGameController : MonoBehaviour
         _legalTurns.AddRange(MoveGenerator.GenerateLegalTurns(State));
     }
 
+    /// <summary>Movable neon applies to logical P1 pieces (current mover). Hidden only while the AI is on roll in opponent-AI mode.</summary>
     private bool ShouldShowMovableCheckerHighlights()
     {
         if (State == null || !_rolledThisTurn || _busy || _legalTurns.Count == 0) return false;
-        if (!BackgammonSettings.OpponentIsAi) return false;
-        return State.PlayerOnRoll == 1;
+        if (BackgammonSettings.OpponentIsAi && State.PlayerOnRoll == 0)
+            return false;
+        return true;
     }
 
     private void RefreshMovableCheckerHighlights()
