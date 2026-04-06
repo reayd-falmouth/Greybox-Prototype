@@ -92,8 +92,6 @@ public class BoardManager : MonoBehaviour
     [SerializeField] [Range(0f, 1f)] private float movePreviewGhostEmissionMul = 0.38f;
     [Tooltip("Uniform scale vs the white checker prefab (1 = same size as real checkers).")]
     [SerializeField] [Range(0.15f, 1.25f)] private float movePreviewGhostScale = 0.58f;
-    [Tooltip("Optional: Unlit material for ghost checkers (clone per instance). If unset, uses URP Unlit / Unlit.Color — avoids Lit transparency issues.")]
-    [SerializeField] private Material movePreviewGhostTemplateMaterial;
     [Tooltip("Optional world position for bear-off (-1) line ends. If unset, a point near P1 home edge is used.")]
     [SerializeField] private Transform bearOffLineEnd;
 
@@ -215,9 +213,6 @@ public class BoardManager : MonoBehaviour
                 gmr.shadowCastingMode = ShadowCastingMode.Off;
                 gmr.receiveShadows = true;
                 gmr.enabled = true;
-                Material ghostMat = CreateMovePreviewGhostMaterialInstance();
-                ApplyMovePreviewOverlayQueue(ghostMat);
-                gmr.material = ghostMat;
             }
 
             ApplyGhostCheckerVisuals(go);
@@ -245,35 +240,27 @@ public class BoardManager : MonoBehaviour
             ch.enabled = false;
     }
 
-    private Material CreateMovePreviewGhostMaterialInstance()
-    {
-        if (movePreviewGhostTemplateMaterial != null)
-            return new Material(movePreviewGhostTemplateMaterial);
-        Shader s = Shader.Find("Universal Render Pipeline/Unlit");
-        if (s == null) s = Shader.Find("Unlit/Color");
-        if (s == null) s = Shader.Find("Sprites/Default");
-        return new Material(s);
-    }
-
     private static void ApplyMovePreviewOverlayQueue(Material mat)
     {
         if (mat != null)
             mat.renderQueue = MovePreviewOverlayRenderQueue;
     }
 
+    /// <summary>Uses the same <see cref="whiteCheckerPrefab"/> as gameplay; tints via <see cref="MaterialPropertyBlock"/> (shared materials unchanged).</summary>
     private void ApplyGhostCheckerVisuals(GameObject obj)
     {
         MeshRenderer mr = obj.GetComponentInChildren<MeshRenderer>();
         if (mr == null) return;
+
         Color baseCol = Color.Lerp(Color.white * 0.94f, whiteBaseColor, Mathf.Clamp01(movePreviewGhostAlpha));
         baseCol.a = Mathf.Lerp(0.72f, 0.95f, Mathf.Clamp01(movePreviewGhostAlpha));
-        float dim = Mathf.Lerp(0.82f, 1f, movePreviewGhostEmissionMul);
+        float dim = Mathf.Lerp(0.82f, 1f, Mathf.Clamp01(movePreviewGhostEmissionMul));
         baseCol = new Color(baseCol.r * dim, baseCol.g * dim, baseCol.b * dim, baseCol.a);
-        Material m = mr.material;
-        if (m == null) return;
-        if (m.HasProperty("_BaseColor")) m.SetColor("_BaseColor", baseCol);
-        if (m.HasProperty("_Color")) m.SetColor("_Color", baseCol);
-        m.color = baseCol;
+
+        Color emission = whiteEmissionColor * (Mathf.Pow(2f, whiteEmissionIntensity) * Mathf.Clamp01(movePreviewGhostEmissionMul));
+        var props = new MaterialPropertyBlock();
+        SetAlbedoAndEmission(props, baseCol, emission);
+        ApplyPropertyBlock(mr, props);
     }
 
     private void HideMovePreviewGhostAt(int slot)
