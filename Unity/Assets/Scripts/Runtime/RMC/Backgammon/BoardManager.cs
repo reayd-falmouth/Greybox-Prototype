@@ -90,8 +90,8 @@ public class BoardManager : MonoBehaviour
     [SerializeField] [Range(0.35f, 1f)] private float movePreviewGhostAlpha = 0.85f;
     [Tooltip("Scales HDR emission on the ghost so it reads softer than a real checker.")]
     [SerializeField] [Range(0f, 1f)] private float movePreviewGhostEmissionMul = 0.38f;
-    [Tooltip("Uniform scale vs the white checker prefab (1 = same size as real checkers).")]
-    [SerializeField] [Range(0.15f, 1.25f)] private float movePreviewGhostScale = 0.58f;
+    [Tooltip("Multiplier on checker-matched local scale (1 = same visual size as checkers on that point; ghosts are parented under the destination point so board/floor scale applies).")]
+    [SerializeField] [Range(0.15f, 1.25f)] private float movePreviewGhostScale = 1f;
     [Tooltip("Optional world position for bear-off (-1) line ends. If unset, a point near P1 home edge is used.")]
     [SerializeField] private Transform bearOffLineEnd;
 
@@ -268,8 +268,12 @@ public class BoardManager : MonoBehaviour
         if (_movePreviewGhostCheckers == null || slot < 0 || slot >= _movePreviewGhostCheckers.Length)
             return;
         GameObject go = _movePreviewGhostCheckers[slot];
-        if (go != null)
-            go.SetActive(false);
+        if (go == null) return;
+        if (_movePreviewGhostsRoot != null && go.transform.parent != _movePreviewGhostsRoot)
+            go.transform.SetParent(_movePreviewGhostsRoot, true);
+        if (_movePreviewGhostBaseLocalScales != null && slot < _movePreviewGhostBaseLocalScales.Length)
+            go.transform.localScale = _movePreviewGhostBaseLocalScales[slot] * movePreviewGhostScale;
+        go.SetActive(false);
     }
 
     private void PlaceMovePreviewGhost(int slot, int engineTo, Vector3 worldEnd)
@@ -284,12 +288,54 @@ public class BoardManager : MonoBehaviour
             return;
         GameObject go = _movePreviewGhostCheckers[slot];
         if (go == null) return;
+        Transform parent = ResolveMovePreviewGhostParent(engineTo);
+        if (parent == null) parent = _movePreviewGhostsRoot;
+        go.transform.SetParent(parent, true);
         TryGetGhostWorldRotation(engineTo, out Quaternion rot);
         go.transform.SetPositionAndRotation(worldEnd, rot);
-        if (_movePreviewGhostBaseLocalScales != null && slot < _movePreviewGhostBaseLocalScales.Length)
-            go.transform.localScale = _movePreviewGhostBaseLocalScales[slot] * movePreviewGhostScale;
+        BoardPoint bp = parent.GetComponent<BoardPoint>();
+        ApplyMovePreviewGhostLocalScale(go, bp, slot);
         ApplyGhostCheckerVisuals(go);
         go.SetActive(true);
+    }
+
+    /// <summary>Real checkers live under <see cref="BoardPoint"/> (scaled floor hierarchy); parenting ghosts there matches their world scale.</summary>
+    private Transform ResolveMovePreviewGhostParent(int engineTo)
+    {
+        if (_movePreviewGhostsRoot == null) return null;
+        if (engineTo >= 0 && engineTo <= 23)
+        {
+            int bi = BackgammonBoardLayout.EnginePointToBoardIndex(engineTo);
+            if (bi >= 0 && bi < allPoints.Length && allPoints[bi] != null)
+                return allPoints[bi].transform;
+            return _movePreviewGhostsRoot;
+        }
+
+        if (engineTo == -1)
+        {
+            if (bearOffLineEnd != null)
+                return bearOffLineEnd;
+            int bi0 = BackgammonBoardLayout.EnginePointToBoardIndex(0);
+            if (bi0 >= 0 && bi0 < allPoints.Length && allPoints[bi0] != null)
+                return allPoints[bi0].transform;
+        }
+
+        return _movePreviewGhostsRoot;
+    }
+
+    private void ApplyMovePreviewGhostLocalScale(GameObject go, BoardPoint bp, int slot)
+    {
+        if (_movePreviewGhostBaseLocalScales == null || slot < 0 || slot >= _movePreviewGhostBaseLocalScales.Length)
+            return;
+        Vector3 prefabScale = _movePreviewGhostBaseLocalScales[slot];
+        if (bp != null && bp.checkers != null && bp.checkers.Count > 0)
+        {
+            Transform reference = bp.checkers[bp.checkers.Count - 1].transform;
+            go.transform.localScale = reference.localScale * movePreviewGhostScale;
+            return;
+        }
+
+        go.transform.localScale = prefabScale * movePreviewGhostScale;
     }
 
     private bool TryGetGhostWorldRotation(int engineTo, out Quaternion rotation)
