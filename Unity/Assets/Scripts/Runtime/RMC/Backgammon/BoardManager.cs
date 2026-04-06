@@ -48,7 +48,7 @@ public class BoardManager : MonoBehaviour
     public float blackEmissionIntensity = 2.0f;
 
     [Header("Movable highlight (neon pulse)")]
-    [SerializeField] private Color movableNeonBaseColor = new Color(0.15f, 0.65f, 1f, 1f);
+    [SerializeField] private Color movableNeonBaseColor = new Color(0.2f, 0.85f, 1f, 1f);
     [SerializeField] private Color movableNeonEmissionColor = new Color(0.3f, 0.85f, 1f, 1f);
     [Tooltip("HDR emission exponent, same convention as whiteEmissionIntensity.")]
     [SerializeField] private float movableNeonEmissionIntensity = 2.5f;
@@ -162,6 +162,28 @@ public class BoardManager : MonoBehaviour
         return (mr != null) ? mr.bounds.size.x : 0.45f;
     }
 
+    /// <summary>URP/Built-in Lit often mirror albedo in <c>_BaseColor</c> and <c>_Color</c>; set both so MPB fully overrides tint.</summary>
+    private static void SetAlbedoAndEmission(MaterialPropertyBlock props, Color baseCol, Color emission)
+    {
+        props.SetColor("_BaseColor", baseCol);
+        props.SetColor("_Color", baseCol);
+        props.SetColor("_EmissionColor", emission);
+    }
+
+    private static void ApplyPropertyBlock(MeshRenderer mr, MaterialPropertyBlock props)
+    {
+        if (mr == null) return;
+        var mats = mr.sharedMaterials;
+        int n = mats != null ? mats.Length : 0;
+        if (n <= 1)
+            mr.SetPropertyBlock(props);
+        else
+        {
+            for (int mi = 0; mi < n; mi++)
+                mr.SetPropertyBlock(props, mi);
+        }
+    }
+
     private void ApplyCheckerVisuals(GameObject obj, PlayerColor color)
     {
         MeshRenderer mr = obj.GetComponentInChildren<MeshRenderer>();
@@ -174,9 +196,8 @@ public class BoardManager : MonoBehaviour
 
         Color emission = emissCol * Mathf.Pow(2f, intensity);
 
-        props.SetColor("_BaseColor", baseCol);
-        props.SetColor("_EmissionColor", emission);
-        mr.SetPropertyBlock(props);
+        SetAlbedoAndEmission(props, baseCol, emission);
+        ApplyPropertyBlock(mr, props);
     }
 
     private static float ComputePulseScale(float time, float frequency, float minS, float maxS)
@@ -192,14 +213,13 @@ public class BoardManager : MonoBehaviour
         Color emission = movableNeonEmissionColor * (Mathf.Pow(2f, movableNeonEmissionIntensity) * pulse);
 
         var props = new MaterialPropertyBlock();
-        props.SetColor("_BaseColor", movableNeonBaseColor);
-        props.SetColor("_EmissionColor", emission);
+        SetAlbedoAndEmission(props, movableNeonBaseColor, emission);
 
         for (int i = 0; i < _movablePulseTargets.Count; i++)
         {
             MeshRenderer mr = _movablePulseTargets[i].Renderer;
             if (mr == null) continue;
-            mr.SetPropertyBlock(props);
+            ApplyPropertyBlock(mr, props);
         }
     }
 
