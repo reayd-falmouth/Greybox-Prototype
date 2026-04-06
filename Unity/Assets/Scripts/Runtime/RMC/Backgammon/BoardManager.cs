@@ -4,6 +4,7 @@ using EngineCore;
 using Runtime.RMC._MyProject_.Core;
 using Runtime.RMC.Backgammon.Core;
 using UnityEngine;
+using UnityEngine.Rendering;
 using UnityEngine.Serialization;
 
 public class BoardManager : MonoBehaviour 
@@ -83,6 +84,11 @@ public class BoardManager : MonoBehaviour
     [Tooltip("Fraction of each cycle that is solid; the rest is gap.")]
     [SerializeField] [Range(0.05f, 0.95f)] private float movePreviewDashFill = 0.45f;
     [SerializeField] private float movePreviewHeightOffset = 0.05f;
+    [SerializeField] private bool movePreviewShowGhostCheckers = true;
+    [Tooltip("Multiplies albedo alpha (and tints) for the destination preview checker.")]
+    [SerializeField] [Range(0.05f, 1f)] private float movePreviewGhostAlpha = 0.42f;
+    [Tooltip("Scales HDR emission on the ghost so it reads softer than a real checker.")]
+    [SerializeField] [Range(0f, 1f)] private float movePreviewGhostEmissionMul = 0.38f;
     [Tooltip("Optional world position for bear-off (-1) line ends. If unset, a point near P1 home edge is used.")]
     [SerializeField] private Transform bearOffLineEnd;
 
@@ -90,6 +96,8 @@ public class BoardManager : MonoBehaviour
 
     private LineRenderer[] _movePreviewLines;
     private Transform _movePreviewRoot;
+    private GameObject[] _movePreviewGhostCheckers;
+    private Transform _movePreviewGhostsRoot;
     private Vector3[] _movePreviewCurveBuffer;
     private readonly HashSet<int> _moveDestScratch = new();
 
@@ -103,6 +111,7 @@ public class BoardManager : MonoBehaviour
     private void Awake()
     {
         BuildMovePreviewLinePool();
+        BuildMovePreviewGhostPool();
         if (rayCamera == null)
             rayCamera = ResolveGameplayCamera();
     }
@@ -158,6 +167,147 @@ public class BoardManager : MonoBehaviour
             lr.enabled = false;
             _movePreviewLines[i] = lr;
         }
+    }
+
+    private void BuildMovePreviewGhostPool()
+    {
+        if (_movePreviewGhostCheckers != null) return;
+        if (whiteCheckerPrefab == null)
+        {
+            _movePreviewGhostCheckers = Array.Empty<GameObject>();
+            return;
+        }
+
+        int n = Mathf.Max(1, movePreviewMaxLines);
+        _movePreviewGhostsRoot = new GameObject("MovableMovePreviewGhosts").transform;
+        _movePreviewGhostsRoot.SetParent(transform, false);
+        _movePreviewGhostCheckers = new GameObject[n];
+        for (int i = 0; i < n; i++)
+        {
+            GameObject go = Instantiate(whiteCheckerPrefab, _movePreviewGhostsRoot);
+            go.name = $"MovePreviewGhost_{i}";
+            PrepareMovePreviewGhostInstance(go);
+            MeshRenderer gmr = go.GetComponentInChildren<MeshRenderer>();
+            if (gmr != null)
+            {
+                gmr.shadowCastingMode = ShadowCastingMode.Off;
+                gmr.receiveShadows = true;
+                Material[] mats = gmr.materials;
+                for (int mi = 0; mi < mats.Length; mi++)
+                    ConfigureGhostMaterialForTransparency(mats[mi]);
+            }
+
+            ApplyGhostCheckerVisuals(go);
+            go.SetActive(false);
+            _movePreviewGhostCheckers[i] = go;
+        }
+    }
+
+    private static void PrepareMovePreviewGhostInstance(GameObject go)
+    {
+        const int ignoreRaycastLayer = 2;
+        go.layer = ignoreRaycastLayer;
+        foreach (Collider c in go.GetComponentsInChildren<Collider>(true))
+            c.enabled = false;
+        Rigidbody rb = go.GetComponent<Rigidbody>();
+        if (rb != null)
+        {
+            rb.isKinematic = true;
+            rb.useGravity = false;
+            rb.detectCollisions = false;
+        }
+
+        Checker ch = go.GetComponent<Checker>();
+        if (ch != null)
+            ch.enabled = false;
+    }
+
+    private static void ConfigureGhostMaterialForTransparency(Material m)
+    {
+        if (m == null) return;
+        if (m.HasProperty("_Surface"))
+            m.SetFloat("_Surface", 1f);
+        if (m.HasProperty("_Blend"))
+            m.SetFloat("_Blend", 0f);
+        if (m.HasProperty("_ZWrite"))
+            m.SetFloat("_ZWrite", 0f);
+        if (m.HasProperty("_AlphaClip"))
+            m.SetFloat("_AlphaClip", 0f);
+        m.EnableKeyword("_SURFACE_TYPE_TRANSPARENT");
+        m.renderQueue = (int)RenderQueue.Transparent;
+    }
+
+    private void ApplyGhostCheckerVisuals(GameObject obj)
+    {
+        MeshRenderer mr = obj.GetComponentInChildren<MeshRenderer>();
+        if (mr == null) return;
+        var props = new MaterialPropertyBlock();
+        Color baseCol = whiteBaseColor;
+        baseCol.a *= movePreviewGhostAlpha;
+        Color emission = whiteEmissionColor * (Mathf.Pow(2f, whiteEmissionIntensity) * movePreviewGhostEmissionMul);
+        SetAlbedoAndEmission(props, baseCol, emission);
+        ApplyPropertyBlock(mr, props);
+    }
+
+    private void HideMovePreviewGhostAt(int slot)
+    {
+        if (_movePreviewGhostCheckers == null || slot < 0 || slot >= _movePreviewGhostCheckers.Length)
+            return;
+        GameObject go = _movePreviewGhostCheckers[slot];
+        if (go != null)
+            go.SetActive(false);
+    }
+
+    private void PlaceMovePreviewGhost(int slot, int engineTo, Vector3 worldEnd)
+    {
+        if (!movePreviewShowGhostCheckers)
+        {
+            HideMovePreviewGhostAt(slot);
+            return;
+        }
+
+        if (_movePreviewGhostCheckers == null || slot < 0 || slot >= _movePreviewGhostCheckers.Length)
+            return;
+        GameObject go = _movePreviewGhostCheckers[slot];
+        if (go == null) return;
+        TryGetGhostWorldRotation(engineTo, out Quaternion rot);
+        go.transform.SetPositionAndRotation(worldEnd, rot);
+        ApplyGhostCheckerVisuals(go);
+        go.SetActive(true);
+    }
+
+    private bool TryGetGhostWorldRotation(int engineTo, out Quaternion rotation)
+    {
+        rotation = Quaternion.identity;
+        if (engineTo >= 0 && engineTo <= 23)
+        {
+            int bi = BackgammonBoardLayout.EnginePointToBoardIndex(engineTo);
+            if (bi >= 0 && bi < allPoints.Length && allPoints[bi] != null)
+            {
+                rotation = allPoints[bi].transform.rotation;
+                return true;
+            }
+
+            return false;
+        }
+
+        if (engineTo == -1)
+        {
+            if (bearOffLineEnd != null)
+            {
+                rotation = bearOffLineEnd.rotation;
+                return true;
+            }
+
+            int bi0 = BackgammonBoardLayout.EnginePointToBoardIndex(0);
+            if (bi0 >= 0 && bi0 < allPoints.Length && allPoints[bi0] != null)
+            {
+                rotation = allPoints[bi0].transform.rotation;
+                return true;
+            }
+        }
+
+        return false;
     }
 
     private Shader ResolveMovePreviewLineShader()
@@ -292,9 +442,11 @@ public class BoardManager : MonoBehaviour
 
             Vector3 control = BackgammonMovePreviewCurve.GetControlPoint(start, end, movePreviewArcHeightWorld, movePreviewArcLateralWorld);
             int nPos = BackgammonMovePreviewCurve.FillQuadraticBezier(start, control, end, _movePreviewCurveBuffer, seg);
+            int slot = lineIdx - 1;
             if (nPos <= 0)
             {
                 lr.enabled = false;
+                HideMovePreviewGhostAt(slot);
                 continue;
             }
 
@@ -305,10 +457,14 @@ public class BoardManager : MonoBehaviour
             for (int pi = 0; pi < nPos; pi++)
                 lr.SetPosition(pi, _movePreviewCurveBuffer[pi]);
             lr.enabled = true;
+            PlaceMovePreviewGhost(slot, engineTo, end);
         }
 
         for (int i = lineIdx; i < _movePreviewLines.Length; i++)
+        {
             _movePreviewLines[i].enabled = false;
+            HideMovePreviewGhostAt(i);
+        }
     }
 
     private void HideMovePreviewLines()
@@ -318,6 +474,13 @@ public class BoardManager : MonoBehaviour
         {
             if (_movePreviewLines[i] != null)
                 _movePreviewLines[i].enabled = false;
+        }
+
+        if (_movePreviewGhostCheckers == null) return;
+        for (int i = 0; i < _movePreviewGhostCheckers.Length; i++)
+        {
+            if (_movePreviewGhostCheckers[i] != null)
+                _movePreviewGhostCheckers[i].SetActive(false);
         }
     }
 
