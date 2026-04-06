@@ -57,15 +57,10 @@ public class BoardManager : MonoBehaviour
     public Color blackEmissionColor = Color.red;
     public float blackEmissionIntensity = 2.0f;
 
-    [Header("Movable highlight (neon pulse)")]
-    [SerializeField] private Color movableNeonBaseColor = new Color(0.2f, 0.85f, 1f, 1f);
-    [SerializeField] private Color movableNeonEmissionColor = new Color(0.3f, 0.85f, 1f, 1f);
-    [Tooltip("HDR emission exponent, same convention as whiteEmissionIntensity.")]
-    [SerializeField] private float movableNeonEmissionIntensity = 2.5f;
-    [SerializeField] private float movablePulseFrequency = 1.15f;
-    [SerializeField] private float movablePulseEmissionMinScale = 0.55f;
-    [SerializeField] private float movablePulseEmissionMaxScale = 1.45f;
-    [SerializeField] private float movableHoverEmissionBoost = 1.45f;
+    [Header("Movable highlight")]
+    [Tooltip("Tint for P1 checkers that can start a legal turn. HDR emission uses the same intensity as white checkers but is tinted with this color so the highlight reads in URP Lit.")]
+    [SerializeField, FormerlySerializedAs("movableNeonBaseColor")]
+    private Color movableHighlightBaseColor = new Color(0.2f, 0.85f, 1f, 1f);
 
     [Header("Move preview (hover lines)")]
     [Tooltip("Optional: clone this material for lines (same idea as MoveVisualizer lineMaterial). When set, dashed shader is skipped; use Unlit/Color or Sprites/Default.")]
@@ -493,26 +488,18 @@ public class BoardManager : MonoBehaviour
         CheckerMaterialPropertyBlockUtility.ApplyPropertyBlock(mr, props);
     }
 
-    private static float ComputePulseScale(float time, float frequency, float minS, float maxS)
-    {
-        float w = Mathf.Sin(time * (Mathf.PI * 2f) * frequency);
-        return Mathf.Lerp(minS, maxS, 0.5f + 0.5f * w);
-    }
-
     private void RefreshMovablePulseVisuals()
     {
-        float pulse = ComputePulseScale(Time.time, movablePulseFrequency, movablePulseEmissionMinScale, movablePulseEmissionMaxScale);
-        Color baseEmission = movableNeonEmissionColor * (Mathf.Pow(2f, movableNeonEmissionIntensity) * pulse);
+        Color emission = CheckerMaterialPropertyBlockUtility.ComputeMovableHighlightEmission(
+            movableHighlightBaseColor,
+            whiteEmissionIntensity);
 
         for (int i = 0; i < _movablePulseTargets.Count; i++)
         {
             MeshRenderer mr = _movablePulseTargets[i].Renderer;
             if (mr == null) continue;
-            Color emission = baseEmission;
-            if (mr == _movableHoverRenderer)
-                emission *= movableHoverEmissionBoost;
             var props = new MaterialPropertyBlock();
-            CheckerMaterialPropertyBlockUtility.SetAlbedoAndEmission(props, movableNeonBaseColor, emission, mr);
+            CheckerMaterialPropertyBlockUtility.SetAlbedoAndEmission(props, movableHighlightBaseColor, emission, mr);
             CheckerMaterialPropertyBlockUtility.ApplyPropertyBlock(mr, props);
         }
 
@@ -530,9 +517,8 @@ public class BoardManager : MonoBehaviour
 
             if (!hoverInPulseList)
             {
-                Color emission = baseEmission * movableHoverEmissionBoost;
                 var props = new MaterialPropertyBlock();
-                CheckerMaterialPropertyBlockUtility.SetAlbedoAndEmission(props, movableNeonBaseColor, emission, _movableHoverRenderer);
+                CheckerMaterialPropertyBlockUtility.SetAlbedoAndEmission(props, movableHighlightBaseColor, emission, _movableHoverRenderer);
                 CheckerMaterialPropertyBlockUtility.ApplyPropertyBlock(_movableHoverRenderer, props);
             }
         }
@@ -632,7 +618,7 @@ public class BoardManager : MonoBehaviour
         return false;
     }
 
-    /// <summary>Reset all checker materials to baseline (no movable neon).</summary>
+    /// <summary>Reset all checker materials to baseline (no movable highlight tint).</summary>
     public void ClearMovableCheckerHighlights()
     {
         _movablePulseTargets.Clear();

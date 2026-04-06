@@ -25,6 +25,15 @@ namespace Runtime.RMC.Backgammon
             if (mat.HasProperty("_EmissionColor")) props.SetColor("_EmissionColor", emission);
         }
 
+        /// <summary>
+        /// HDR emission for movable P1 highlight: same <c>pow(2, intensity)</c> curve as <c>ApplyCheckerVisuals</c>,
+        /// but tints emission with <paramref name="highlightBaseColor"/> so URP Lit emission does not wash out the highlight hue.
+        /// </summary>
+        public static Color ComputeMovableHighlightEmission(Color highlightBaseColor, float emissionIntensity)
+        {
+            return highlightBaseColor * Mathf.Pow(2f, emissionIntensity);
+        }
+
         public static void ApplyPropertyBlock(MeshRenderer mr, MaterialPropertyBlock props)
         {
             if (mr == null) return;
