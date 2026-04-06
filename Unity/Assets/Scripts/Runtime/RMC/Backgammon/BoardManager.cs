@@ -256,13 +256,10 @@ public class BoardManager : MonoBehaviour
         {
             if (from == BackgammonBoardLayout.BarEngineIndex)
             {
-                if (barWhiteAnchor == null) continue;
-                for (int c = 0; c < barWhiteAnchor.childCount; c++)
-                {
-                    GameObject go = barWhiteAnchor.GetChild(c).gameObject;
-                    Checker ch = go.GetComponent<Checker>();
-                    if (ch != null) AddMovablePulseTarget(go);
-                }
+                if (barWhiteAnchor == null || barWhiteAnchor.childCount == 0) continue;
+                GameObject go = barWhiteAnchor.GetChild(barWhiteAnchor.childCount - 1).gameObject;
+                if (go.GetComponent<Checker>() != null)
+                    AddMovablePulseTarget(go);
                 continue;
             }
 
@@ -272,13 +269,12 @@ public class BoardManager : MonoBehaviour
             if (boardIdx < 0 || boardIdx >= allPoints.Length || allPoints[boardIdx] == null) continue;
 
             BoardPoint bp = allPoints[boardIdx];
-            foreach (GameObject go in bp.checkers)
-            {
-                if (go == null) continue;
-                Checker checker = go.GetComponent<Checker>();
-                if (checker != null && checker.color == PlayerColor.White)
-                    AddMovablePulseTarget(go);
-            }
+            if (bp.checkers.Count == 0) continue;
+            GameObject topOnPoint = bp.checkers[bp.checkers.Count - 1];
+            if (topOnPoint == null) continue;
+            Checker checker = topOnPoint.GetComponent<Checker>();
+            if (checker != null && checker.color == PlayerColor.White)
+                AddMovablePulseTarget(topOnPoint);
         }
 
         RefreshMovablePulseVisuals();
