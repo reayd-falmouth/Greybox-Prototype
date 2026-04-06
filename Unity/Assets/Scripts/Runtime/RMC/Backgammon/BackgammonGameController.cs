@@ -258,6 +258,12 @@ public class BackgammonGameController : MonoBehaviour
     /// <summary>Movable neon applies to logical P1 pieces (current mover). Hidden only while the AI is on roll in opponent-AI mode.</summary>
     private bool ShouldShowMovableCheckerHighlights()
     {
+        return CanShowMovableCheckerInteraction();
+    }
+
+    /// <summary>True when the local player may interact with movable P1 checkers (after roll, has legals, not AI turn in AI mode).</summary>
+    public bool CanShowMovableCheckerInteraction()
+    {
         if (State == null || !_rolledThisTurn || _busy || _legalTurns.Count == 0) return false;
         if (BackgammonSettings.OpponentIsAi && State.PlayerOnRoll == 0)
             return false;

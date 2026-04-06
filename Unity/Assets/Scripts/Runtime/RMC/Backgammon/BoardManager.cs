@@ -55,6 +55,13 @@ public class BoardManager : MonoBehaviour
     [SerializeField] private float movablePulseFrequency = 1.15f;
     [SerializeField] private float movablePulseEmissionMinScale = 0.55f;
     [SerializeField] private float movablePulseEmissionMaxScale = 1.45f;
+    [SerializeField] private float movableHoverEmissionBoost = 1.45f;
+
+    [Header("Move preview (hover lines)")]
+    [Tooltip("Optional world position for bear-off (-1) line ends. If unset, a point near P1 home edge is used.")]
+    [SerializeField] private Transform bearOffLineEnd;
+
+    private MeshRenderer _movableHoverRenderer;
 
     private readonly List<MovablePulseTarget> _movablePulseTargets = new();
 
@@ -210,15 +217,17 @@ public class BoardManager : MonoBehaviour
     {
         if (_movablePulseTargets.Count == 0) return;
         float pulse = ComputePulseScale(Time.time, movablePulseFrequency, movablePulseEmissionMinScale, movablePulseEmissionMaxScale);
-        Color emission = movableNeonEmissionColor * (Mathf.Pow(2f, movableNeonEmissionIntensity) * pulse);
-
-        var props = new MaterialPropertyBlock();
-        SetAlbedoAndEmission(props, movableNeonBaseColor, emission);
+        Color baseEmission = movableNeonEmissionColor * (Mathf.Pow(2f, movableNeonEmissionIntensity) * pulse);
 
         for (int i = 0; i < _movablePulseTargets.Count; i++)
         {
             MeshRenderer mr = _movablePulseTargets[i].Renderer;
             if (mr == null) continue;
+            Color emission = baseEmission;
+            if (mr == _movableHoverRenderer)
+                emission *= movableHoverEmissionBoost;
+            var props = new MaterialPropertyBlock();
+            SetAlbedoAndEmission(props, movableNeonBaseColor, emission);
             ApplyPropertyBlock(mr, props);
         }
     }
@@ -235,10 +244,93 @@ public class BoardManager : MonoBehaviour
         _movablePulseTargets.Add(new MovablePulseTarget { Renderer = mr });
     }
 
+    public void SetMovableHoverRenderer(MeshRenderer renderer)
+    {
+        _movableHoverRenderer = renderer;
+    }
+
+    /// <summary>Logical P1 top-of-stack checker on a point or bar (matches movable highlight).</summary>
+    public bool IsTopLogicalP1Checker(Checker checker)
+    {
+        if (checker == null || checker.color != PlayerColor.White) return false;
+        BoardPoint bp = checker.GetComponentInParent<BoardPoint>();
+        if (bp != null)
+        {
+            int n = bp.checkers.Count;
+            return n > 0 && bp.checkers[n - 1] == checker.gameObject;
+        }
+
+        if (barWhiteAnchor != null && checker.transform.IsChildOf(barWhiteAnchor))
+        {
+            int n = barWhiteAnchor.childCount;
+            return n > 0 && barWhiteAnchor.GetChild(n - 1) == checker.transform;
+        }
+
+        return false;
+    }
+
+    public bool TryGetEngineFromForChecker(Checker checker, out int engineFrom)
+    {
+        engineFrom = -1;
+        if (checker == null) return false;
+        BoardPoint bp = checker.GetComponentInParent<BoardPoint>();
+        if (bp != null)
+        {
+            engineFrom = BackgammonBoardLayout.BoardIndexToEnginePoint(bp.pointIndex);
+            return true;
+        }
+
+        if (barWhiteAnchor != null && checker.transform.IsChildOf(barWhiteAnchor))
+        {
+            engineFrom = BackgammonBoardLayout.BarEngineIndex;
+            return true;
+        }
+
+        return false;
+    }
+
+    /// <summary>World hint for a first-move destination (<paramref name="engineTo"/> is -1 bear off, 0–23 board).</summary>
+    public bool TryGetWorldPositionForMoveDestination(int engineTo, out Vector3 worldPos)
+    {
+        worldPos = default;
+        if (engineTo >= 0 && engineTo <= 23)
+        {
+            int bi = BackgammonBoardLayout.EnginePointToBoardIndex(engineTo);
+            if (bi < 0 || bi >= allPoints.Length || allPoints[bi] == null) return false;
+            BoardPoint bp = allPoints[bi];
+            int nextIdx = bp.checkers.Count;
+            worldPos = bp.GetPositionForIndex(nextIdx);
+            return true;
+        }
+
+        if (engineTo == -1)
+        {
+            if (bearOffLineEnd != null)
+            {
+                worldPos = bearOffLineEnd.position;
+                return true;
+            }
+
+            int bi0 = BackgammonBoardLayout.EnginePointToBoardIndex(0);
+            if (bi0 >= 0 && bi0 < allPoints.Length && allPoints[bi0] != null)
+            {
+                BoardPoint bp = allPoints[bi0];
+                float w = GetPrefabWidth(whiteCheckerPrefab);
+                worldPos = bp.transform.position + Vector3.up * 0.12f - bp.inwardDirection * (w * 2.2f);
+                return true;
+            }
+
+            return false;
+        }
+
+        return false;
+    }
+
     /// <summary>Reset all checker materials to baseline (no movable neon).</summary>
     public void ClearMovableCheckerHighlights()
     {
         _movablePulseTargets.Clear();
+        _movableHoverRenderer = null;
 
         for (int i = 0; i < allPoints.Length; i++)
         {
