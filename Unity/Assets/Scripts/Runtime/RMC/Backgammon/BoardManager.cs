@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using EngineCore;
 using Runtime.RMC._MyProject_.Core;
+using Runtime.RMC.Backgammon;
 using Runtime.RMC.Backgammon.Core;
 using UnityEngine;
 using UnityEngine.Rendering;
@@ -476,28 +477,6 @@ public class BoardManager : MonoBehaviour
         return (mr != null) ? mr.bounds.size.x : 0.45f;
     }
 
-    /// <summary>URP/Built-in Lit often mirror albedo in <c>_BaseColor</c> and <c>_Color</c>; set both so MPB fully overrides tint.</summary>
-    private static void SetAlbedoAndEmission(MaterialPropertyBlock props, Color baseCol, Color emission)
-    {
-        props.SetColor("_BaseColor", baseCol);
-        props.SetColor("_Color", baseCol);
-        props.SetColor("_EmissionColor", emission);
-    }
-
-    private static void ApplyPropertyBlock(MeshRenderer mr, MaterialPropertyBlock props)
-    {
-        if (mr == null) return;
-        var mats = mr.sharedMaterials;
-        int n = mats != null ? mats.Length : 0;
-        if (n <= 1)
-            mr.SetPropertyBlock(props);
-        else
-        {
-            for (int mi = 0; mi < n; mi++)
-                mr.SetPropertyBlock(props, mi);
-        }
-    }
-
     private void ApplyCheckerVisuals(GameObject obj, PlayerColor color)
     {
         MeshRenderer mr = obj.GetComponentInChildren<MeshRenderer>();
@@ -510,8 +489,8 @@ public class BoardManager : MonoBehaviour
 
         Color emission = emissCol * Mathf.Pow(2f, intensity);
 
-        SetAlbedoAndEmission(props, baseCol, emission);
-        ApplyPropertyBlock(mr, props);
+        CheckerMaterialPropertyBlockUtility.SetAlbedoAndEmission(props, baseCol, emission, mr);
+        CheckerMaterialPropertyBlockUtility.ApplyPropertyBlock(mr, props);
     }
 
     private static float ComputePulseScale(float time, float frequency, float minS, float maxS)
@@ -522,7 +501,6 @@ public class BoardManager : MonoBehaviour
 
     private void RefreshMovablePulseVisuals()
     {
-        if (_movablePulseTargets.Count == 0) return;
         float pulse = ComputePulseScale(Time.time, movablePulseFrequency, movablePulseEmissionMinScale, movablePulseEmissionMaxScale);
         Color baseEmission = movableNeonEmissionColor * (Mathf.Pow(2f, movableNeonEmissionIntensity) * pulse);
 
@@ -534,8 +512,29 @@ public class BoardManager : MonoBehaviour
             if (mr == _movableHoverRenderer)
                 emission *= movableHoverEmissionBoost;
             var props = new MaterialPropertyBlock();
-            SetAlbedoAndEmission(props, movableNeonBaseColor, emission);
-            ApplyPropertyBlock(mr, props);
+            CheckerMaterialPropertyBlockUtility.SetAlbedoAndEmission(props, movableNeonBaseColor, emission, mr);
+            CheckerMaterialPropertyBlockUtility.ApplyPropertyBlock(mr, props);
+        }
+
+        if (_movableHoverRenderer != null)
+        {
+            bool hoverInPulseList = false;
+            for (int i = 0; i < _movablePulseTargets.Count; i++)
+            {
+                if (_movablePulseTargets[i].Renderer == _movableHoverRenderer)
+                {
+                    hoverInPulseList = true;
+                    break;
+                }
+            }
+
+            if (!hoverInPulseList)
+            {
+                Color emission = baseEmission * movableHoverEmissionBoost;
+                var props = new MaterialPropertyBlock();
+                CheckerMaterialPropertyBlockUtility.SetAlbedoAndEmission(props, movableNeonBaseColor, emission, _movableHoverRenderer);
+                CheckerMaterialPropertyBlockUtility.ApplyPropertyBlock(_movableHoverRenderer, props);
+            }
         }
     }
 
