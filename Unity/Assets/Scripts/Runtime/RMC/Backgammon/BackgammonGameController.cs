@@ -422,7 +422,7 @@ public class BackgammonGameController : MonoBehaviour
     private void MaybeStartAiTurn()
     {
         if (IsGameOver(out _)) return;
-        if (!BackgammonSettings.OpponentIsAi || State.PlayerOnRoll != 1) return;
+        if (!BackgammonSettings.OpponentIsAi || !BackgammonPlayerRoles.IsAiTurnInOpponentAiMode(State.PlayerOnRoll)) return;
         StartCoroutine(CoAiTurn());
     }
 
