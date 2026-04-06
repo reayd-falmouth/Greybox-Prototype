@@ -9,7 +9,9 @@ public class BoardPoint : MonoBehaviour
 
     [Header("Configuration")]
     public bool isBottomRow;
+    [Tooltip("Legacy: last snapshot from Initialize; use InwardDirectionWorld for layout.")]
     public Vector3 inwardDirection;
+    [Tooltip("Legacy: base wall offset along inward; stack positions use InwardDirectionWorld.")]
     public Vector3 stackOffset;
 
     [Header("Visual Settings")]
@@ -25,6 +27,9 @@ public class BoardPoint : MonoBehaviour
     [SerializeField] private Color highlightTint = new Color(0.2f, 0.8f, 0.3f, 1f);
     private bool _highlighted;
 
+    /// <summary>World-space: from the point origin toward the board center along the triangle (bottom +<see cref="Transform.forward"/>, top −forward).</summary>
+    public Vector3 InwardDirectionWorld => transform.forward * (isBottomRow ? 1f : -1f);
+
     /// <summary>
     /// Now handles all internal coordinate math based on its orientation.
     /// </summary>
@@ -36,12 +41,10 @@ public class BoardPoint : MonoBehaviour
         checkerThickness = thickness;
         checkerDiameter = diameter;
 
-        // Logic: Bottom row flows Forward (+Z), Top flows Back (-Z)
-        inwardDirection = isBottomRow ? Vector3.forward : Vector3.back;
-        
-        // Calculate the starting offset (how far the first checker sits from the wall)
-        float radius = checkerDiameter / 2f;
-        stackOffset = inwardDirection * (radius + wallMargin);
+        float radius = checkerDiameter * 0.5f;
+        Vector3 inward = InwardDirectionWorld;
+        inwardDirection = inward;
+        stackOffset = inward * (radius + wallMargin);
 
         ApplyColor(normalColor);
     }
@@ -53,9 +56,10 @@ public class BoardPoint : MonoBehaviour
         int floorIndex = index % maxBaseStack;
         int verticalLayer = index / maxBaseStack;
 
-        // Position = Point Origin + Initial Wall Offset + (Horizontal Stack * Width) + (Vertical Stack * Height)
-        Vector3 pos = transform.position + stackOffset;
-        pos += inwardDirection * (floorIndex * (checkerDiameter * 1.02f));
+        float radius = checkerDiameter * 0.5f;
+        Vector3 inward = InwardDirectionWorld;
+        Vector3 pos = transform.position + inward * (radius + wallMargin);
+        pos += inward * (floorIndex * (checkerDiameter * 1.02f));
         pos += Vector3.up * (verticalLayer * checkerThickness);
 
         return pos;

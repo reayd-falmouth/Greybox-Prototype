@@ -189,12 +189,11 @@ public class BoardManager : MonoBehaviour
             mat.renderQueue = MovePreviewOverlayRenderQueue;
     }
 
-    /// <summary>Plane normal for MoveVisualizer-style arcs: matches table orientation when <see cref="boardViewPivot"/> is set.</summary>
+    /// <summary>Plane normal for MoveVisualizer-style arcs: matches table orientation when the board view pivot rotates.</summary>
     private Vector3 GetMovePreviewArcPlaneNormal()
     {
-        if (boardViewPivot != null)
-            return boardViewPivot.up;
-        return Vector3.up;
+        Transform pivot = boardViewPivot != null ? boardViewPivot : transform;
+        return pivot.up;
     }
 
     private Shader ResolveMovePreviewLineShader()
@@ -623,7 +622,7 @@ public class BoardManager : MonoBehaviour
             {
                 BoardPoint bp = allPoints[bi0];
                 float w = GetPrefabWidth(whiteCheckerPrefab);
-                worldPos = bp.transform.position + Vector3.up * 0.12f - bp.inwardDirection * (w * 2.2f);
+                worldPos = bp.transform.position + Vector3.up * 0.12f - bp.InwardDirectionWorld * (w * 2.2f);
                 return true;
             }
 
@@ -816,7 +815,7 @@ public class BoardManager : MonoBehaviour
     /// <summary>HUD "Change view" — rotates an optional pivot (assign in Inspector).</summary>
     public void SetBoardViewHorizontal(bool horizontal)
     {
-        if (boardViewPivot == null) return;
-        boardViewPivot.localRotation = Quaternion.Euler(horizontal ? horizontalBoardEuler : verticalBoardEuler);
+        Transform pivot = boardViewPivot != null ? boardViewPivot : transform;
+        pivot.localRotation = Quaternion.Euler(horizontal ? horizontalBoardEuler : verticalBoardEuler);
     }
 }
