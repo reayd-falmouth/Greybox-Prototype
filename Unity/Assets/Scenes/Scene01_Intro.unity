@@ -2432,7 +2432,7 @@ MonoBehaviour:
   edgePaddingX: 0.1
   darkColor: {r: 0.3679245, g: 0.3679245, b: 0.3679245, a: 1}
   lightColor: {r: 0.9, g: 0.9, b: 0.9, a: 1}
-  boardViewPivot: {fileID: 1554234144}
+  boardViewPivot: {fileID: 0}
   horizontalBoardEuler: {x: 0, y: 0, z: 0}
   verticalBoardEuler: {x: 0, y: 0, z: 90}
   whiteBaseColor: {r: 1, g: 0.6257986, b: 0, a: 1}
