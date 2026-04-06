@@ -70,13 +70,18 @@ public class BoardManager : MonoBehaviour
     [FormerlySerializedAs("movePreviewLineWidth")]
     [SerializeField] private float movePreviewLineWidthStart = 0.08f;
     [SerializeField] private float movePreviewLineWidthEnd = 0.08f;
-    [Tooltip("Vertical offset of the curve control point (world space). 0 = straight chord.")]
-    [SerializeField] private float movePreviewArcHeightWorld = 0.12f;
+    [Tooltip("Vertical offset of the curve control point (world space). 0 = straight chord; small values (0.02–0.08) usually look best.")]
+    [SerializeField] private float movePreviewArcHeightWorld = 0.06f;
     [Tooltip("Lateral offset of the control point along the board plane (perpendicular to the chord).")]
     [SerializeField] private float movePreviewArcLateralWorld = 0f;
     [Tooltip("Polyline segments per curve (more = smoother arc).")]
     [SerializeField] private int movePreviewCurveSegments = 24;
     [SerializeField] private Color movePreviewLineColor = new Color(0f, 1f, 1f, 1f);
+    [SerializeField] private bool movePreviewDashedLine = true;
+    [Tooltip("How many dash on/off cycles along the full line (UV 0–1). Higher = more dashes.")]
+    [SerializeField] private float movePreviewDashRepeat = 10f;
+    [Tooltip("Fraction of each cycle that is solid; the rest is gap.")]
+    [SerializeField] [Range(0.05f, 0.95f)] private float movePreviewDashFill = 0.45f;
     [SerializeField] private float movePreviewHeightOffset = 0.05f;
     [Tooltip("Optional world position for bear-off (-1) line ends. If unset, a point near P1 home edge is used.")]
     [SerializeField] private Transform bearOffLineEnd;
@@ -124,9 +129,7 @@ public class BoardManager : MonoBehaviour
         _movePreviewRoot = new GameObject("MovableMovePreviewLines").transform;
         _movePreviewRoot.SetParent(transform, false);
         _movePreviewLines = new LineRenderer[nLines];
-        Shader lineShader = Shader.Find("Universal Render Pipeline/Unlit");
-        if (lineShader == null) lineShader = Shader.Find("Unlit/Color");
-        if (lineShader == null) lineShader = Shader.Find("Sprites/Default");
+        Shader lineShader = ResolveMovePreviewLineShader();
 
         for (int i = 0; i < nLines; i++)
         {
@@ -135,6 +138,7 @@ public class BoardManager : MonoBehaviour
             LineRenderer lr = go.AddComponent<LineRenderer>();
             lr.positionCount = maxSeg + 1;
             lr.useWorldSpace = true;
+            lr.textureMode = LineTextureMode.Stretch;
             lr.startWidth = movePreviewLineWidthStart;
             lr.endWidth = movePreviewLineWidthEnd;
             lr.numCapVertices = 6;
@@ -145,6 +149,7 @@ public class BoardManager : MonoBehaviour
             {
                 Material mat = new Material(lineShader);
                 ApplyMovePreviewLineMaterialColors(mat, movePreviewLineColor);
+                ApplyMovePreviewDashMaterialProps(mat);
                 lr.material = mat;
             }
 
@@ -155,11 +160,35 @@ public class BoardManager : MonoBehaviour
         }
     }
 
+    private Shader ResolveMovePreviewLineShader()
+    {
+        if (movePreviewDashedLine)
+        {
+            Shader dashed = Shader.Find("RMC/Backgammon/MovePreviewDashedLine");
+            if (dashed != null)
+                return dashed;
+        }
+
+        Shader lineShader = Shader.Find("Universal Render Pipeline/Unlit");
+        if (lineShader == null) lineShader = Shader.Find("Unlit/Color");
+        if (lineShader == null) lineShader = Shader.Find("Sprites/Default");
+        return lineShader;
+    }
+
     private static void ApplyMovePreviewLineMaterialColors(Material mat, Color c)
     {
         if (mat == null) return;
         if (mat.HasProperty("_BaseColor")) mat.SetColor("_BaseColor", c);
         if (mat.HasProperty("_Color")) mat.SetColor("_Color", c);
+    }
+
+    private void ApplyMovePreviewDashMaterialProps(Material mat)
+    {
+        if (mat == null || !movePreviewDashedLine) return;
+        if (mat.HasProperty("_DashRepeat"))
+            mat.SetFloat("_DashRepeat", Mathf.Max(0.5f, movePreviewDashRepeat));
+        if (mat.HasProperty("_DashFill"))
+            mat.SetFloat("_DashFill", movePreviewDashFill);
     }
 
     private void Update()
@@ -272,6 +301,7 @@ public class BoardManager : MonoBehaviour
             lr.positionCount = nPos;
             lr.startWidth = movePreviewLineWidthStart;
             lr.endWidth = movePreviewLineWidthEnd;
+            ApplyMovePreviewDashMaterialProps(lr.material);
             for (int pi = 0; pi < nPos; pi++)
                 lr.SetPosition(pi, _movePreviewCurveBuffer[pi]);
             lr.enabled = true;
