@@ -61,6 +61,8 @@ public class BoardManager : MonoBehaviour
     [SerializeField] private float movableHoverEmissionBoost = 1.45f;
 
     [Header("Move preview (hover lines)")]
+    [Tooltip("Optional: clone this material for lines (same idea as MoveVisualizer lineMaterial). When set, dashed shader is skipped; use Unlit/Color or Sprites/Default.")]
+    [SerializeField] private Material movePreviewLineTemplateMaterial;
     [SerializeField] private bool enableMovePreviewLines = true;
     [SerializeField] private BackgammonGameController gameController;
     [SerializeField] private Camera rayCamera;
@@ -85,12 +87,14 @@ public class BoardManager : MonoBehaviour
     [SerializeField] [Range(0.05f, 0.95f)] private float movePreviewDashFill = 0.45f;
     [SerializeField] private float movePreviewHeightOffset = 0.05f;
     [SerializeField] private bool movePreviewShowGhostCheckers = true;
-    [Tooltip("Multiplies albedo alpha (and tints) for the destination preview checker.")]
-    [SerializeField] [Range(0.05f, 1f)] private float movePreviewGhostAlpha = 0.42f;
+    [Tooltip("Ghost tint strength (1 = full checker colors). Albedo stays opaque so the piece stays visible; lower = slightly washed toward white.")]
+    [SerializeField] [Range(0.35f, 1f)] private float movePreviewGhostAlpha = 0.85f;
     [Tooltip("Scales HDR emission on the ghost so it reads softer than a real checker.")]
     [SerializeField] [Range(0f, 1f)] private float movePreviewGhostEmissionMul = 0.38f;
     [Tooltip("Uniform scale vs the white checker prefab (1 = same size as real checkers).")]
     [SerializeField] [Range(0.15f, 1.25f)] private float movePreviewGhostScale = 0.58f;
+    [Tooltip("Optional: Unlit material for ghost checkers (clone per instance). If unset, uses URP Unlit / Unlit.Color — avoids Lit transparency issues.")]
+    [SerializeField] private Material movePreviewGhostTemplateMaterial;
     [Tooltip("Optional world position for bear-off (-1) line ends. If unset, a point near P1 home edge is used.")]
     [SerializeField] private Transform bearOffLineEnd;
 
@@ -110,6 +114,9 @@ public class BoardManager : MonoBehaviour
     {
         public MeshRenderer Renderer;
     }
+
+    /// <summary>Same render queue idea as <c>MoveVisualizer</c> (draw on top of most world geometry).</summary>
+    private const int MovePreviewOverlayRenderQueue = 4000;
 
     private void Awake()
     {
@@ -141,7 +148,7 @@ public class BoardManager : MonoBehaviour
         _movePreviewRoot = new GameObject("MovableMovePreviewLines").transform;
         _movePreviewRoot.SetParent(transform, false);
         _movePreviewLines = new LineRenderer[nLines];
-        Shader lineShader = ResolveMovePreviewLineShader();
+        Shader lineShader = movePreviewLineTemplateMaterial != null ? null : ResolveMovePreviewLineShader();
 
         for (int i = 0; i < nLines; i++)
         {
@@ -151,17 +158,27 @@ public class BoardManager : MonoBehaviour
             lr.positionCount = maxSeg + 1;
             lr.useWorldSpace = true;
             lr.textureMode = LineTextureMode.Stretch;
+            lr.generateLightingData = true;
             lr.startWidth = movePreviewLineWidthStart;
             lr.endWidth = movePreviewLineWidthEnd;
             lr.numCapVertices = 6;
             lr.numCornerVertices = 3;
             lr.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
             lr.receiveShadows = false;
-            if (lineShader != null)
+            if (movePreviewLineTemplateMaterial != null)
+            {
+                Material mat = new Material(movePreviewLineTemplateMaterial);
+                ApplyMovePreviewLineMaterialColors(mat, movePreviewLineColor);
+                mat.color = movePreviewLineColor;
+                ApplyMovePreviewOverlayQueue(mat);
+                lr.material = mat;
+            }
+            else if (lineShader != null)
             {
                 Material mat = new Material(lineShader);
                 ApplyMovePreviewLineMaterialColors(mat, movePreviewLineColor);
                 ApplyMovePreviewDashMaterialProps(mat);
+                ApplyMovePreviewOverlayQueue(mat);
                 lr.material = mat;
             }
 
@@ -198,9 +215,10 @@ public class BoardManager : MonoBehaviour
             {
                 gmr.shadowCastingMode = ShadowCastingMode.Off;
                 gmr.receiveShadows = true;
-                Material[] mats = gmr.materials;
-                for (int mi = 0; mi < mats.Length; mi++)
-                    ConfigureGhostMaterialForTransparency(mats[mi]);
+                gmr.enabled = true;
+                Material ghostMat = CreateMovePreviewGhostMaterialInstance();
+                ApplyMovePreviewOverlayQueue(ghostMat);
+                gmr.material = ghostMat;
             }
 
             ApplyGhostCheckerVisuals(go);
@@ -228,31 +246,35 @@ public class BoardManager : MonoBehaviour
             ch.enabled = false;
     }
 
-    private static void ConfigureGhostMaterialForTransparency(Material m)
+    private Material CreateMovePreviewGhostMaterialInstance()
     {
-        if (m == null) return;
-        if (m.HasProperty("_Surface"))
-            m.SetFloat("_Surface", 1f);
-        if (m.HasProperty("_Blend"))
-            m.SetFloat("_Blend", 0f);
-        if (m.HasProperty("_ZWrite"))
-            m.SetFloat("_ZWrite", 0f);
-        if (m.HasProperty("_AlphaClip"))
-            m.SetFloat("_AlphaClip", 0f);
-        m.EnableKeyword("_SURFACE_TYPE_TRANSPARENT");
-        m.renderQueue = (int)RenderQueue.Transparent;
+        if (movePreviewGhostTemplateMaterial != null)
+            return new Material(movePreviewGhostTemplateMaterial);
+        Shader s = Shader.Find("Universal Render Pipeline/Unlit");
+        if (s == null) s = Shader.Find("Unlit/Color");
+        if (s == null) s = Shader.Find("Sprites/Default");
+        return new Material(s);
+    }
+
+    private static void ApplyMovePreviewOverlayQueue(Material mat)
+    {
+        if (mat != null)
+            mat.renderQueue = MovePreviewOverlayRenderQueue;
     }
 
     private void ApplyGhostCheckerVisuals(GameObject obj)
     {
         MeshRenderer mr = obj.GetComponentInChildren<MeshRenderer>();
         if (mr == null) return;
-        var props = new MaterialPropertyBlock();
-        Color baseCol = whiteBaseColor;
-        baseCol.a *= movePreviewGhostAlpha;
-        Color emission = whiteEmissionColor * (Mathf.Pow(2f, whiteEmissionIntensity) * movePreviewGhostEmissionMul);
-        SetAlbedoAndEmission(props, baseCol, emission);
-        ApplyPropertyBlock(mr, props);
+        Color baseCol = Color.Lerp(Color.white * 0.94f, whiteBaseColor, Mathf.Clamp01(movePreviewGhostAlpha));
+        baseCol.a = Mathf.Lerp(0.72f, 0.95f, Mathf.Clamp01(movePreviewGhostAlpha));
+        float dim = Mathf.Lerp(0.82f, 1f, movePreviewGhostEmissionMul);
+        baseCol = new Color(baseCol.r * dim, baseCol.g * dim, baseCol.b * dim, baseCol.a);
+        Material m = mr.material;
+        if (m == null) return;
+        if (m.HasProperty("_BaseColor")) m.SetColor("_BaseColor", baseCol);
+        if (m.HasProperty("_Color")) m.SetColor("_Color", baseCol);
+        m.color = baseCol;
     }
 
     private void HideMovePreviewGhostAt(int slot)
