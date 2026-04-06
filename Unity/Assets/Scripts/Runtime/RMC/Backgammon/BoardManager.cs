@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using EngineCore;
 using Runtime.RMC._MyProject_.Core;
 using Runtime.RMC.Backgammon.Core;
@@ -58,16 +59,215 @@ public class BoardManager : MonoBehaviour
     [SerializeField] private float movableHoverEmissionBoost = 1.45f;
 
     [Header("Move preview (hover lines)")]
+    [SerializeField] private bool enableMovePreviewLines = true;
+    [SerializeField] private BackgammonGameController gameController;
+    [SerializeField] private Camera rayCamera;
+    [Tooltip("Raycast hits are sorted by distance; the first hit with a Checker wins. If the table blocks, set this mask to the Checker layer only.")]
+    [SerializeField] private LayerMask movePreviewRaycastLayers = ~0;
+    [SerializeField] private float movePreviewRayDistance = 80f;
+    [SerializeField] private int movePreviewMaxLines = 8;
+    [SerializeField] private float movePreviewLineWidth = 0.08f;
+    [SerializeField] private Color movePreviewLineColor = new Color(0f, 1f, 1f, 1f);
+    [SerializeField] private float movePreviewHeightOffset = 0.05f;
     [Tooltip("Optional world position for bear-off (-1) line ends. If unset, a point near P1 home edge is used.")]
     [SerializeField] private Transform bearOffLineEnd;
 
     private MeshRenderer _movableHoverRenderer;
+
+    private LineRenderer[] _movePreviewLines;
+    private Transform _movePreviewRoot;
+    private readonly HashSet<int> _moveDestScratch = new();
 
     private readonly List<MovablePulseTarget> _movablePulseTargets = new();
 
     private struct MovablePulseTarget
     {
         public MeshRenderer Renderer;
+    }
+
+    private void Awake()
+    {
+        BuildMovePreviewLinePool();
+        if (rayCamera == null)
+            rayCamera = ResolveGameplayCamera();
+    }
+
+    private static Camera ResolveGameplayCamera()
+    {
+        if (Camera.main != null) return Camera.main;
+        Camera[] cams = FindObjectsByType<Camera>(FindObjectsSortMode.None);
+        for (int i = 0; i < cams.Length; i++)
+        {
+            if (cams[i] != null && cams[i].enabled)
+                return cams[i];
+        }
+
+        return null;
+    }
+
+    private void BuildMovePreviewLinePool()
+    {
+        if (_movePreviewRoot != null) return;
+        int nLines = Mathf.Max(1, movePreviewMaxLines);
+        _movePreviewRoot = new GameObject("MovableMovePreviewLines").transform;
+        _movePreviewRoot.SetParent(transform, false);
+        _movePreviewLines = new LineRenderer[nLines];
+        Shader lineShader = Shader.Find("Universal Render Pipeline/Unlit");
+        if (lineShader == null) lineShader = Shader.Find("Unlit/Color");
+        if (lineShader == null) lineShader = Shader.Find("Sprites/Default");
+
+        for (int i = 0; i < nLines; i++)
+        {
+            GameObject go = new GameObject($"MovePreviewLine_{i}");
+            go.transform.SetParent(_movePreviewRoot, false);
+            LineRenderer lr = go.AddComponent<LineRenderer>();
+            lr.positionCount = 2;
+            lr.useWorldSpace = true;
+            lr.startWidth = movePreviewLineWidth;
+            lr.endWidth = movePreviewLineWidth;
+            lr.numCapVertices = 6;
+            lr.numCornerVertices = 3;
+            lr.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+            lr.receiveShadows = false;
+            if (lineShader != null)
+            {
+                Material mat = new Material(lineShader);
+                ApplyMovePreviewLineMaterialColors(mat, movePreviewLineColor);
+                lr.material = mat;
+            }
+
+            lr.startColor = movePreviewLineColor;
+            lr.endColor = movePreviewLineColor;
+            lr.enabled = false;
+            _movePreviewLines[i] = lr;
+        }
+    }
+
+    private static void ApplyMovePreviewLineMaterialColors(Material mat, Color c)
+    {
+        if (mat == null) return;
+        if (mat.HasProperty("_BaseColor")) mat.SetColor("_BaseColor", c);
+        if (mat.HasProperty("_Color")) mat.SetColor("_Color", c);
+    }
+
+    private void Update()
+    {
+        if (enableMovePreviewLines)
+            UpdateMovePreviewLines();
+    }
+
+    private void UpdateMovePreviewLines()
+    {
+        if (_movePreviewLines == null || _movePreviewLines.Length == 0) return;
+
+        if (gameController == null)
+            gameController = FindFirstObjectByType<BackgammonGameController>();
+        if (rayCamera == null)
+            rayCamera = ResolveGameplayCamera();
+        if (gameController == null || rayCamera == null)
+        {
+            HideMovePreviewLines();
+            SetMovableHoverRenderer(null);
+            return;
+        }
+
+        if (!gameController.CanShowMovableCheckerInteraction())
+        {
+            HideMovePreviewLines();
+            SetMovableHoverRenderer(null);
+            return;
+        }
+
+        Ray ray = rayCamera.ScreenPointToRay(Input.mousePosition);
+        RaycastHit[] hits = Physics.RaycastAll(ray, movePreviewRayDistance, movePreviewRaycastLayers, QueryTriggerInteraction.Ignore);
+        if (hits == null || hits.Length == 0)
+        {
+            HideMovePreviewLines();
+            SetMovableHoverRenderer(null);
+            return;
+        }
+
+        Array.Sort(hits, (a, b) => a.distance.CompareTo(b.distance));
+
+        Checker ch = null;
+        RaycastHit checkerHit = default;
+        bool found = false;
+        for (int i = 0; i < hits.Length; i++)
+        {
+            Checker c = hits[i].collider.GetComponentInParent<Checker>();
+            if (c == null) continue;
+            ch = c;
+            checkerHit = hits[i];
+            found = true;
+            break;
+        }
+
+        if (!found || ch == null)
+        {
+            HideMovePreviewLines();
+            SetMovableHoverRenderer(null);
+            return;
+        }
+
+        if (!IsTopLogicalP1Checker(ch))
+        {
+            HideMovePreviewLines();
+            SetMovableHoverRenderer(null);
+            return;
+        }
+
+        if (!TryGetEngineFromForChecker(ch, out int engineFrom))
+        {
+            HideMovePreviewLines();
+            SetMovableHoverRenderer(null);
+            return;
+        }
+
+        BackgammonMovableDestinations.CollectDistinctFirstMoveTos(engineFrom, gameController.CurrentLegalTurns, _moveDestScratch);
+        if (_moveDestScratch.Count == 0)
+        {
+            HideMovePreviewLines();
+            SetMovableHoverRenderer(null);
+            return;
+        }
+
+        MeshRenderer mr = ch.GetComponentInChildren<MeshRenderer>();
+        SetMovableHoverRenderer(mr);
+
+        Vector3 up = Vector3.up * movePreviewHeightOffset;
+        Vector3 start = checkerHit.collider.bounds.center + up;
+        int lineIdx = 0;
+        foreach (int engineTo in _moveDestScratch)
+        {
+            if (lineIdx >= _movePreviewLines.Length) break;
+            if (!TryGetWorldPositionForMoveDestination(engineTo, out Vector3 end))
+                continue;
+            end += up;
+
+            LineRenderer lr = _movePreviewLines[lineIdx++];
+            lr.SetPosition(0, start);
+            lr.SetPosition(1, end);
+            lr.enabled = true;
+        }
+
+        for (int i = lineIdx; i < _movePreviewLines.Length; i++)
+            _movePreviewLines[i].enabled = false;
+    }
+
+    private void HideMovePreviewLines()
+    {
+        if (_movePreviewLines == null) return;
+        for (int i = 0; i < _movePreviewLines.Length; i++)
+        {
+            if (_movePreviewLines[i] != null)
+                _movePreviewLines[i].enabled = false;
+        }
+    }
+
+    private void OnDisable()
+    {
+        HideMovePreviewLines();
+        SetMovableHoverRenderer(null);
     }
 
     [ContextMenu("Full Setup")]
