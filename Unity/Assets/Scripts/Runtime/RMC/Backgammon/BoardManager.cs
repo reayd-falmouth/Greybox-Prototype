@@ -89,6 +89,8 @@ public class BoardManager : MonoBehaviour
     [SerializeField] [Range(0.05f, 1f)] private float movePreviewGhostAlpha = 0.42f;
     [Tooltip("Scales HDR emission on the ghost so it reads softer than a real checker.")]
     [SerializeField] [Range(0f, 1f)] private float movePreviewGhostEmissionMul = 0.38f;
+    [Tooltip("Uniform scale vs the white checker prefab (1 = same size as real checkers).")]
+    [SerializeField] [Range(0.15f, 1.25f)] private float movePreviewGhostScale = 0.58f;
     [Tooltip("Optional world position for bear-off (-1) line ends. If unset, a point near P1 home edge is used.")]
     [SerializeField] private Transform bearOffLineEnd;
 
@@ -97,6 +99,7 @@ public class BoardManager : MonoBehaviour
     private LineRenderer[] _movePreviewLines;
     private Transform _movePreviewRoot;
     private GameObject[] _movePreviewGhostCheckers;
+    private Vector3[] _movePreviewGhostBaseLocalScales;
     private Transform _movePreviewGhostsRoot;
     private Vector3[] _movePreviewCurveBuffer;
     private readonly HashSet<int> _moveDestScratch = new();
@@ -175,6 +178,7 @@ public class BoardManager : MonoBehaviour
         if (whiteCheckerPrefab == null)
         {
             _movePreviewGhostCheckers = Array.Empty<GameObject>();
+            _movePreviewGhostBaseLocalScales = Array.Empty<Vector3>();
             return;
         }
 
@@ -182,10 +186,12 @@ public class BoardManager : MonoBehaviour
         _movePreviewGhostsRoot = new GameObject("MovableMovePreviewGhosts").transform;
         _movePreviewGhostsRoot.SetParent(transform, false);
         _movePreviewGhostCheckers = new GameObject[n];
+        _movePreviewGhostBaseLocalScales = new Vector3[n];
         for (int i = 0; i < n; i++)
         {
             GameObject go = Instantiate(whiteCheckerPrefab, _movePreviewGhostsRoot);
             go.name = $"MovePreviewGhost_{i}";
+            _movePreviewGhostBaseLocalScales[i] = go.transform.localScale;
             PrepareMovePreviewGhostInstance(go);
             MeshRenderer gmr = go.GetComponentInChildren<MeshRenderer>();
             if (gmr != null)
@@ -272,6 +278,8 @@ public class BoardManager : MonoBehaviour
         if (go == null) return;
         TryGetGhostWorldRotation(engineTo, out Quaternion rot);
         go.transform.SetPositionAndRotation(worldEnd, rot);
+        if (_movePreviewGhostBaseLocalScales != null && slot < _movePreviewGhostBaseLocalScales.Length)
+            go.transform.localScale = _movePreviewGhostBaseLocalScales[slot] * movePreviewGhostScale;
         ApplyGhostCheckerVisuals(go);
         go.SetActive(true);
     }
