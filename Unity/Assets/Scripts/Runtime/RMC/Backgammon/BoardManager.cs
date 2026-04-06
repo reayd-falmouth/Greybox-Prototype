@@ -7,6 +7,12 @@ using UnityEngine;
 using UnityEngine.Rendering;
 using UnityEngine.Serialization;
 
+public enum MovePreviewLineShape
+{
+    Straight,
+    Curved
+}
+
 public class BoardManager : MonoBehaviour 
 {
     [Header("Generation Settings")]
@@ -76,7 +82,9 @@ public class BoardManager : MonoBehaviour
     [Tooltip("MoveVisualizer BuildArc-style: bulge scales as chordLength × heightFactor; heightFactor = base + lineIndex × perLine (matches MoneySession dynamicHeight).")]
     [SerializeField] private float movePreviewArcFactorBase = 0.2f;
     [SerializeField] private float movePreviewArcFactorPerLine = 0.15f;
-    [Tooltip("Polyline segments per curve (more = smoother arc).")]
+    [Tooltip("Straight = chord from checker to destination. Curved = MoveVisualizer-style Bezier arcs.")]
+    [SerializeField] private MovePreviewLineShape movePreviewLineShape = MovePreviewLineShape.Curved;
+    [Tooltip("Polyline segments per curve when Curved (more = smoother arc). Ignored for Straight.")]
     [SerializeField] private int movePreviewCurveSegments = 24;
     [SerializeField] private Color movePreviewLineColor = new Color(0f, 1f, 1f, 1f);
     [SerializeField] private bool movePreviewDashedLine = true;
@@ -85,13 +93,6 @@ public class BoardManager : MonoBehaviour
     [Tooltip("Fraction of each cycle that is solid; the rest is gap.")]
     [SerializeField] [Range(0.05f, 0.95f)] private float movePreviewDashFill = 0.45f;
     [SerializeField] private float movePreviewHeightOffset = 0.05f;
-    [SerializeField] private bool movePreviewShowGhostCheckers = true;
-    [Tooltip("Ghost tint strength (1 = full checker colors). Albedo stays opaque so the piece stays visible; lower = slightly washed toward white.")]
-    [SerializeField] [Range(0.35f, 1f)] private float movePreviewGhostAlpha = 0.85f;
-    [Tooltip("Scales HDR emission on the ghost so it reads softer than a real checker.")]
-    [SerializeField] [Range(0f, 1f)] private float movePreviewGhostEmissionMul = 0.38f;
-    [Tooltip("Multiplier on checker-matched local scale (1 = same visual size as checkers on that point; ghosts are parented under the destination point so board/floor scale applies).")]
-    [SerializeField] [Range(0.15f, 1.25f)] private float movePreviewGhostScale = 1f;
     [Tooltip("Optional world position for bear-off (-1) line ends. If unset, a point near P1 home edge is used.")]
     [SerializeField] private Transform bearOffLineEnd;
 
@@ -99,9 +100,6 @@ public class BoardManager : MonoBehaviour
 
     private LineRenderer[] _movePreviewLines;
     private Transform _movePreviewRoot;
-    private GameObject[] _movePreviewGhostCheckers;
-    private Vector3[] _movePreviewGhostBaseLocalScales;
-    private Transform _movePreviewGhostsRoot;
     private Vector3[] _movePreviewCurveBuffer;
     private readonly HashSet<int> _moveDestScratch = new();
 
@@ -118,7 +116,6 @@ public class BoardManager : MonoBehaviour
     private void Awake()
     {
         BuildMovePreviewLinePool();
-        BuildMovePreviewGhostPool();
         if (rayCamera == null)
             rayCamera = ResolveGameplayCamera();
     }
@@ -186,190 +183,10 @@ public class BoardManager : MonoBehaviour
         }
     }
 
-    private void BuildMovePreviewGhostPool()
-    {
-        if (_movePreviewGhostCheckers != null) return;
-        if (whiteCheckerPrefab == null)
-        {
-            _movePreviewGhostCheckers = Array.Empty<GameObject>();
-            _movePreviewGhostBaseLocalScales = Array.Empty<Vector3>();
-            return;
-        }
-
-        int n = Mathf.Max(1, movePreviewMaxLines);
-        _movePreviewGhostsRoot = new GameObject("MovableMovePreviewGhosts").transform;
-        _movePreviewGhostsRoot.SetParent(transform, false);
-        _movePreviewGhostCheckers = new GameObject[n];
-        _movePreviewGhostBaseLocalScales = new Vector3[n];
-        for (int i = 0; i < n; i++)
-        {
-            GameObject go = Instantiate(whiteCheckerPrefab, _movePreviewGhostsRoot);
-            go.name = $"MovePreviewGhost_{i}";
-            _movePreviewGhostBaseLocalScales[i] = go.transform.localScale;
-            PrepareMovePreviewGhostInstance(go);
-            MeshRenderer gmr = go.GetComponentInChildren<MeshRenderer>();
-            if (gmr != null)
-            {
-                gmr.shadowCastingMode = ShadowCastingMode.Off;
-                gmr.receiveShadows = true;
-                gmr.enabled = true;
-            }
-
-            ApplyGhostCheckerVisuals(go);
-            go.SetActive(false);
-            _movePreviewGhostCheckers[i] = go;
-        }
-    }
-
-    private static void PrepareMovePreviewGhostInstance(GameObject go)
-    {
-        const int ignoreRaycastLayer = 2;
-        go.layer = ignoreRaycastLayer;
-        foreach (Collider c in go.GetComponentsInChildren<Collider>(true))
-            c.enabled = false;
-        Rigidbody rb = go.GetComponent<Rigidbody>();
-        if (rb != null)
-        {
-            rb.isKinematic = true;
-            rb.useGravity = false;
-            rb.detectCollisions = false;
-        }
-
-        Checker ch = go.GetComponent<Checker>();
-        if (ch != null)
-            ch.enabled = false;
-    }
-
     private static void ApplyMovePreviewOverlayQueue(Material mat)
     {
         if (mat != null)
             mat.renderQueue = MovePreviewOverlayRenderQueue;
-    }
-
-    /// <summary>Uses the same <see cref="whiteCheckerPrefab"/> as gameplay; tints via <see cref="MaterialPropertyBlock"/> (shared materials unchanged).</summary>
-    private void ApplyGhostCheckerVisuals(GameObject obj)
-    {
-        MeshRenderer mr = obj.GetComponentInChildren<MeshRenderer>();
-        if (mr == null) return;
-
-        Color baseCol = Color.Lerp(Color.white * 0.94f, whiteBaseColor, Mathf.Clamp01(movePreviewGhostAlpha));
-        baseCol.a = Mathf.Lerp(0.72f, 0.95f, Mathf.Clamp01(movePreviewGhostAlpha));
-        float dim = Mathf.Lerp(0.82f, 1f, Mathf.Clamp01(movePreviewGhostEmissionMul));
-        baseCol = new Color(baseCol.r * dim, baseCol.g * dim, baseCol.b * dim, baseCol.a);
-
-        Color emission = whiteEmissionColor * (Mathf.Pow(2f, whiteEmissionIntensity) * Mathf.Clamp01(movePreviewGhostEmissionMul));
-        var props = new MaterialPropertyBlock();
-        SetAlbedoAndEmission(props, baseCol, emission);
-        ApplyPropertyBlock(mr, props);
-    }
-
-    private void HideMovePreviewGhostAt(int slot)
-    {
-        if (_movePreviewGhostCheckers == null || slot < 0 || slot >= _movePreviewGhostCheckers.Length)
-            return;
-        GameObject go = _movePreviewGhostCheckers[slot];
-        if (go == null) return;
-        if (_movePreviewGhostsRoot != null && go.transform.parent != _movePreviewGhostsRoot)
-            go.transform.SetParent(_movePreviewGhostsRoot, true);
-        if (_movePreviewGhostBaseLocalScales != null && slot < _movePreviewGhostBaseLocalScales.Length)
-            go.transform.localScale = _movePreviewGhostBaseLocalScales[slot] * movePreviewGhostScale;
-        go.SetActive(false);
-    }
-
-    private void PlaceMovePreviewGhost(int slot, int engineTo, Vector3 worldEnd)
-    {
-        if (!movePreviewShowGhostCheckers)
-        {
-            HideMovePreviewGhostAt(slot);
-            return;
-        }
-
-        if (_movePreviewGhostCheckers == null || slot < 0 || slot >= _movePreviewGhostCheckers.Length)
-            return;
-        GameObject go = _movePreviewGhostCheckers[slot];
-        if (go == null) return;
-        Transform parent = ResolveMovePreviewGhostParent(engineTo);
-        if (parent == null) parent = _movePreviewGhostsRoot;
-        go.transform.SetParent(parent, true);
-        TryGetGhostWorldRotation(engineTo, out Quaternion rot);
-        go.transform.SetPositionAndRotation(worldEnd, rot);
-        BoardPoint bp = parent.GetComponent<BoardPoint>();
-        ApplyMovePreviewGhostLocalScale(go, bp, slot);
-        ApplyGhostCheckerVisuals(go);
-        go.SetActive(true);
-    }
-
-    /// <summary>Real checkers live under <see cref="BoardPoint"/> (scaled floor hierarchy); parenting ghosts there matches their world scale.</summary>
-    private Transform ResolveMovePreviewGhostParent(int engineTo)
-    {
-        if (_movePreviewGhostsRoot == null) return null;
-        if (engineTo >= 0 && engineTo <= 23)
-        {
-            int bi = BackgammonBoardLayout.EnginePointToBoardIndex(engineTo);
-            if (bi >= 0 && bi < allPoints.Length && allPoints[bi] != null)
-                return allPoints[bi].transform;
-            return _movePreviewGhostsRoot;
-        }
-
-        if (engineTo == -1)
-        {
-            if (bearOffLineEnd != null)
-                return bearOffLineEnd;
-            int bi0 = BackgammonBoardLayout.EnginePointToBoardIndex(0);
-            if (bi0 >= 0 && bi0 < allPoints.Length && allPoints[bi0] != null)
-                return allPoints[bi0].transform;
-        }
-
-        return _movePreviewGhostsRoot;
-    }
-
-    private void ApplyMovePreviewGhostLocalScale(GameObject go, BoardPoint bp, int slot)
-    {
-        if (_movePreviewGhostBaseLocalScales == null || slot < 0 || slot >= _movePreviewGhostBaseLocalScales.Length)
-            return;
-        Vector3 prefabScale = _movePreviewGhostBaseLocalScales[slot];
-        if (bp != null && bp.checkers != null && bp.checkers.Count > 0)
-        {
-            Transform reference = bp.checkers[bp.checkers.Count - 1].transform;
-            go.transform.localScale = reference.localScale * movePreviewGhostScale;
-            return;
-        }
-
-        go.transform.localScale = prefabScale * movePreviewGhostScale;
-    }
-
-    private bool TryGetGhostWorldRotation(int engineTo, out Quaternion rotation)
-    {
-        rotation = Quaternion.identity;
-        if (engineTo >= 0 && engineTo <= 23)
-        {
-            int bi = BackgammonBoardLayout.EnginePointToBoardIndex(engineTo);
-            if (bi >= 0 && bi < allPoints.Length && allPoints[bi] != null)
-            {
-                rotation = allPoints[bi].transform.rotation;
-                return true;
-            }
-
-            return false;
-        }
-
-        if (engineTo == -1)
-        {
-            if (bearOffLineEnd != null)
-            {
-                rotation = bearOffLineEnd.rotation;
-                return true;
-            }
-
-            int bi0 = BackgammonBoardLayout.EnginePointToBoardIndex(0);
-            if (bi0 >= 0 && bi0 < allPoints.Length && allPoints[bi0] != null)
-            {
-                rotation = allPoints[bi0].transform.rotation;
-                return true;
-            }
-        }
-
-        return false;
     }
 
     /// <summary>Plane normal for MoveVisualizer-style arcs: matches table orientation when <see cref="boardViewPivot"/> is set.</summary>
@@ -506,19 +323,28 @@ public class BoardManager : MonoBehaviour
             end += up;
 
             LineRenderer lr = _movePreviewLines[lineIdx++];
-            int seg = Mathf.Clamp(movePreviewCurveSegments, 2, 128);
-            if (_movePreviewCurveBuffer == null || _movePreviewCurveBuffer.Length < seg + 1)
-                _movePreviewCurveBuffer = new Vector3[seg + 1];
-
             int slot = lineIdx - 1;
-            float heightFactor = movePreviewArcFactorBase + slot * movePreviewArcFactorPerLine;
-            Vector3 planeNormal = GetMovePreviewArcPlaneNormal();
-            int nPos = BackgammonMovePreviewCurve.FillMoveVisualizerStyleBezier(
-                start, end, heightFactor, seg, slot, planeNormal, _movePreviewCurveBuffer);
+            int nPos;
+            if (movePreviewLineShape == MovePreviewLineShape.Straight)
+            {
+                if (_movePreviewCurveBuffer == null || _movePreviewCurveBuffer.Length < 2)
+                    _movePreviewCurveBuffer = new Vector3[2];
+                nPos = BackgammonMovePreviewCurve.FillChord(start, end, _movePreviewCurveBuffer);
+            }
+            else
+            {
+                int seg = Mathf.Clamp(movePreviewCurveSegments, 2, 128);
+                if (_movePreviewCurveBuffer == null || _movePreviewCurveBuffer.Length < seg + 1)
+                    _movePreviewCurveBuffer = new Vector3[seg + 1];
+                float heightFactor = movePreviewArcFactorBase + slot * movePreviewArcFactorPerLine;
+                Vector3 planeNormal = GetMovePreviewArcPlaneNormal();
+                nPos = BackgammonMovePreviewCurve.FillMoveVisualizerStyleBezier(
+                    start, end, heightFactor, seg, slot, planeNormal, _movePreviewCurveBuffer);
+            }
+
             if (nPos <= 0)
             {
                 lr.enabled = false;
-                HideMovePreviewGhostAt(slot);
                 continue;
             }
 
@@ -529,14 +355,10 @@ public class BoardManager : MonoBehaviour
             for (int pi = 0; pi < nPos; pi++)
                 lr.SetPosition(pi, _movePreviewCurveBuffer[pi]);
             lr.enabled = true;
-            PlaceMovePreviewGhost(slot, engineTo, end);
         }
 
         for (int i = lineIdx; i < _movePreviewLines.Length; i++)
-        {
             _movePreviewLines[i].enabled = false;
-            HideMovePreviewGhostAt(i);
-        }
     }
 
     private void HideMovePreviewLines()
@@ -546,13 +368,6 @@ public class BoardManager : MonoBehaviour
         {
             if (_movePreviewLines[i] != null)
                 _movePreviewLines[i].enabled = false;
-        }
-
-        if (_movePreviewGhostCheckers == null) return;
-        for (int i = 0; i < _movePreviewGhostCheckers.Length; i++)
-        {
-            if (_movePreviewGhostCheckers[i] != null)
-                _movePreviewGhostCheckers[i].SetActive(false);
         }
     }
 

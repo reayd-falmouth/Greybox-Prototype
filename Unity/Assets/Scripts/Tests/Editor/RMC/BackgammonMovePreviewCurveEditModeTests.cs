@@ -60,6 +60,26 @@ public class BackgammonMovePreviewCurveEditModeTests
     }
 
     [Test]
+    public void FillChord_WritesEndpoints()
+    {
+        var buf = new Vector3[4];
+        var a = new Vector3(1f, 2f, 3f);
+        var b = new Vector3(4f, 5f, 6f);
+        int n = BackgammonMovePreviewCurve.FillChord(a, b, buf);
+        Assert.AreEqual(2, n);
+        Assert.AreEqual(a, buf[0]);
+        Assert.AreEqual(b, buf[1]);
+    }
+
+    [Test]
+    public void FillChord_BufferTooSmall_ReturnsZero()
+    {
+        var buf = new Vector3[1];
+        int n = BackgammonMovePreviewCurve.FillChord(Vector3.zero, Vector3.one, buf);
+        Assert.AreEqual(0, n);
+    }
+
+    [Test]
     public void GetMoveVisualizerStyleControlPoint_FanIndexAlternatesSideAlongX()
     {
         var p0 = Vector3.zero;

@@ -67,6 +67,17 @@ namespace Runtime.RMC.Backgammon.Core
             return FillQuadraticBezier(p0, control, p2, outPositions, segmentCount);
         }
 
+        /// <summary>Straight chord from <paramref name="start"/> to <paramref name="end"/> (two world positions).</summary>
+        /// <returns>2, or 0 if <paramref name="outPositions"/> has fewer than 2 elements.</returns>
+        public static int FillChord(Vector3 start, Vector3 end, Vector3[] outPositions)
+        {
+            if (outPositions == null || outPositions.Length < 2)
+                return 0;
+            outPositions[0] = start;
+            outPositions[1] = end;
+            return 2;
+        }
+
         /// <summary>
         /// Writes a quadratic Bezier P0→P1(control)→P2 into <paramref name="outPositions"/>.
         /// </summary>
