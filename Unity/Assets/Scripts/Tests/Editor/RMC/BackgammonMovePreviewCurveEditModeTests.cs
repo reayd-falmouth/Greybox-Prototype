@@ -68,6 +68,6 @@ public class BackgammonMovePreviewCurveEditModeTests
         Vector3 c0 = BackgammonMovePreviewCurve.GetMoveVisualizerStyleControlPoint(p0, p2, 0.25f, 0, up);
         Vector3 c1 = BackgammonMovePreviewCurve.GetMoveVisualizerStyleControlPoint(p0, p2, 0.25f, 1, up);
         // fanIndex 0 vs 1 should offset control in opposite directions along Z for chord along X
-        Assert.AreNotEqual(c0.z, c1.z, 1e-4f);
+        Assert.That(Mathf.Abs(c0.z - c1.z), Is.GreaterThan(1e-4f));
     }
 }
