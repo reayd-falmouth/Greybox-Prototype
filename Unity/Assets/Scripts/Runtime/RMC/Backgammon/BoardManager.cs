@@ -4,6 +4,7 @@ using EngineCore;
 using Runtime.RMC._MyProject_.Core;
 using Runtime.RMC.Backgammon.Core;
 using UnityEngine;
+using UnityEngine.Serialization;
 
 public class BoardManager : MonoBehaviour 
 {
@@ -66,7 +67,15 @@ public class BoardManager : MonoBehaviour
     [SerializeField] private LayerMask movePreviewRaycastLayers = ~0;
     [SerializeField] private float movePreviewRayDistance = 80f;
     [SerializeField] private int movePreviewMaxLines = 8;
-    [SerializeField] private float movePreviewLineWidth = 0.08f;
+    [FormerlySerializedAs("movePreviewLineWidth")]
+    [SerializeField] private float movePreviewLineWidthStart = 0.08f;
+    [SerializeField] private float movePreviewLineWidthEnd = 0.08f;
+    [Tooltip("Vertical offset of the curve control point (world space). 0 = straight chord.")]
+    [SerializeField] private float movePreviewArcHeightWorld = 0.12f;
+    [Tooltip("Lateral offset of the control point along the board plane (perpendicular to the chord).")]
+    [SerializeField] private float movePreviewArcLateralWorld = 0f;
+    [Tooltip("Polyline segments per curve (more = smoother arc).")]
+    [SerializeField] private int movePreviewCurveSegments = 24;
     [SerializeField] private Color movePreviewLineColor = new Color(0f, 1f, 1f, 1f);
     [SerializeField] private float movePreviewHeightOffset = 0.05f;
     [Tooltip("Optional world position for bear-off (-1) line ends. If unset, a point near P1 home edge is used.")]
@@ -76,6 +85,7 @@ public class BoardManager : MonoBehaviour
 
     private LineRenderer[] _movePreviewLines;
     private Transform _movePreviewRoot;
+    private Vector3[] _movePreviewCurveBuffer;
     private readonly HashSet<int> _moveDestScratch = new();
 
     private readonly List<MovablePulseTarget> _movablePulseTargets = new();
@@ -109,6 +119,8 @@ public class BoardManager : MonoBehaviour
     {
         if (_movePreviewRoot != null) return;
         int nLines = Mathf.Max(1, movePreviewMaxLines);
+        int maxSeg = Mathf.Clamp(movePreviewCurveSegments, 2, 128);
+        _movePreviewCurveBuffer = new Vector3[maxSeg + 1];
         _movePreviewRoot = new GameObject("MovableMovePreviewLines").transform;
         _movePreviewRoot.SetParent(transform, false);
         _movePreviewLines = new LineRenderer[nLines];
@@ -121,10 +133,10 @@ public class BoardManager : MonoBehaviour
             GameObject go = new GameObject($"MovePreviewLine_{i}");
             go.transform.SetParent(_movePreviewRoot, false);
             LineRenderer lr = go.AddComponent<LineRenderer>();
-            lr.positionCount = 2;
+            lr.positionCount = maxSeg + 1;
             lr.useWorldSpace = true;
-            lr.startWidth = movePreviewLineWidth;
-            lr.endWidth = movePreviewLineWidth;
+            lr.startWidth = movePreviewLineWidthStart;
+            lr.endWidth = movePreviewLineWidthEnd;
             lr.numCapVertices = 6;
             lr.numCornerVertices = 3;
             lr.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
@@ -245,8 +257,23 @@ public class BoardManager : MonoBehaviour
             end += up;
 
             LineRenderer lr = _movePreviewLines[lineIdx++];
-            lr.SetPosition(0, start);
-            lr.SetPosition(1, end);
+            int seg = Mathf.Clamp(movePreviewCurveSegments, 2, 128);
+            if (_movePreviewCurveBuffer == null || _movePreviewCurveBuffer.Length < seg + 1)
+                _movePreviewCurveBuffer = new Vector3[seg + 1];
+
+            Vector3 control = BackgammonMovePreviewCurve.GetControlPoint(start, end, movePreviewArcHeightWorld, movePreviewArcLateralWorld);
+            int nPos = BackgammonMovePreviewCurve.FillQuadraticBezier(start, control, end, _movePreviewCurveBuffer, seg);
+            if (nPos <= 0)
+            {
+                lr.enabled = false;
+                continue;
+            }
+
+            lr.positionCount = nPos;
+            lr.startWidth = movePreviewLineWidthStart;
+            lr.endWidth = movePreviewLineWidthEnd;
+            for (int pi = 0; pi < nPos; pi++)
+                lr.SetPosition(pi, _movePreviewCurveBuffer[pi]);
             lr.enabled = true;
         }
 
