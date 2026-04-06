@@ -73,10 +73,9 @@ public class BoardManager : MonoBehaviour
     [FormerlySerializedAs("movePreviewLineWidth")]
     [SerializeField] private float movePreviewLineWidthStart = 0.08f;
     [SerializeField] private float movePreviewLineWidthEnd = 0.08f;
-    [Tooltip("Vertical offset of the curve control point (world space). 0 = straight chord; small values (0.02–0.08) usually look best.")]
-    [SerializeField] private float movePreviewArcHeightWorld = 0.06f;
-    [Tooltip("Lateral offset of the control point along the board plane (perpendicular to the chord).")]
-    [SerializeField] private float movePreviewArcLateralWorld = 0f;
+    [Tooltip("MoveVisualizer BuildArc-style: bulge scales as chordLength × heightFactor; heightFactor = base + lineIndex × perLine (matches MoneySession dynamicHeight).")]
+    [SerializeField] private float movePreviewArcFactorBase = 0.2f;
+    [SerializeField] private float movePreviewArcFactorPerLine = 0.15f;
     [Tooltip("Polyline segments per curve (more = smoother arc).")]
     [SerializeField] private int movePreviewCurveSegments = 24;
     [SerializeField] private Color movePreviewLineColor = new Color(0f, 1f, 1f, 1f);
@@ -340,6 +339,14 @@ public class BoardManager : MonoBehaviour
         return false;
     }
 
+    /// <summary>Plane normal for MoveVisualizer-style arcs: matches table orientation when <see cref="boardViewPivot"/> is set.</summary>
+    private Vector3 GetMovePreviewArcPlaneNormal()
+    {
+        if (boardViewPivot != null)
+            return boardViewPivot.up;
+        return Vector3.up;
+    }
+
     private Shader ResolveMovePreviewLineShader()
     {
         if (movePreviewDashedLine)
@@ -470,9 +477,11 @@ public class BoardManager : MonoBehaviour
             if (_movePreviewCurveBuffer == null || _movePreviewCurveBuffer.Length < seg + 1)
                 _movePreviewCurveBuffer = new Vector3[seg + 1];
 
-            Vector3 control = BackgammonMovePreviewCurve.GetControlPoint(start, end, movePreviewArcHeightWorld, movePreviewArcLateralWorld);
-            int nPos = BackgammonMovePreviewCurve.FillQuadraticBezier(start, control, end, _movePreviewCurveBuffer, seg);
             int slot = lineIdx - 1;
+            float heightFactor = movePreviewArcFactorBase + slot * movePreviewArcFactorPerLine;
+            Vector3 planeNormal = GetMovePreviewArcPlaneNormal();
+            int nPos = BackgammonMovePreviewCurve.FillMoveVisualizerStyleBezier(
+                start, end, heightFactor, seg, slot, planeNormal, _movePreviewCurveBuffer);
             if (nPos <= 0)
             {
                 lr.enabled = false;

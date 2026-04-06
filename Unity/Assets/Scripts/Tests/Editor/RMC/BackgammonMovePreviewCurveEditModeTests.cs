@@ -38,4 +38,36 @@ public class BackgammonMovePreviewCurveEditModeTests
             Vector3.zero, Vector3.up, Vector3.right, buf, 8);
         Assert.AreEqual(0, written);
     }
+
+    [Test]
+    public void FillMoveVisualizerStyleBezier_WritesExpectedCount()
+    {
+        var start = new Vector3(0f, 0f, 0f);
+        var end = new Vector3(4f, 0f, 0f);
+        var buf = new Vector3[32];
+        int written = BackgammonMovePreviewCurve.FillMoveVisualizerStyleBezier(
+            start, end, 0.5f, 8, 0, Vector3.up, buf);
+        Assert.AreEqual(9, written);
+    }
+
+    [Test]
+    public void FillMoveVisualizerStyleBezier_BufferTooSmall_ReturnsZero()
+    {
+        var buf = new Vector3[2];
+        int written = BackgammonMovePreviewCurve.FillMoveVisualizerStyleBezier(
+            Vector3.zero, Vector3.right, 1f, 8, 0, Vector3.up, buf);
+        Assert.AreEqual(0, written);
+    }
+
+    [Test]
+    public void GetMoveVisualizerStyleControlPoint_FanIndexAlternatesSideAlongX()
+    {
+        var p0 = Vector3.zero;
+        var p2 = new Vector3(4f, 0f, 0f);
+        Vector3 up = Vector3.up;
+        Vector3 c0 = BackgammonMovePreviewCurve.GetMoveVisualizerStyleControlPoint(p0, p2, 0.25f, 0, up);
+        Vector3 c1 = BackgammonMovePreviewCurve.GetMoveVisualizerStyleControlPoint(p0, p2, 0.25f, 1, up);
+        // fanIndex 0 vs 1 should offset control in opposite directions along Z for chord along X
+        Assert.AreNotEqual(c0.z, c1.z, 1e-4f);
+    }
 }
