@@ -373,7 +373,7 @@ jobs:
     needs: [build_mac]
     runs-on: macos-15
     env:
-      IOS_BUILD_PATH: ${{ format('{0}/build/iOS', github.workspace) }}
+      IOS_BUILD_PATH: ${{ format('{0}/build', github.workspace) }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
