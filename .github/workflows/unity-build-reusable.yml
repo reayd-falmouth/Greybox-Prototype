@@ -74,8 +74,6 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - targetPlatform: StandaloneWindows64
-            artifactName: Windows
           - targetPlatform: Android
             artifactName: Android
           - targetPlatform: StandaloneOSX
@@ -155,10 +153,72 @@ jobs:
           name: ${{ matrix.artifactName }}
           path: build
 
+  # StandaloneWindows64 on hosted macOS (Apple Silicon) is unsupported by game-ci Unity Hub; use a Windows runner
+  # so the Windows Editor and Nice Vibrations native plugins match the build target.
+  build_windows:
+    name: Build (StandaloneWindows64 | Windows) on Windows
+    runs-on: windows-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          lfs: true
+
+      - name: Setup third-party assets from S3
+        uses: ./.github/actions/setup-thirdparty-assets
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ vars.S3_THIRDPARTY_REGION || 'eu-west-1' }}
+          s3-bucket: ${{ vars.S3_THIRDPARTY_BUCKET || 'greybox-prototype-unity-3rdparty-assets-eu-west-1-093581297635' }}
+          s3-object-key: ${{ vars.S3_THIRDPARTY_OBJECT_KEY || 'thirdparty-ci.zip' }}
+
+      - name: Patch third-party asmdefs (Cinemachine, EngineCore)
+        shell: bash
+        run: python scripts/ci/patch_thirdparty_asmdefs.py
+
+      - name: Cache Unity Library
+        uses: actions/cache@v4
+        with:
+          path: Unity/Library
+          key: Library-${{ runner.os }}-Windows-${{ hashFiles('Unity/Assets/**', 'Unity/Packages/**', 'Unity/ProjectSettings/**') }}
+          restore-keys: |
+            Library-${{ runner.os }}-Windows-
+            Library-${{ runner.os }}-
+
+      - name: Build project (Windows)
+        uses: game-ci/unity-builder@v4
+        env:
+          UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
+          UNITY_EMAIL: ${{ secrets.UNITY_EMAIL }}
+          UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
+        with:
+          projectPath: Unity
+          targetPlatform: StandaloneWindows64
+          allowDirtyBuild: true
+          buildName: GreyboxPrototype
+
+      - name: Upload Unity Editor.log (Windows)
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: unity-editor-log-Windows
+          path: |
+            Unity/*.log
+            **/Editor.log
+            C:/Users/runneradmin/AppData/Local/Unity/Editor/Editor.log
+          if-no-files-found: warn
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Windows
+          path: build
+
   release_itch:
     name: Release desktop builds to Itch.io
     if: inputs.do_release && vars.ITCHIO_USER != '' && vars.ITCH_PROJECT != ''
-    needs: [build_mac]
+    needs: [build_mac, build_windows]
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
