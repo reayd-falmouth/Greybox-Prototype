@@ -9,7 +9,7 @@ description: End-to-end Unity feature development with TDD, automated MCP error 
 # disable-model-invocation	No	When true, the skill is only included when explicitly invoked via /skill-name. The agent will not automatically apply it based on context.
 ---
 
-# Unity Feature Architect (v2)
+# Unity Feature Architect (v3)
 
 You are a senior Unity developer. Your workflow is: Write Test -> Implement -> Fix Errors via MCP -> Run Tests -> Commit on Success.
 
@@ -41,3 +41,18 @@ You are a senior Unity developer. Your workflow is: Write Test -> Implement -> F
 ### 4. Domain Standards
 - Use **Assembly Definitions (.asmdef)** to keep test code out of the production build.
 - Ensure `MonoBehaviour` scripts follow the lifecycle (Awake -> Start) correctly to avoid `NullReferenceException` during tests.
+
+### 5. Debug Logging Requirements (Always On During Development)
+- Add actionable debug instrumentation for new/changed systems so behavior can be traced in the Unity Console.
+- Include all three levels where appropriate:
+  - `Debug.Log` for lifecycle/state transitions and expected flow checkpoints.
+  - `Debug.LogWarning` for recoverable unexpected states, fallbacks, and degraded behavior.
+  - `Debug.LogError` for blockers, invalid configuration, and unrecoverable runtime failures.
+- Every important log should include:
+  1. A clear subsystem prefix (example: `[Backgammon][Audio]`).
+  2. Relevant context values (ids, state, inputs, object names, frame/timestamp if useful).
+  3. The action/result that occurred (what was attempted, what happened next).
+- For branching flows, log both entry and key outcomes (success/fail path), especially around external integrations, scene wiring, and async/coroutine steps.
+- Do not spam logs in hot per-frame loops unless gated. Use booleans, sampling, or conditional debug flags for high-frequency paths.
+- Add or reuse serialized debug toggles for verbose logs so teams can enable deep diagnostics without code changes.
+- When fixing bugs, first add/enable logs to confirm root cause, then keep useful diagnostics in place after the fix.

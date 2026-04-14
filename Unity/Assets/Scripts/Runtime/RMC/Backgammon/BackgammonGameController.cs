@@ -14,6 +14,9 @@ using UnityEngine.Serialization;
 [DefaultExecutionOrder(-40)]
 public class BackgammonGameController : MonoBehaviour
 {
+    [Header("Debug")]
+    [SerializeField] private bool enableMoveSelectionDebugLogs = true;
+
     [SerializeField] private BoardManager boardManager;
     [Header("Dice (required)")]
     [Tooltip("One die per manager. Opening: P0 vs P1. Later turns: both roll for the current player’s two values.")]
@@ -36,6 +39,7 @@ public class BackgammonGameController : MonoBehaviour
     public bool IsBusy => _busy;
 
     public bool CanUndo => !_busy && _undoStack.Count > 0;
+    public bool CanFinalizeCurrentTurn => !_busy && _rolledThisTurn && _legalTurns.Count == 0 && !IsGameOver(out _);
 
     public int RollsThisGame { get; private set; }
 
@@ -54,6 +58,7 @@ public class BackgammonGameController : MonoBehaviour
     public bool OpeningRollAwaitingReroll => !_openingRollResolved && _openingRollTieAwaitingReroll;
 
     public event Action OnStateChanged;
+    public event Action<CheckerSoundEventData> OnCheckerSoundEvent;
 
     private readonly List<Turn> _legalTurns = new();
     private readonly HashSet<int> _movableFromScratch = new();
@@ -222,9 +227,11 @@ public class BackgammonGameController : MonoBehaviour
     {
         if (!BackgammonOpeningRollRules.TryApplyOpeningDice(dieForPlayer0, dieForPlayer1, State))
         {
+            BackgammonOpeningRollRules.ApplyOpeningTieAutodouble(State);
             _openingRollTieAwaitingReroll = true;
             State.Dice1 = 0;
             State.Dice2 = 0;
+            SyncMatchFromState();
             OnStateChanged?.Invoke();
             hud?.RefreshAll(this);
             RefreshMovableCheckerHighlights();
@@ -253,9 +260,11 @@ public class BackgammonGameController : MonoBehaviour
     {
         _legalTurns.Clear();
         _legalTurns.AddRange(MoveGenerator.GenerateLegalTurns(State));
+        if (enableMoveSelectionDebugLogs)
+            DebugLogLegalTurnFirstMoves("RefreshLegals");
     }
 
-    /// <summary>Movable neon applies to logical P1 pieces (current mover). Hidden only while the AI is on roll in opponent-AI mode.</summary>
+    /// <summary>Movable base tint applies to logical P1 pieces (current mover). Hidden only while the AI is on roll in opponent-AI mode.</summary>
     private bool ShouldShowMovableCheckerHighlights()
     {
         return CanShowMovableCheckerInteraction();
@@ -288,8 +297,91 @@ public class BackgammonGameController : MonoBehaviour
     {
         if (_busy || !_rolledThisTurn || index < 0 || index >= _legalTurns.Count) return;
         Turn turn = _legalTurns[index];
+        if (turn == null || turn.Moves == null || turn.Moves.Count == 0) return;
         PushUndoFrame();
-        ApplyTurnAndAdvance(turn);
+        ApplySingleMoveAndContinue(turn.Moves[0]);
+    }
+
+    /// <summary>Apply one legal first move whose source matches <paramref name="from"/> and preferred destination ordering.</summary>
+    public bool TryApplyPreferredFirstMoveForFrom(int from, bool preferHighestTo)
+    {
+        if (_busy || !_rolledThisTurn || _legalTurns.Count == 0) return false;
+        if (!TrySelectPreferredFirstMoveTurnIndex(_legalTurns, from, preferHighestTo, out int selectedIdx))
+            return false;
+        Turn turn = _legalTurns[selectedIdx];
+        if (turn == null || turn.Moves == null || turn.Moves.Count == 0) return false;
+        if (enableMoveSelectionDebugLogs)
+            Debug.Log($"[Backgammon][MoveSelect] from={from} preferHighest={preferHighestTo} selectedIdx={selectedIdx} firstMove={FormatMove(turn.Moves[0])}");
+        PushUndoFrame(turn.Moves[0]);
+        ApplySingleMoveAndContinue(turn.Moves[0]);
+        return true;
+    }
+
+    /// <summary>Backwards-compatible alias; now applies only the first move, not a full turn.</summary>
+    public bool TryApplyPreferredTurnForFrom(int from, bool preferHighestTo)
+    {
+        return TryApplyPreferredFirstMoveForFrom(from, preferHighestTo);
+    }
+
+    /// <summary>Apply highest legal first-move destination across all legal turns.</summary>
+    public bool TryApplyHighestLegalTurn()
+    {
+        if (_busy || !_rolledThisTurn || _legalTurns.Count == 0) return false;
+        int bestIdx = -1;
+        int bestTo = int.MinValue;
+        for (int i = 0; i < _legalTurns.Count; i++)
+        {
+            Turn t = _legalTurns[i];
+            if (t == null || t.Moves == null || t.Moves.Count == 0) continue;
+            int to = t.Moves[0].To;
+            if (bestIdx < 0 || to > bestTo)
+            {
+                bestIdx = i;
+                bestTo = to;
+            }
+        }
+
+        if (bestIdx < 0) return false;
+        Turn turn = _legalTurns[bestIdx];
+        if (turn == null || turn.Moves == null || turn.Moves.Count == 0) return false;
+        PushUndoFrame();
+        ApplySingleMoveAndContinue(turn.Moves[0]);
+        return true;
+    }
+
+    public bool TryFinalizeCurrentTurn()
+    {
+        if (_busy || !_rolledThisTurn || _legalTurns.Count > 0) return false;
+        PushUndoFrame();
+        FinalizeTurnAndAdvance();
+        return true;
+    }
+
+    public static bool TrySelectPreferredFirstMoveTurnIndex(IReadOnlyList<Turn> legalTurns, int from, bool preferHighestTo, out int selectedIdx)
+    {
+        selectedIdx = -1;
+        if (legalTurns == null || legalTurns.Count == 0) return false;
+        int bestDistance = preferHighestTo ? int.MinValue : int.MaxValue;
+        int bestTo = preferHighestTo ? int.MinValue : int.MaxValue;
+        for (int i = 0; i < legalTurns.Count; i++)
+        {
+            Turn t = legalTurns[i];
+            if (t == null || t.Moves == null || t.Moves.Count == 0) continue;
+            Move first = t.Moves[0];
+            if (first.From != from) continue;
+            int firstDistance = Mathf.Abs(first.From - first.To);
+            int firstTo = first.To;
+            if (selectedIdx < 0 ||
+                (preferHighestTo && (firstDistance > bestDistance || (firstDistance == bestDistance && firstTo > bestTo))) ||
+                (!preferHighestTo && (firstDistance < bestDistance || (firstDistance == bestDistance && firstTo < bestTo))))
+            {
+                selectedIdx = i;
+                bestDistance = firstDistance;
+                bestTo = firstTo;
+            }
+        }
+
+        return selectedIdx >= 0;
     }
 
     /// <summary>Revert the last player-visible state change (move or forced pass).</summary>
@@ -297,16 +389,26 @@ public class BackgammonGameController : MonoBehaviour
     {
         if (_busy || _undoStack.Count == 0) return false;
         UndoFrame f = _undoStack.Pop();
+        bool animatedUndo = false;
+        if (boardManager != null && f.AppliedMove.HasValue)
+        {
+            animatedUndo = boardManager.TryApplySingleVisualUndoMove(f.AppliedMove.Value);
+            if (enableMoveSelectionDebugLogs)
+                Debug.Log($"[Backgammon][Undo] Attempt reverse visual move {FormatMove(f.AppliedMove.Value)} success={animatedUndo}");
+        }
+
         RestoreUndoFrame(f);
         RefreshLegals();
         boardManager?.ClearAllPointHighlights();
-        boardManager?.SyncCheckersFromGameState(State);
+        if (!animatedUndo)
+            boardManager?.SyncCheckersFromGameState(State);
         _awaitingDoubleResponse = false;
         hud?.SetDoubleOfferVisible(false);
-        TurnsCompletedThisGame = Mathf.Max(0, TurnsCompletedThisGame - 1);
+        TurnsCompletedThisGame = f.TurnsCompletedThisGame;
         OnStateChanged?.Invoke();
         hud?.RefreshAll(this);
         RefreshMovableCheckerHighlights();
+        EmitCheckerSoundEventForUndo(f.AppliedMove);
         return true;
     }
 
@@ -354,7 +456,14 @@ public class BackgammonGameController : MonoBehaviour
 
     public void SetBoardViewHorizontal(bool horizontal)
     {
+        BackgammonBoardLayout.SetHorizontal(horizontal);
         boardManager?.SetBoardViewHorizontal(horizontal);
+        if (State != null)
+        {
+            boardManager?.ClearAllPointHighlights();
+            boardManager?.SyncCheckersFromGameState(State);
+            RefreshMovableCheckerHighlights();
+        }
     }
 
     private IEnumerator CoAiRespondDouble()
@@ -371,9 +480,9 @@ public class BackgammonGameController : MonoBehaviour
 
     private static int OpponentIndex(int playerOnRoll) => playerOnRoll == 0 ? 1 : 0;
 
-    private void PushUndoFrame()
+    private void PushUndoFrame(Move? appliedMove = null)
     {
-        _undoStack.Push(UndoFrame.Capture(State, _rolledThisTurn));
+        _undoStack.Push(UndoFrame.Capture(State, _rolledThisTurn, TurnsCompletedThisGame, appliedMove));
     }
 
     private void RestoreUndoFrame(UndoFrame f)
@@ -415,10 +524,111 @@ public class BackgammonGameController : MonoBehaviour
         MaybeStartAiTurn();
     }
 
-    private void ApplyTurnAndAdvance(Turn turn)
+    private void ApplySingleMoveAndContinue(Move move)
     {
         _busy = true;
-        State = MoveGenerator.ApplyTurn(State, turn);
+        List<Turn> legalBeforeMove = new List<Turn>(_legalTurns);
+        var singleMoveTurn = new Turn
+        {
+            Moves = new List<Move> { move }
+        };
+        State = MoveGenerator.ApplyTurn(State, singleMoveTurn);
+        BackgammonGameRules.SyncBoardArrayFromCheckerArrays(State);
+        AdvanceStagedLegalTurnsAfterMove(legalBeforeMove, move);
+        if (enableMoveSelectionDebugLogs)
+            DebugLogLegalTurnFirstMoves("AdvanceStagedLegalTurnsAfterMove");
+        boardManager?.ClearAllPointHighlights();
+        bool movedVisually = boardManager != null && boardManager.TryApplySingleVisualMove(move);
+        if (!movedVisually)
+            boardManager?.SyncCheckersFromGameState(State);
+        _busy = false;
+        SyncMatchFromState();
+        EmitCheckerSoundEventForAppliedMove(move);
+        OnStateChanged?.Invoke();
+        hud?.RefreshAll(this);
+        RefreshMovableCheckerHighlights();
+    }
+
+    private void AdvanceStagedLegalTurnsAfterMove(IReadOnlyList<Turn> legalBeforeMove, Move appliedMove)
+    {
+        _legalTurns.Clear();
+        if (legalBeforeMove == null || legalBeforeMove.Count == 0)
+            return;
+
+        for (int i = 0; i < legalBeforeMove.Count; i++)
+        {
+            Turn t = legalBeforeMove[i];
+            if (t?.Moves == null || t.Moves.Count == 0) continue;
+            Move first = t.Moves[0];
+            if (!AreMovesEquivalent(first, appliedMove)) continue;
+
+            if (t.Moves.Count == 1)
+                continue;
+
+            var remainingMoves = new List<Move>(t.Moves.Count - 1);
+            for (int mi = 1; mi < t.Moves.Count; mi++)
+                remainingMoves.Add(t.Moves[mi]);
+
+            var remainingDiceUsed = new List<int>();
+            if (t.DiceUsed != null && t.DiceUsed.Count > 1)
+            {
+                for (int di = 1; di < t.DiceUsed.Count; di++)
+                    remainingDiceUsed.Add(t.DiceUsed[di]);
+            }
+
+            _legalTurns.Add(new Turn
+            {
+                Moves = remainingMoves,
+                DiceUsed = remainingDiceUsed,
+                ResultingState = null
+            });
+        }
+    }
+
+    private static bool AreMovesEquivalent(Move a, Move b)
+    {
+        return a.From == b.From && a.To == b.To && a.IsHit == b.IsHit;
+    }
+
+    public static CheckerSoundEventType ClassifyCheckerSoundEventForAppliedMove(Move move)
+    {
+        if (move.IsHit) return CheckerSoundEventType.HitToBar;
+        if (move.From == BackgammonBoardLayout.BarEngineIndex) return CheckerSoundEventType.EnterFromBar;
+        if (move.To < 0) return CheckerSoundEventType.BearOff;
+        return CheckerSoundEventType.Move;
+    }
+
+    private void EmitCheckerSoundEventForAppliedMove(Move move)
+    {
+        EmitCheckerSoundEvent(
+            ClassifyCheckerSoundEventForAppliedMove(move),
+            move,
+            isUndo: false);
+    }
+
+    private void EmitCheckerSoundEventForUndo(Move? appliedMove)
+    {
+        Move move = appliedMove ?? default;
+        EmitCheckerSoundEvent(
+            CheckerSoundEventType.Undo,
+            move,
+            isUndo: true);
+    }
+
+    private void EmitCheckerSoundEvent(CheckerSoundEventType eventType, Move move, bool isUndo)
+    {
+        OnCheckerSoundEvent?.Invoke(new CheckerSoundEventData(
+            eventType,
+            State != null ? State.PlayerOnRoll : -1,
+            move.From,
+            move.To,
+            move.IsHit,
+            isUndo));
+    }
+
+    private void FinalizeTurnAndAdvance()
+    {
+        _busy = true;
         BackgammonGameRules.SwapSidesForNextTurn(State);
         BackgammonGameRules.SyncBoardArrayFromCheckerArrays(State);
         State.Dice1 = 0;
@@ -561,6 +771,37 @@ public class BackgammonGameController : MonoBehaviour
         GameStateExtensions.PrintBoard(State);
     }
 
+    private static string FormatMove(Move move)
+    {
+        return $"{move.From}->{move.To}";
+    }
+
+    private void DebugLogLegalTurnFirstMoves(string sourceTag)
+    {
+        if (_legalTurns == null || _legalTurns.Count == 0)
+        {
+            Debug.Log($"[Backgammon][MoveSelect] {sourceTag}: no legal turns");
+            return;
+        }
+
+        var parts = new List<string>(_legalTurns.Count);
+        for (int i = 0; i < _legalTurns.Count; i++)
+        {
+            Turn t = _legalTurns[i];
+            if (t?.Moves == null || t.Moves.Count == 0)
+            {
+                parts.Add($"{i}:<empty>");
+                continue;
+            }
+
+            Move m = t.Moves[0];
+            int distance = Mathf.Abs(m.From - m.To);
+            parts.Add($"{i}:{m.From}->{m.To}(d={distance})");
+        }
+
+        Debug.Log($"[Backgammon][MoveSelect] {sourceTag}: {string.Join(", ", parts)}");
+    }
+
     private readonly struct UndoFrame
     {
         public readonly int[] P1;
@@ -573,8 +814,10 @@ public class BackgammonGameController : MonoBehaviour
         public readonly int CubeOwner;
         public readonly int Player1Score;
         public readonly int Player2Score;
+        public readonly int TurnsCompletedThisGame;
+        public readonly Move? AppliedMove;
 
-        private UndoFrame(int[] p1, int[] p2, int d1, int d2, bool rolled, int por, int cv, int co, int s1, int s2)
+        private UndoFrame(int[] p1, int[] p2, int d1, int d2, bool rolled, int por, int cv, int co, int s1, int s2, int turnsCompletedThisGame, Move? appliedMove)
         {
             P1 = p1;
             P2 = p2;
@@ -586,15 +829,17 @@ public class BackgammonGameController : MonoBehaviour
             CubeOwner = co;
             Player1Score = s1;
             Player2Score = s2;
+            TurnsCompletedThisGame = turnsCompletedThisGame;
+            AppliedMove = appliedMove;
         }
 
-        public static UndoFrame Capture(GameState s, bool rolledThisTurn)
+        public static UndoFrame Capture(GameState s, bool rolledThisTurn, int turnsCompletedThisGame, Move? appliedMove)
         {
             var p1 = new int[25];
             var p2 = new int[25];
             Array.Copy(s.Player1Checkers, p1, 25);
             Array.Copy(s.Player2Checkers, p2, 25);
-            return new UndoFrame(p1, p2, s.Dice1, s.Dice2, rolledThisTurn, s.PlayerOnRoll, s.CubeValue, s.CubeOwner, s.Player1Score, s.Player2Score);
+            return new UndoFrame(p1, p2, s.Dice1, s.Dice2, rolledThisTurn, s.PlayerOnRoll, s.CubeValue, s.CubeOwner, s.Player1Score, s.Player2Score, turnsCompletedThisGame, appliedMove);
         }
 
         public void ApplyTo(GameState s)

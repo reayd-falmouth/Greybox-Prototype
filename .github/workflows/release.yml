@@ -1,0 +1,22 @@
+name: Build and release
+
+on:
+  workflow_dispatch:
+    inputs:
+      release_version:
+        description: "Version label for Itch.io (optional; if empty, the branch name is used)"
+        required: false
+        type: string
+        default: ""
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  call-shared-build-and-release:
+    uses: ./.github/workflows/unity-build-reusable.yml
+    with:
+      do_release: true
+      release_version: ${{ github.event.inputs.release_version }}
+    secrets: inherit

@@ -101,5 +101,32 @@ namespace Runtime.RMC.Backgammon.Core
 
             return n + 1;
         }
+
+        /// <summary>
+        /// Builds two arrow wing endpoints from a line tip and its tangent.
+        /// Returns false when tangent length or arrow length is near zero.
+        /// </summary>
+        public static bool TryBuildArrowWings(
+            Vector3 tip,
+            Vector3 tangentAtTip,
+            Vector3 planeNormal,
+            float arrowAngleDeg,
+            float arrowLength,
+            out Vector3 wingEndA,
+            out Vector3 wingEndB)
+        {
+            wingEndA = tip;
+            wingEndB = tip;
+            if (arrowLength <= 1e-6f || tangentAtTip.sqrMagnitude <= 1e-8f)
+                return false;
+
+            Vector3 backDir = -tangentAtTip.normalized;
+            Vector3 axis = planeNormal.sqrMagnitude > 1e-8f ? planeNormal.normalized : Vector3.up;
+            Quaternion rotA = Quaternion.AngleAxis(arrowAngleDeg, axis);
+            Quaternion rotB = Quaternion.AngleAxis(-arrowAngleDeg, axis);
+            wingEndA = tip + rotA * backDir * arrowLength;
+            wingEndB = tip + rotB * backDir * arrowLength;
+            return true;
+        }
     }
 }

@@ -1,0 +1,323 @@
+# Reusable Unity builds + optional store releases (pattern: MasterBlaster1994).
+# Unity project lives in ./Unity — all game-ci steps use projectPath: Unity
+
+name: Unity Build Reusable
+
+on:
+  workflow_call:
+    inputs:
+      do_release:
+        description: Run Itch.io, TestFlight, and Play internal jobs after builds
+        required: false
+        type: boolean
+        default: false
+      release_version:
+        description: Version label for Itch.io uploads
+        required: false
+        type: string
+        default: ""
+    secrets:
+      UNITY_LICENSE:
+        required: true
+      UNITY_EMAIL:
+        required: true
+      UNITY_PASSWORD:
+        required: true
+      ITCHIO_API_KEY:
+        required: false
+      APPLE_CONNECT_EMAIL:
+        required: false
+      APPLE_DEVELOPER_EMAIL:
+        required: false
+      APPLE_TEAM_ID:
+        required: false
+      APPSTORE_ISSUER_ID:
+        required: false
+      APPSTORE_KEY_ID:
+        required: false
+      APPSTORE_P8:
+        required: false
+      IOS_BUNDLE_ID:
+        required: false
+      ANDROID_PACKAGE_NAME:
+        required: false
+      PROJECT_NAME:
+        required: false
+      MATCH_S3_BUCKET:
+        required: false
+      MATCH_S3_REGION:
+        required: false
+      GOOGLE_PLAY_KEY_FILE:
+        required: false
+      ANDROID_KEYSTORE_BASE64:
+        required: false
+      ANDROID_KEYSTORE_PASS:
+        required: false
+      ANDROID_KEYALIAS_NAME:
+        required: false
+      ANDROID_KEYALIAS_PASS:
+        required: false
+
+env:
+  ITCHIO_USER: ${{ vars.ITCHIO_USER }}
+  ITCH_PROJECT: ${{ vars.ITCH_PROJECT }}
+
+jobs:
+  build_linux:
+    name: ${{ format('Build ({0} | {1}) on Ubuntu', matrix.targetPlatform, matrix.artifactName) }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - targetPlatform: StandaloneWindows64
+            artifactName: Windows
+          - targetPlatform: Android
+            artifactName: Android
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          lfs: true
+
+      - name: Cache Unity Library
+        uses: actions/cache@v4
+        with:
+          path: Unity/Library
+          key: Library-${{ runner.os }}-${{ hashFiles('Unity/Assets/**', 'Unity/Packages/**', 'Unity/ProjectSettings/**') }}
+          restore-keys: |
+            Library-${{ runner.os }}-
+
+      - name: Build project (Windows)
+        if: matrix.targetPlatform != 'Android'
+        uses: game-ci/unity-builder@v4
+        env:
+          UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
+          UNITY_EMAIL: ${{ secrets.UNITY_EMAIL }}
+          UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
+        with:
+          projectPath: Unity
+          targetPlatform: ${{ matrix.targetPlatform }}
+          allowDirtyBuild: true
+          buildName: GreyboxPrototype
+
+      - name: Build project (Android)
+        if: matrix.targetPlatform == 'Android'
+        uses: game-ci/unity-builder@v4
+        env:
+          UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
+          UNITY_EMAIL: ${{ secrets.UNITY_EMAIL }}
+          UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
+        with:
+          projectPath: Unity
+          targetPlatform: Android
+          allowDirtyBuild: true
+          buildName: GreyboxPrototype
+          androidExportType: androidAppBundle
+          androidKeystoreName: upload.keystore
+          androidKeystoreBase64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          androidKeystorePass: ${{ secrets.ANDROID_KEYSTORE_PASS }}
+          androidKeyaliasName: ${{ secrets.ANDROID_KEYALIAS_NAME }}
+          androidKeyaliasPass: ${{ secrets.ANDROID_KEYALIAS_PASS }}
+
+      - name: Upload Unity Editor.log (Linux)
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: unity-editor-log-linux-${{ matrix.artifactName }}
+          path: |
+            Unity/*.log
+            **/Editor.log
+          if-no-files-found: warn
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifactName }}
+          path: build
+
+  build_mac:
+    name: ${{ format('Build ({0} | {1}) on macOS', matrix.targetPlatform, matrix.artifactName) }}
+    runs-on: macos-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - targetPlatform: StandaloneOSX
+            artifactName: macOS
+          - targetPlatform: iOS
+            artifactName: iOS
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          lfs: true
+
+      - name: Cache Unity Library
+        uses: actions/cache@v4
+        with:
+          path: Unity/Library
+          key: Library-${{ runner.os }}-${{ hashFiles('Unity/Assets/**', 'Unity/Packages/**', 'Unity/ProjectSettings/**') }}
+          restore-keys: |
+            Library-${{ runner.os }}-
+
+      - name: Build project
+        uses: game-ci/unity-builder@v4
+        env:
+          UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
+          UNITY_EMAIL: ${{ secrets.UNITY_EMAIL }}
+          UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
+        with:
+          projectPath: Unity
+          targetPlatform: ${{ matrix.targetPlatform }}
+          allowDirtyBuild: true
+          buildName: GreyboxPrototype
+
+      - name: Upload Unity Editor.log (macOS)
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: unity-editor-log-macos-${{ matrix.artifactName }}
+          path: /Users/runner/Library/Logs/Unity/Editor.log
+          if-no-files-found: warn
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifactName }}
+          path: build
+
+  release_itch:
+    name: Release desktop builds to Itch.io
+    if: inputs.do_release && vars.ITCHIO_USER != '' && vars.ITCH_PROJECT != ''
+    needs: [build_linux, build_mac]
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - artifactName: Windows
+            channel: windows
+          - artifactName: macOS
+            channel: mac
+    steps:
+      - name: Download ${{ matrix.artifactName }} artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ matrix.artifactName }}
+          path: ${{ matrix.artifactName }}
+
+      - name: Deploy ${{ matrix.artifactName }} to Itch.io
+        uses: robpc/itchio-upload-action@v1
+        with:
+          path: ${{ matrix.artifactName }}
+          project: ${{ env.ITCHIO_USER }}/${{ env.ITCH_PROJECT }}
+          channel: ${{ matrix.channel }}
+          version: ${{ inputs.release_version != '' && inputs.release_version || github.ref_name }}
+          api-key: ${{ secrets.ITCHIO_API_KEY }}
+
+  ios_testflight:
+    name: Publish iOS to TestFlight
+    if: inputs.do_release
+    needs: [build_mac]
+    runs-on: macos-15
+    env:
+      IOS_BUILD_PATH: ${{ format('{0}/build/iOS', github.workspace) }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: "3.2"
+          bundler-cache: true
+
+      - name: Download iOS artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: iOS
+          path: build
+
+      - name: Install CocoaPods
+        run: |
+          cd "$IOS_BUILD_PATH/iOS"
+          if [ -f "Podfile" ]; then
+            pod install --repo-update
+          else
+            echo "No Podfile found, skipping pod install."
+          fi
+
+      - name: List Xcode projects under build (diagnostic)
+        run: find build -name "*.xcodeproj" -maxdepth 8 2>/dev/null || true
+
+      - name: Build and upload TestFlight with fastlane
+        env:
+          APPLE_CONNECT_EMAIL: ${{ secrets.APPLE_CONNECT_EMAIL }}
+          APPLE_DEVELOPER_EMAIL: ${{ secrets.APPLE_DEVELOPER_EMAIL }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          APPSTORE_ISSUER_ID: ${{ secrets.APPSTORE_ISSUER_ID }}
+          APPSTORE_KEY_ID: ${{ secrets.APPSTORE_KEY_ID }}
+          APPSTORE_P8: ${{ secrets.APPSTORE_P8 }}
+          IOS_BUNDLE_ID: ${{ secrets.IOS_BUNDLE_ID }}
+          ANDROID_PACKAGE_NAME: ${{ secrets.ANDROID_PACKAGE_NAME }}
+          PROJECT_NAME: ${{ secrets.PROJECT_NAME }}
+          MATCH_S3_BUCKET: ${{ secrets.MATCH_S3_BUCKET }}
+          MATCH_S3_REGION: ${{ secrets.MATCH_S3_REGION }}
+        run: |
+          sudo xcode-select --switch /Applications/Xcode_16.4.app
+          bundle exec fastlane ios beta
+
+      - name: Upload iOS publish logs on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ios-testflight-logs
+          path: |
+            fastlane/logs
+            fastlane/report.xml
+            ~/Library/Logs/gym
+            ~/Library/Logs/scan
+          if-no-files-found: warn
+
+  android_play:
+    name: Publish Android to Google Play (internal)
+    if: inputs.do_release
+    needs: [build_linux]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Download Android artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: Android
+          path: build
+
+      - name: Write Play credentials
+        run: |
+          echo "$GOOGLE_PLAY_KEY_FILE" > fastlane/credentials.json
+        env:
+          GOOGLE_PLAY_KEY_FILE: ${{ secrets.GOOGLE_PLAY_KEY_FILE }}
+
+      - name: Set up Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: "3.2"
+          bundler-cache: true
+
+      - name: Upload to Play (internal track)
+        env:
+          ANDROID_PACKAGE_NAME: ${{ secrets.ANDROID_PACKAGE_NAME }}
+        run: bundle exec fastlane android internal
+
+      - name: Upload Android publish logs on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-play-logs
+          path: |
+            fastlane/logs
+            fastlane/report.xml
+          if-no-files-found: warn

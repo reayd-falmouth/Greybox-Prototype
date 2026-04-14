@@ -68,6 +68,7 @@ public class BoardManager : MonoBehaviour
     [SerializeField] private bool enableMovePreviewLines = true;
     [SerializeField] private BackgammonGameController gameController;
     [SerializeField] private Camera rayCamera;
+    [SerializeField] private bool enableMoveSelectionDebugLogs = true;
     [Tooltip("Raycast hits are sorted by distance; the first hit with a Checker wins. If the table blocks, set this mask to the Checker layer only.")]
     [SerializeField] private LayerMask movePreviewRaycastLayers = ~0;
     [SerializeField] private float movePreviewRayDistance = 80f;
@@ -83,6 +84,8 @@ public class BoardManager : MonoBehaviour
     [Tooltip("Polyline segments per curve when Curved (more = smoother arc). Ignored for Straight.")]
     [SerializeField] private int movePreviewCurveSegments = 24;
     [SerializeField] private Color movePreviewLineColor = new Color(0f, 1f, 1f, 1f);
+    [Tooltip("When true, hovering a movable checker highlights destination points (triangles) instead of drawing world-space hover lines.")]
+    [SerializeField] private bool preferPointHighlightMovePreview = true;
     [SerializeField] private bool movePreviewDashedLine = true;
     [Tooltip("How many dash on/off cycles along the full line (UV 0–1). Higher = more dashes.")]
     [SerializeField] private float movePreviewDashRepeat = 10f;
@@ -91,17 +94,25 @@ public class BoardManager : MonoBehaviour
     [SerializeField] private float movePreviewHeightOffset = 0.05f;
     [Tooltip("Lifts the Bezier control along the board normal (chord length × factor). 0 = lateral arc only.")]
     [SerializeField] [Range(0f, 0.5f)] private float movePreviewVerticalBulgeFactor = 0.15f;
+    [Header("Move preview (arrowheads)")]
+    [SerializeField] private bool enableMovePreviewArrowheads = true;
+    [SerializeField] [Range(5f, 75f)] private float movePreviewArrowHeadAngle = 20f;
+    [SerializeField] [Min(0.01f)] private float movePreviewArrowHeadLength = 0.25f;
+    [SerializeField] [Min(0.1f)] private float movePreviewArrowWidthMultiplier = 0.9f;
     [Tooltip("Optional world position for bear-off (-1) line ends. If unset, a point near P1 home edge is used.")]
     [SerializeField] private Transform bearOffLineEnd;
 
     private MeshRenderer _movableHoverRenderer;
 
     private LineRenderer[] _movePreviewLines;
+    private LineRenderer[] _movePreviewArrowWingA;
+    private LineRenderer[] _movePreviewArrowWingB;
     private Transform _movePreviewRoot;
     private Vector3[] _movePreviewCurveBuffer;
     private readonly HashSet<int> _moveDestScratch = new();
 
     private readonly List<MovablePulseTarget> _movablePulseTargets = new();
+    private readonly HashSet<int> _movePreviewHighlightedBoardIndices = new();
 
     private struct MovablePulseTarget
     {
@@ -140,45 +151,79 @@ public class BoardManager : MonoBehaviour
         _movePreviewRoot = new GameObject("MovableMovePreviewLines").transform;
         _movePreviewRoot.SetParent(transform, false);
         _movePreviewLines = new LineRenderer[nLines];
+        _movePreviewArrowWingA = new LineRenderer[nLines];
+        _movePreviewArrowWingB = new LineRenderer[nLines];
         Shader lineShader = movePreviewLineTemplateMaterial != null ? null : ResolveMovePreviewLineShader();
 
         for (int i = 0; i < nLines; i++)
         {
-            GameObject go = new GameObject($"MovePreviewLine_{i}");
-            go.transform.SetParent(_movePreviewRoot, false);
-            LineRenderer lr = go.AddComponent<LineRenderer>();
-            lr.positionCount = maxSeg + 1;
-            lr.useWorldSpace = true;
-            lr.textureMode = LineTextureMode.Stretch;
-            lr.generateLightingData = true;
-            lr.startWidth = movePreviewLineWidthStart;
-            lr.endWidth = movePreviewLineWidthEnd;
-            lr.numCapVertices = 6;
-            lr.numCornerVertices = 3;
-            lr.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
-            lr.receiveShadows = false;
-            if (movePreviewLineTemplateMaterial != null)
-            {
-                Material mat = new Material(movePreviewLineTemplateMaterial);
-                ApplyMovePreviewLineMaterialColors(mat, movePreviewLineColor);
-                mat.color = movePreviewLineColor;
-                ApplyMovePreviewOverlayQueue(mat);
-                lr.material = mat;
-            }
-            else if (lineShader != null)
-            {
-                Material mat = new Material(lineShader);
-                ApplyMovePreviewLineMaterialColors(mat, movePreviewLineColor);
-                ApplyMovePreviewDashMaterialProps(mat);
-                ApplyMovePreviewOverlayQueue(mat);
-                lr.material = mat;
-            }
-
-            lr.startColor = movePreviewLineColor;
-            lr.endColor = movePreviewLineColor;
-            lr.enabled = false;
-            _movePreviewLines[i] = lr;
+            _movePreviewLines[i] = CreateMovePreviewRenderer(
+                $"MovePreviewLine_{i}",
+                maxSeg + 1,
+                movePreviewLineWidthStart,
+                movePreviewLineWidthEnd,
+                lineShader,
+                useDashedMaterial: movePreviewDashedLine);
+            _movePreviewArrowWingA[i] = CreateMovePreviewRenderer(
+                $"MovePreviewArrowA_{i}",
+                2,
+                movePreviewLineWidthEnd * movePreviewArrowWidthMultiplier,
+                movePreviewLineWidthEnd * movePreviewArrowWidthMultiplier,
+                lineShader,
+                useDashedMaterial: false);
+            _movePreviewArrowWingB[i] = CreateMovePreviewRenderer(
+                $"MovePreviewArrowB_{i}",
+                2,
+                movePreviewLineWidthEnd * movePreviewArrowWidthMultiplier,
+                movePreviewLineWidthEnd * movePreviewArrowWidthMultiplier,
+                lineShader,
+                useDashedMaterial: false);
         }
+    }
+
+    private LineRenderer CreateMovePreviewRenderer(
+        string objectName,
+        int positionCount,
+        float startWidth,
+        float endWidth,
+        Shader lineShader,
+        bool useDashedMaterial)
+    {
+        GameObject go = new GameObject(objectName);
+        go.transform.SetParent(_movePreviewRoot, false);
+        LineRenderer lr = go.AddComponent<LineRenderer>();
+        lr.positionCount = Mathf.Max(2, positionCount);
+        lr.useWorldSpace = true;
+        lr.textureMode = LineTextureMode.Stretch;
+        lr.generateLightingData = true;
+        lr.startWidth = startWidth;
+        lr.endWidth = endWidth;
+        lr.numCapVertices = 6;
+        lr.numCornerVertices = 3;
+        lr.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+        lr.receiveShadows = false;
+        if (movePreviewLineTemplateMaterial != null)
+        {
+            Material mat = new Material(movePreviewLineTemplateMaterial);
+            ApplyMovePreviewLineMaterialColors(mat, movePreviewLineColor);
+            mat.color = movePreviewLineColor;
+            ApplyMovePreviewOverlayQueue(mat);
+            lr.material = mat;
+        }
+        else if (lineShader != null)
+        {
+            Material mat = new Material(lineShader);
+            ApplyMovePreviewLineMaterialColors(mat, movePreviewLineColor);
+            if (useDashedMaterial)
+                ApplyMovePreviewDashMaterialProps(mat);
+            ApplyMovePreviewOverlayQueue(mat);
+            lr.material = mat;
+        }
+
+        lr.startColor = movePreviewLineColor;
+        lr.endColor = movePreviewLineColor;
+        lr.enabled = false;
+        return lr;
     }
 
     private static void ApplyMovePreviewOverlayQueue(Material mat)
@@ -195,12 +240,11 @@ public class BoardManager : MonoBehaviour
         return Vector3.up;
     }
 
-    /// <summary>World top-center of checker mesh (or collider fallback) plus clearance along board normal.</summary>
+    /// <summary>World center of checker mesh (or collider fallback) plus clearance along board normal.</summary>
     private static Vector3 GetMovePreviewLineStartWorld(MeshRenderer mr, Collider collider, Vector3 clearance)
     {
         Bounds b = mr != null ? mr.bounds : collider.bounds;
-        var topCenter = new Vector3(b.center.x, b.max.y, b.center.z);
-        return topCenter + clearance;
+        return b.center + clearance;
     }
 
     private Shader ResolveMovePreviewLineShader()
@@ -236,8 +280,57 @@ public class BoardManager : MonoBehaviour
 
     private void Update()
     {
+        HandleCheckerClickInput();
         if (enableMovePreviewLines)
             UpdateMovePreviewLines();
+    }
+
+    private void HandleCheckerClickInput()
+    {
+        bool leftClick = Input.GetMouseButtonDown(0);
+        bool rightClick = Input.GetMouseButtonDown(1);
+        if (!leftClick && !rightClick) return;
+
+        if (gameController == null)
+            gameController = FindFirstObjectByType<BackgammonGameController>();
+        if (rayCamera == null)
+            rayCamera = ResolveGameplayCamera();
+        if (gameController == null || rayCamera == null) return;
+        if (!gameController.CanShowMovableCheckerInteraction()) return;
+
+        if (!TryGetHoveredChecker(out Checker checker, out _)) return;
+        if (!IsTopLogicalP1Checker(checker)) return;
+        if (!TryGetEngineFromForChecker(checker, out int engineFrom)) return;
+
+        BackgammonMovableDestinations.CollectDistinctFirstMoveTos(engineFrom, gameController.CurrentLegalTurns, _moveDestScratch);
+        if (_moveDestScratch.Count == 0) return;
+
+        bool preferHighest = leftClick;
+        if (enableMoveSelectionDebugLogs)
+            Debug.Log($"[Backgammon][Click] from={engineFrom} button={(leftClick ? "Left" : "Right")} preferHighest={preferHighest} candidateTo={string.Join(",", _moveDestScratch)}");
+        gameController.TryApplyPreferredFirstMoveForFrom(engineFrom, preferHighest);
+    }
+
+    private bool TryGetHoveredChecker(out Checker checker, out RaycastHit checkerHit)
+    {
+        checker = null;
+        checkerHit = default;
+        if (rayCamera == null) return false;
+        Ray ray = rayCamera.ScreenPointToRay(Input.mousePosition);
+        RaycastHit[] hits = Physics.RaycastAll(ray, movePreviewRayDistance, movePreviewRaycastLayers, QueryTriggerInteraction.Ignore);
+        if (hits == null || hits.Length == 0) return false;
+
+        Array.Sort(hits, (a, b) => a.distance.CompareTo(b.distance));
+        for (int i = 0; i < hits.Length; i++)
+        {
+            Checker c = hits[i].collider.GetComponentInParent<Checker>();
+            if (c == null) continue;
+            checker = c;
+            checkerHit = hits[i];
+            return true;
+        }
+
+        return false;
     }
 
     private void UpdateMovePreviewLines()
@@ -251,6 +344,7 @@ public class BoardManager : MonoBehaviour
         if (gameController == null || rayCamera == null)
         {
             HideMovePreviewLines();
+            ClearMovePreviewPointHighlights();
             SetMovableHoverRenderer(null);
             return;
         }
@@ -258,37 +352,15 @@ public class BoardManager : MonoBehaviour
         if (!gameController.CanShowMovableCheckerInteraction())
         {
             HideMovePreviewLines();
+            ClearMovePreviewPointHighlights();
             SetMovableHoverRenderer(null);
             return;
         }
 
-        Ray ray = rayCamera.ScreenPointToRay(Input.mousePosition);
-        RaycastHit[] hits = Physics.RaycastAll(ray, movePreviewRayDistance, movePreviewRaycastLayers, QueryTriggerInteraction.Ignore);
-        if (hits == null || hits.Length == 0)
+        if (!TryGetHoveredChecker(out Checker ch, out RaycastHit checkerHit))
         {
             HideMovePreviewLines();
-            SetMovableHoverRenderer(null);
-            return;
-        }
-
-        Array.Sort(hits, (a, b) => a.distance.CompareTo(b.distance));
-
-        Checker ch = null;
-        RaycastHit checkerHit = default;
-        bool found = false;
-        for (int i = 0; i < hits.Length; i++)
-        {
-            Checker c = hits[i].collider.GetComponentInParent<Checker>();
-            if (c == null) continue;
-            ch = c;
-            checkerHit = hits[i];
-            found = true;
-            break;
-        }
-
-        if (!found || ch == null)
-        {
-            HideMovePreviewLines();
+            ClearMovePreviewPointHighlights();
             SetMovableHoverRenderer(null);
             return;
         }
@@ -296,6 +368,7 @@ public class BoardManager : MonoBehaviour
         if (!IsTopLogicalP1Checker(ch))
         {
             HideMovePreviewLines();
+            ClearMovePreviewPointHighlights();
             SetMovableHoverRenderer(null);
             return;
         }
@@ -303,6 +376,7 @@ public class BoardManager : MonoBehaviour
         if (!TryGetEngineFromForChecker(ch, out int engineFrom))
         {
             HideMovePreviewLines();
+            ClearMovePreviewPointHighlights();
             SetMovableHoverRenderer(null);
             return;
         }
@@ -311,12 +385,19 @@ public class BoardManager : MonoBehaviour
         if (_moveDestScratch.Count == 0)
         {
             HideMovePreviewLines();
+            ClearMovePreviewPointHighlights();
             SetMovableHoverRenderer(null);
             return;
         }
 
         MeshRenderer mr = ch.GetComponentInChildren<MeshRenderer>();
         SetMovableHoverRenderer(mr);
+        PreviewMoveDestinationPoints(_moveDestScratch);
+        if (preferPointHighlightMovePreview)
+        {
+            HideMovePreviewLines();
+            return;
+        }
 
         Vector3 boardUp = GetMovePreviewArcPlaneNormal();
         Vector3 clearance = boardUp * movePreviewHeightOffset;
@@ -369,10 +450,80 @@ public class BoardManager : MonoBehaviour
             for (int pi = 0; pi < nPos; pi++)
                 lr.SetPosition(pi, _movePreviewCurveBuffer[pi]);
             lr.enabled = true;
+
+            LineRenderer wingA = _movePreviewArrowWingA != null && slot < _movePreviewArrowWingA.Length ? _movePreviewArrowWingA[slot] : null;
+            LineRenderer wingB = _movePreviewArrowWingB != null && slot < _movePreviewArrowWingB.Length ? _movePreviewArrowWingB[slot] : null;
+            if (enableMovePreviewArrowheads &&
+                wingA != null &&
+                wingB != null &&
+                nPos >= 2 &&
+                BackgammonMovePreviewCurve.TryBuildArrowWings(
+                    _movePreviewCurveBuffer[nPos - 1],
+                    _movePreviewCurveBuffer[nPos - 1] - _movePreviewCurveBuffer[nPos - 2],
+                    boardUp,
+                    movePreviewArrowHeadAngle,
+                    movePreviewArrowHeadLength,
+                    out Vector3 wingEndA,
+                    out Vector3 wingEndB))
+            {
+                float wingWidth = movePreviewLineWidthEnd * movePreviewArrowWidthMultiplier;
+                wingA.startWidth = wingWidth;
+                wingA.endWidth = wingWidth;
+                wingB.startWidth = wingWidth;
+                wingB.endWidth = wingWidth;
+                Vector3 tip = _movePreviewCurveBuffer[nPos - 1];
+                wingA.positionCount = 2;
+                wingA.SetPosition(0, tip);
+                wingA.SetPosition(1, wingEndA);
+                wingA.enabled = true;
+                wingB.positionCount = 2;
+                wingB.SetPosition(0, tip);
+                wingB.SetPosition(1, wingEndB);
+                wingB.enabled = true;
+            }
+            else
+            {
+                if (wingA != null) wingA.enabled = false;
+                if (wingB != null) wingB.enabled = false;
+            }
         }
 
         for (int i = lineIdx; i < _movePreviewLines.Length; i++)
+        {
             _movePreviewLines[i].enabled = false;
+            if (_movePreviewArrowWingA != null && i < _movePreviewArrowWingA.Length && _movePreviewArrowWingA[i] != null)
+                _movePreviewArrowWingA[i].enabled = false;
+            if (_movePreviewArrowWingB != null && i < _movePreviewArrowWingB.Length && _movePreviewArrowWingB[i] != null)
+                _movePreviewArrowWingB[i].enabled = false;
+        }
+    }
+
+    public void PreviewMoveDestinationPoints(IReadOnlyCollection<int> engineDestinationPoints)
+    {
+        ClearMovePreviewPointHighlights();
+        if (engineDestinationPoints == null || allPoints == null) return;
+
+        foreach (int engineTo in engineDestinationPoints)
+        {
+            if (engineTo < 0 || engineTo > 23) continue;
+            int boardIndex = BackgammonBoardLayout.EnginePointToBoardIndex(engineTo);
+            if (boardIndex < 0 || boardIndex >= allPoints.Length) continue;
+            BoardPoint bp = allPoints[boardIndex];
+            if (bp == null) continue;
+            bp.SetHighlighted(true);
+            _movePreviewHighlightedBoardIndices.Add(boardIndex);
+        }
+    }
+
+    public void ClearMovePreviewPointHighlights()
+    {
+        if (_movePreviewHighlightedBoardIndices.Count == 0 || allPoints == null) return;
+        foreach (int boardIndex in _movePreviewHighlightedBoardIndices)
+        {
+            if (boardIndex < 0 || boardIndex >= allPoints.Length) continue;
+            allPoints[boardIndex]?.SetHighlighted(false);
+        }
+        _movePreviewHighlightedBoardIndices.Clear();
     }
 
     private void HideMovePreviewLines()
@@ -382,12 +533,17 @@ public class BoardManager : MonoBehaviour
         {
             if (_movePreviewLines[i] != null)
                 _movePreviewLines[i].enabled = false;
+            if (_movePreviewArrowWingA != null && i < _movePreviewArrowWingA.Length && _movePreviewArrowWingA[i] != null)
+                _movePreviewArrowWingA[i].enabled = false;
+            if (_movePreviewArrowWingB != null && i < _movePreviewArrowWingB.Length && _movePreviewArrowWingB[i] != null)
+                _movePreviewArrowWingB[i].enabled = false;
         }
     }
 
     private void OnDisable()
     {
         HideMovePreviewLines();
+        ClearMovePreviewPointHighlights();
         SetMovableHoverRenderer(null);
     }
 
@@ -810,15 +966,139 @@ public class BoardManager : MonoBehaviour
         bp.AddChecker(checkerObj, animated: false);
     }
 
+    /// <summary>
+    /// Apply one move visually in-place so checker travel can animate.
+    /// Returns false when prerequisites are missing, so caller can fall back to full sync.
+    /// </summary>
+    public bool TryApplySingleVisualMove(Move move)
+    {
+        if (allPoints == null || allPoints.Length != 24) return false;
+        if (move.From < 0 || move.From > BackgammonBoardLayout.BarEngineIndex) return false;
+        if (move.To < 0 || move.To > 23) return false;
+
+        GameObject movingChecker = PeekSourceCheckerForMove(move.From);
+        if (movingChecker == null) return false;
+
+        int toBoardIdx = BackgammonBoardLayout.EnginePointToBoardIndex(move.To);
+        if (toBoardIdx < 0 || toBoardIdx >= allPoints.Length) return false;
+        BoardPoint toPoint = allPoints[toBoardIdx];
+        if (toPoint == null) return false;
+
+        GameObject hitChecker = TryPeekSingleOpposingBlot(toPoint);
+
+        if (hitChecker != null)
+        {
+            GameObject removedHit = toPoint.RemoveTopChecker();
+            if (removedHit != hitChecker) return false;
+            if (!TryStackCheckerOnBar(removedHit, barBlackAnchor)) return false;
+        }
+
+        if (!TryDetachCheckerFromSource(move.From, movingChecker)) return false;
+        toPoint.AddChecker(movingChecker, animated: true);
+        return true;
+    }
+
+    /// <summary>
+    /// Best-effort visual reverse of a previously applied single move for undo animations.
+    /// Falls back to full sync in caller when this returns false.
+    /// </summary>
+    public bool TryApplySingleVisualUndoMove(Move appliedMove)
+    {
+        if (appliedMove.To < 0 || appliedMove.To > 23) return false;
+        if (appliedMove.From < 0 || appliedMove.From > BackgammonBoardLayout.BarEngineIndex) return false;
+
+        Move reverse = new Move { From = appliedMove.To, To = appliedMove.From };
+        GameObject movingChecker = PeekSourceCheckerForMove(reverse.From);
+        if (movingChecker == null) return false;
+
+        // Undo path only animates simple checker return. Hit/blot restoration still falls back to sync.
+        if (!TryDetachCheckerFromSource(reverse.From, movingChecker)) return false;
+        if (reverse.To == BackgammonBoardLayout.BarEngineIndex)
+            return TryStackCheckerOnBar(movingChecker, barWhiteAnchor);
+
+        int toBoardIdx = BackgammonBoardLayout.EnginePointToBoardIndex(reverse.To);
+        if (toBoardIdx < 0 || toBoardIdx >= allPoints.Length) return false;
+        BoardPoint toPoint = allPoints[toBoardIdx];
+        if (toPoint == null) return false;
+        toPoint.AddChecker(movingChecker, animated: true);
+        return true;
+    }
+
+    private GameObject PeekSourceCheckerForMove(int engineFrom)
+    {
+        if (engineFrom == BackgammonBoardLayout.BarEngineIndex)
+        {
+            if (barWhiteAnchor == null || barWhiteAnchor.childCount == 0) return null;
+            return barWhiteAnchor.GetChild(barWhiteAnchor.childCount - 1).gameObject;
+        }
+
+        int fromBoardIdx = BackgammonBoardLayout.EnginePointToBoardIndex(engineFrom);
+        if (fromBoardIdx < 0 || fromBoardIdx >= allPoints.Length) return null;
+        BoardPoint fromPoint = allPoints[fromBoardIdx];
+        if (fromPoint == null || fromPoint.checkers.Count == 0) return null;
+        return fromPoint.checkers[fromPoint.checkers.Count - 1];
+    }
+
+    private bool TryDetachCheckerFromSource(int engineFrom, GameObject expectedChecker)
+    {
+        if (expectedChecker == null) return false;
+        if (engineFrom == BackgammonBoardLayout.BarEngineIndex)
+        {
+            if (barWhiteAnchor == null || barWhiteAnchor.childCount == 0) return false;
+            Transform top = barWhiteAnchor.GetChild(barWhiteAnchor.childCount - 1);
+            if (top == null || top.gameObject != expectedChecker) return false;
+            top.SetParent(null, true);
+            return true;
+        }
+
+        int fromBoardIdx = BackgammonBoardLayout.EnginePointToBoardIndex(engineFrom);
+        if (fromBoardIdx < 0 || fromBoardIdx >= allPoints.Length) return false;
+        BoardPoint fromPoint = allPoints[fromBoardIdx];
+        if (fromPoint == null) return false;
+        GameObject removed = fromPoint.RemoveTopChecker();
+        return removed == expectedChecker;
+    }
+
+    private static GameObject TryPeekSingleOpposingBlot(BoardPoint point)
+    {
+        if (point == null || point.checkers.Count != 1) return null;
+        GameObject top = point.checkers[0];
+        if (top == null) return null;
+        Checker checker = top.GetComponent<Checker>();
+        if (checker == null || checker.color != PlayerColor.Black) return null;
+        return top;
+    }
+
+    private bool TryStackCheckerOnBar(GameObject checkerObj, Transform anchor)
+    {
+        if (checkerObj == null || anchor == null) return false;
+        int stackIndex = anchor.childCount;
+        float yStep = Mathf.Max(0.001f, GetCheckerHeightForStack(checkerObj) * 1.02f);
+        checkerObj.transform.SetParent(anchor, false);
+        checkerObj.transform.localRotation = Quaternion.identity;
+        checkerObj.transform.localPosition = new Vector3(0f, stackIndex * yStep, 0f);
+        return true;
+    }
+
+    private float GetCheckerHeightForStack(GameObject checkerObj)
+    {
+        MeshRenderer mr = checkerObj != null ? checkerObj.GetComponentInChildren<MeshRenderer>() : null;
+        if (mr != null)
+            return Mathf.Max(0.001f, mr.bounds.size.y);
+        return Mathf.Max(0.001f, forcedCheckerHeight);
+    }
+
     public void ClearAllPointHighlights()
     {
         for (int i = 0; i < allPoints.Length; i++)
             allPoints[i]?.SetHighlighted(false);
+        _movePreviewHighlightedBoardIndices.Clear();
     }
 
     /// <summary>HUD "Change view" — rotates an optional pivot (assign in Inspector).</summary>
     public void SetBoardViewHorizontal(bool horizontal)
     {
+        BackgammonBoardLayout.SetHorizontal(horizontal);
         if (boardViewPivot == null) return;
         boardViewPivot.localRotation = Quaternion.Euler(horizontal ? horizontalBoardEuler : verticalBoardEuler);
     }

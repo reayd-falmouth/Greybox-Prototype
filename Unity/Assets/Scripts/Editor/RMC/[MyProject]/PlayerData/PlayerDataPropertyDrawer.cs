@@ -1,14 +1,15 @@
+using RMC.MyProject;
 using UnityEditor;
 using UnityEditor.UIElements;
 using UnityEngine;
 using UnityEngine.UIElements;
 
-namespace RMC.MyProject.Data
+namespace Editor.RMC._MyProject_.PlayerData
 {
     /// <summary>
     /// Renders the <see cref="PlayerData"/> in the Unity Inspector Window.
     /// </summary>
-    [CustomPropertyDrawer(typeof (PlayerData), true)]
+    [CustomPropertyDrawer(typeof (global::RMC.MyProject.PlayerData), true)]
     public class PlayerDataPropertyDrawer : PropertyDrawer 
     {
         //  Properties ------------------------------------

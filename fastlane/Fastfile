@@ -1,0 +1,83 @@
+platform :ios do
+  desc "Sync codesigning certificates"
+  lane :sync_certificates do
+    app_store_connect_api_key(
+      key_id: ENV["APPSTORE_KEY_ID"],
+      issuer_id: ENV["APPSTORE_ISSUER_ID"],
+      key_content: ENV["APPSTORE_P8"]
+    )
+
+    match(
+      type: "appstore",
+      readonly: false,
+      app_identifier: ENV["IOS_BUNDLE_ID"]
+    )
+  end
+
+  desc "Deliver a new Release build to the App Store"
+  lane :release do
+    build
+    upload_to_app_store
+  end
+
+  desc "Deliver a new Beta build to Apple TestFlight"
+  lane :beta do
+    update_info_plist(
+      xcodeproj: "#{ENV['IOS_BUILD_PATH']}/iOS/Unity-iPhone.xcodeproj",
+      plist_path: "Info.plist",
+      block: proc do |plist|
+        plist["ITSAppUsesNonExemptEncryption"] = false
+      end
+    )
+    build
+    upload_to_testflight(skip_waiting_for_build_processing: true)
+  end
+
+  desc "Create .ipa"
+  lane :build do
+    setup_ci
+
+    sync_certificates
+
+    update_code_signing_settings(
+      use_automatic_signing: true,
+      path: "#{ENV['IOS_BUILD_PATH']}/iOS/Unity-iPhone.xcodeproj"
+    )
+
+    update_code_signing_settings(
+      use_automatic_signing: false,
+      team_id: ENV["sigh_#{ENV['IOS_BUNDLE_ID']}_appstore_team-id"],
+      code_sign_identity: "iPhone Distribution",
+      targets: "Unity-iPhone",
+      path: "#{ENV['IOS_BUILD_PATH']}/iOS/Unity-iPhone.xcodeproj",
+      profile_name: ENV["sigh_#{ENV['IOS_BUNDLE_ID']}_appstore_profile-name"],
+      profile_uuid: ENV["sigh_#{ENV['IOS_BUNDLE_ID']}_appstore"]
+    )
+
+    build_app(
+      workspace: "#{ENV['IOS_BUILD_PATH']}/iOS/Unity-iPhone.xcworkspace",
+      scheme: "Unity-iPhone",
+      sdk: "iphoneos18.5"
+    )
+  end
+end
+
+platform :android do
+  desc "Upload to Production"
+  lane :production do
+    upload_to_play_store(
+      track: "production",
+      release_status: "completed",
+      aab: "build/Android/Android.aab"
+    )
+  end
+
+  desc "Upload to Internal"
+  lane :internal do
+    upload_to_play_store(
+      track: "internal",
+      release_status: "completed",
+      aab: "build/Android/Android.aab"
+    )
+  end
+end

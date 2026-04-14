@@ -1,4 +1,5 @@
 using EngineCore;
+using System.Collections.Generic;
 using NUnit.Framework;
 using Runtime.RMC.Backgammon.Core;
 
@@ -7,6 +8,7 @@ public class BackgammonBoardMappingEditModeTests
     [Test]
     public void StartingPosition_MapsKeyEnginePointsToExpectedBoardIndices()
     {
+        BackgammonBoardLayout.SetHorizontal(true);
         GameState st = PositionId.Decode("4HPwATDgc/ABMA");
         Assert.AreEqual(2, st.Player1Checkers[23]);
         Assert.AreEqual(0, BackgammonBoardLayout.EnginePointToBoardIndex(23));
@@ -21,6 +23,7 @@ public class BackgammonBoardMappingEditModeTests
     [Test]
     public void EnginePoint_BoardIndex_RoundTrips()
     {
+        BackgammonBoardLayout.SetHorizontal(true);
         for (int e = 0; e < 24; e++)
         {
             int b = BackgammonBoardLayout.EnginePointToBoardIndex(e);
@@ -29,8 +32,42 @@ public class BackgammonBoardMappingEditModeTests
     }
 
     [Test]
+    public void VerticalMapping_IsPermutation_AndRoundTrips()
+    {
+        BackgammonBoardLayout.SetHorizontal(false);
+        var seen = new HashSet<int>();
+        for (int e = 0; e < 24; e++)
+        {
+            int b = BackgammonBoardLayout.EnginePointToBoardIndex(e);
+            Assert.IsTrue(b >= 0 && b < 24, $"board index out of range for engine {e}");
+            Assert.IsTrue(seen.Add(b), $"duplicate board index {b}");
+            Assert.AreEqual(e, BackgammonBoardLayout.BoardIndexToEnginePoint(b));
+        }
+    }
+
+    [Test]
+    public void VerticalMapping_DiffersFromHorizontal()
+    {
+        int[] horizontal = new int[24];
+        int[] vertical = new int[24];
+        BackgammonBoardLayout.SetHorizontal(true);
+        for (int e = 0; e < 24; e++)
+            horizontal[e] = BackgammonBoardLayout.EnginePointToBoardIndex(e);
+        BackgammonBoardLayout.SetHorizontal(false);
+        for (int e = 0; e < 24; e++)
+            vertical[e] = BackgammonBoardLayout.EnginePointToBoardIndex(e);
+
+        int sameSlots = 0;
+        for (int e = 0; e < 24; e++)
+            if (horizontal[e] == vertical[e]) sameSlots++;
+
+        Assert.Less(sameSlots, 24, "vertical mapping should not equal horizontal mapping");
+    }
+
+    [Test]
     public void ApplyTurn_ThenSwap_PreservesFifteenCheckersPerSide()
     {
+        BackgammonBoardLayout.SetHorizontal(true);
         GameState st = PositionId.Decode("4HPwATDgc/ABMA");
         st.Dice1 = 3;
         st.Dice2 = 1;

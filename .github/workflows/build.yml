@@ -1,0 +1,18 @@
+name: Build
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  call-shared-build:
+    uses: ./.github/workflows/unity-build-reusable.yml
+    with:
+      do_release: false
+    secrets: inherit

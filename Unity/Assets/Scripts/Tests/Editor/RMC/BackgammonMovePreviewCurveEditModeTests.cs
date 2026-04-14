@@ -106,4 +106,44 @@ public class BackgammonMovePreviewCurveEditModeTests
         Assert.AreEqual(flat.x, lifted.x, 1e-4f);
         Assert.AreEqual(flat.z, lifted.z, 1e-4f);
     }
+
+    [Test]
+    public void TryBuildArrowWings_ValidInputs_ReturnsSymmetricWingLengths()
+    {
+        Vector3 tip = new Vector3(2f, 0f, 1f);
+        Vector3 tangent = Vector3.right;
+        float wingLength = 0.4f;
+        bool ok = BackgammonMovePreviewCurve.TryBuildArrowWings(
+            tip, tangent, Vector3.up, 20f, wingLength, out Vector3 wingA, out Vector3 wingB);
+        Assert.IsTrue(ok);
+        Assert.AreEqual(wingLength, (wingA - tip).magnitude, 1e-4f);
+        Assert.AreEqual(wingLength, (wingB - tip).magnitude, 1e-4f);
+    }
+
+    [Test]
+    public void TryBuildArrowWings_ValidInputs_AreMirroredAcrossBackDirection()
+    {
+        Vector3 tip = Vector3.zero;
+        Vector3 tangent = Vector3.right;
+        float wingLength = 0.5f;
+        bool ok = BackgammonMovePreviewCurve.TryBuildArrowWings(
+            tip, tangent, Vector3.up, 30f, wingLength, out Vector3 wingA, out Vector3 wingB);
+        Assert.IsTrue(ok);
+        Vector3 backDir = -tangent.normalized;
+        float angleA = Vector3.Angle(backDir, (wingA - tip).normalized);
+        float angleB = Vector3.Angle(backDir, (wingB - tip).normalized);
+        Assert.AreEqual(30f, angleA, 1e-3f);
+        Assert.AreEqual(30f, angleB, 1e-3f);
+        Assert.AreEqual(wingA.z, -wingB.z, 1e-4f);
+    }
+
+    [Test]
+    public void TryBuildArrowWings_ZeroTangent_ReturnsFalse()
+    {
+        bool ok = BackgammonMovePreviewCurve.TryBuildArrowWings(
+            Vector3.zero, Vector3.zero, Vector3.up, 20f, 0.3f, out Vector3 wingA, out Vector3 wingB);
+        Assert.IsFalse(ok);
+        Assert.AreEqual(Vector3.zero, wingA);
+        Assert.AreEqual(Vector3.zero, wingB);
+    }
 }

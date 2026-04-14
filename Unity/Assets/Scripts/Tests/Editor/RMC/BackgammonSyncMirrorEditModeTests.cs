@@ -46,6 +46,7 @@ public class BackgammonSyncMirrorEditModeTests
     [Test]
     public void StartingPosition_MirroredP2_MatchesFullSetupSlots()
     {
+        BackgammonBoardLayout.SetHorizontal(true);
         GameState st = PositionId.Decode("4HPwATDgc/ABMA");
         var white = new int[24];
         var black = new int[24];

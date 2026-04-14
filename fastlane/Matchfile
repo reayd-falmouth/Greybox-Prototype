@@ -1,0 +1,4 @@
+# Fastlane match — set git_url (or switch to S3 per fastlane docs). Bundle ID comes from IOS_BUNDLE_ID in the Fastfile.
+git_url("https://github.com/YOUR_ORG/YOUR_MATCH_CERTIFICATES_REPO.git")
+storage_mode("git")
+type("appstore")

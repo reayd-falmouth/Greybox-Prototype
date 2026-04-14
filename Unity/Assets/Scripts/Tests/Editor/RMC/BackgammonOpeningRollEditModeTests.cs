@@ -15,6 +15,26 @@ public class BackgammonOpeningRollEditModeTests
     }
 
     [Test]
+    public void OpeningRollTie_Autodouble_UpdatesCubeValue()
+    {
+        var st = PositionId.Decode("4HPwATDgc/ABMA");
+        st.CubeValue = 1;
+        int result = BackgammonOpeningRollRules.ApplyOpeningTieAutodouble(st);
+        Assert.AreEqual(2, result);
+        Assert.AreEqual(2, st.CubeValue);
+    }
+
+    [Test]
+    public void OpeningRollTie_Autodouble_ClampsAt64()
+    {
+        var st = PositionId.Decode("4HPwATDgc/ABMA");
+        st.CubeValue = 64;
+        int result = BackgammonOpeningRollRules.ApplyOpeningTieAutodouble(st);
+        Assert.AreEqual(64, result);
+        Assert.AreEqual(64, st.CubeValue);
+    }
+
+    [Test]
     public void OpeningRoll_Player0Wins_HigherDie_IsOnRoll()
     {
         var st = PositionId.Decode("4HPwATDgc/ABMA");

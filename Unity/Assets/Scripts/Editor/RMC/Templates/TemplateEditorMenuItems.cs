@@ -1,7 +1,7 @@
 using UnityEditor;
 using UnityEngine;
 
-namespace RMC.Templates
+namespace Editor.RMC.Templates
 {
 	//  Namespace Properties ------------------------------
 

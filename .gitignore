@@ -75,3 +75,10 @@ crashlytics-build.properties
 *.vsconfig
 Unity/.idea/.idea.Unity/.idea/projectSettingsUpdater.xml
 /Unity/CodeCoverage
+
+# Fastlane (CI writes Play API JSON here)
+fastlane/credentials.json
+
+# Third-party / vendor packages (not tracked; restore via Asset Store, submodule, or CI zip)
+Unity/Assets/3rdParty/
+Unity/Assets/3rdParty.meta

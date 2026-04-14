@@ -131,6 +131,7 @@ public class BackgammonHudController : MonoBehaviour
     {
         if (uiDocument == null) return;
         var root = uiDocument.rootVisualElement;
+        if (root == null) return;
 
         if (_rollButton != null) _rollButton.clicked -= OnRollClicked;
 
@@ -216,7 +217,7 @@ public class BackgammonHudController : MonoBehaviour
     private void OnPlayMoveClicked()
     {
         if (gameController == null) return;
-        gameController.TryApplyTurnByIndex(_selectedLegalIndex);
+        gameController.TryFinalizeCurrentTurn();
     }
 
     private void OnUndoClicked()
@@ -328,7 +329,7 @@ public class BackgammonHudController : MonoBehaviour
 
         if (_playMoveButton != null)
         {
-            bool canPlay = ctrl.HasRolledThisTurn && ctrl.CurrentLegalTurns.Count > 0 && !ctrl.IsGameOver(out _) && !ctrl.IsBusy;
+            bool canPlay = ctrl.CanFinalizeCurrentTurn;
             _playMoveButton.SetEnabled(canPlay);
         }
 
