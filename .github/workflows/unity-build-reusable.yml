@@ -67,9 +67,9 @@ env:
   ITCH_PROJECT: ${{ vars.ITCH_PROJECT }}
 
 jobs:
-  build_linux:
-    name: ${{ format('Build ({0} | {1}) on Ubuntu', matrix.targetPlatform, matrix.artifactName) }}
-    runs-on: ubuntu-latest
+  build_mac:
+    name: ${{ format('Build ({0} | {1}) on macOS', matrix.targetPlatform, matrix.artifactName) }}
+    runs-on: macos-latest
     strategy:
       fail-fast: false
       matrix:
@@ -78,6 +78,10 @@ jobs:
             artifactName: Windows
           - targetPlatform: Android
             artifactName: Android
+          - targetPlatform: StandaloneOSX
+            artifactName: macOS
+          - targetPlatform: iOS
+            artifactName: iOS
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -105,7 +109,7 @@ jobs:
           restore-keys: |
             Library-${{ runner.os }}-
 
-      - name: Build project (Windows)
+      - name: Build project (non-Android)
         if: matrix.targetPlatform != 'Android'
         uses: game-ci/unity-builder@v4
         env:
@@ -137,77 +141,11 @@ jobs:
           androidKeyaliasName: ${{ secrets.ANDROID_KEYALIAS_NAME }}
           androidKeyaliasPass: ${{ secrets.ANDROID_KEYALIAS_PASS }}
 
-      - name: Upload Unity Editor.log (Linux)
-        if: failure()
-        uses: actions/upload-artifact@v4
-        with:
-          name: unity-editor-log-linux-${{ matrix.artifactName }}
-          path: |
-            Unity/*.log
-            **/Editor.log
-          if-no-files-found: warn
-
-      - name: Upload artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: ${{ matrix.artifactName }}
-          path: build
-
-  build_mac:
-    name: ${{ format('Build ({0} | {1}) on macOS', matrix.targetPlatform, matrix.artifactName) }}
-    runs-on: macos-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - targetPlatform: StandaloneOSX
-            artifactName: macOS
-          - targetPlatform: iOS
-            artifactName: iOS
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-        with:
-          lfs: true
-
-      - name: Setup third-party assets from S3
-        uses: ./.github/actions/setup-thirdparty-assets
-        with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: ${{ vars.S3_THIRDPARTY_REGION || 'eu-west-1' }}
-          s3-bucket: ${{ vars.S3_THIRDPARTY_BUCKET || 'masterblaster-unity-3rdparty-assets-eu-west-1-093581297635' }}
-          s3-object-key: ${{ vars.S3_THIRDPARTY_OBJECT_KEY || '3rdparty-ci.zip' }}
-
-      - name: Patch third-party asmdefs (Cinemachine, EngineCore)
-        shell: bash
-        run: python3 scripts/ci/patch_thirdparty_asmdefs.py
-
-      - name: Cache Unity Library
-        uses: actions/cache@v4
-        with:
-          path: Unity/Library
-          key: Library-${{ runner.os }}-${{ hashFiles('Unity/Assets/**', 'Unity/Packages/**', 'Unity/ProjectSettings/**') }}
-          restore-keys: |
-            Library-${{ runner.os }}-
-
-      - name: Build project
-        uses: game-ci/unity-builder@v4
-        env:
-          UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
-          UNITY_EMAIL: ${{ secrets.UNITY_EMAIL }}
-          UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
-        with:
-          projectPath: Unity
-          targetPlatform: ${{ matrix.targetPlatform }}
-          allowDirtyBuild: true
-          buildName: GreyboxPrototype
-
       - name: Upload Unity Editor.log (macOS)
         if: failure()
         uses: actions/upload-artifact@v4
         with:
-          name: unity-editor-log-macos-${{ matrix.artifactName }}
+          name: unity-editor-log-${{ matrix.artifactName }}
           path: /Users/runner/Library/Logs/Unity/Editor.log
           if-no-files-found: warn
 
@@ -220,7 +158,7 @@ jobs:
   release_itch:
     name: Release desktop builds to Itch.io
     if: inputs.do_release && vars.ITCHIO_USER != '' && vars.ITCH_PROJECT != ''
-    needs: [build_linux, build_mac]
+    needs: [build_mac]
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -313,7 +251,7 @@ jobs:
   android_play:
     name: Publish Android to Google Play (internal)
     if: inputs.do_release
-    needs: [build_linux]
+    needs: [build_mac]
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
