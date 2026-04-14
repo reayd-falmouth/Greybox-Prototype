@@ -57,6 +57,10 @@ on:
         required: false
       ANDROID_KEYALIAS_PASS:
         required: false
+      AWS_ACCESS_KEY_ID:
+        required: false
+      AWS_SECRET_ACCESS_KEY:
+        required: false
 
 env:
   ITCHIO_USER: ${{ vars.ITCHIO_USER }}
@@ -79,6 +83,16 @@ jobs:
         uses: actions/checkout@v4
         with:
           lfs: true
+
+      - name: Setup third-party assets from S3
+        if: ${{ secrets.AWS_ACCESS_KEY_ID != '' }}
+        uses: ./.github/actions/setup-thirdparty-assets
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ vars.S3_THIRDPARTY_REGION || 'eu-west-1' }}
+          s3-bucket: ${{ vars.S3_THIRDPARTY_BUCKET || 'masterblaster-unity-3rdparty-assets-eu-west-1-093581297635' }}
+          s3-object-key: ${{ vars.S3_THIRDPARTY_OBJECT_KEY || '3rdparty-ci.zip' }}
 
       - name: Cache Unity Library
         uses: actions/cache@v4
@@ -152,6 +166,16 @@ jobs:
         uses: actions/checkout@v4
         with:
           lfs: true
+
+      - name: Setup third-party assets from S3
+        if: ${{ secrets.AWS_ACCESS_KEY_ID != '' }}
+        uses: ./.github/actions/setup-thirdparty-assets
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ vars.S3_THIRDPARTY_REGION || 'eu-west-1' }}
+          s3-bucket: ${{ vars.S3_THIRDPARTY_BUCKET || 'masterblaster-unity-3rdparty-assets-eu-west-1-093581297635' }}
+          s3-object-key: ${{ vars.S3_THIRDPARTY_OBJECT_KEY || '3rdparty-ci.zip' }}
 
       - name: Cache Unity Library
         uses: actions/cache@v4

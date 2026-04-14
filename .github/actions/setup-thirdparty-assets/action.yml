@@ -1,0 +1,48 @@
+name: Setup third-party assets from S3
+description: >-
+  Downloads a zip of vendor Unity assets (e.g. under Assets/3rdParty) from a private S3 bucket
+  and extracts into Unity/Assets. The archive layout should match what you want under Unity/Assets
+  (e.g. a top-level 3rdParty/ folder in the zip).
+
+inputs:
+  aws-access-key-id:
+    description: AWS access key with s3:GetObject on the bucket object
+    required: true
+  aws-secret-access-key:
+    description: AWS secret access key
+    required: true
+  aws-region:
+    description: AWS region for the bucket
+    required: false
+    default: eu-west-1
+  s3-bucket:
+    description: S3 bucket name (override with repo variable S3_THIRDPARTY_BUCKET)
+    required: false
+    default: masterblaster-unity-3rdparty-assets-eu-west-1-093581297635
+  s3-object-key:
+    description: Object key for the zip file in the bucket (override with S3_THIRDPARTY_OBJECT_KEY)
+    required: false
+    default: 3rdparty-ci.zip
+
+runs:
+  using: composite
+  steps:
+    - name: Configure AWS credentials
+      uses: aws-actions/configure-aws-credentials@v4
+      with:
+        aws-access-key-id: ${{ inputs.aws-access-key-id }}
+        aws-secret-access-key: ${{ inputs.aws-secret-access-key }}
+        aws-region: ${{ inputs.aws-region }}
+
+    - name: Download and extract third-party assets
+      shell: bash
+      run: |
+        set -euo pipefail
+        BUCKET="${{ inputs.s3-bucket }}"
+        KEY="${{ inputs.s3-object-key }}"
+        DEST="${RUNNER_TEMP}/thirdparty.zip"
+        echo "Downloading s3://${BUCKET}/${KEY}"
+        aws s3 cp "s3://${BUCKET}/${KEY}" "${DEST}"
+        mkdir -p Unity/Assets
+        unzip -q -o "${DEST}" -d Unity/Assets
+        echo "Third-party assets extracted under Unity/Assets/"
