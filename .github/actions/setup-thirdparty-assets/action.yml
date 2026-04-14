@@ -20,11 +20,11 @@ inputs:
   s3-bucket:
     description: S3 bucket name (override with repo variable S3_THIRDPARTY_BUCKET)
     required: false
-    default: masterblaster-unity-3rdparty-assets-eu-west-1-093581297635
+    default: greybox-prototype-unity-3rdparty-assets-eu-west-1-093581297635
   s3-object-key:
     description: Object key for the zip file in the bucket (override with S3_THIRDPARTY_OBJECT_KEY)
     required: false
-    default: 3rdparty-ci.zip
+    default: thirdparty-ci.zip
 
 runs:
   using: composite
