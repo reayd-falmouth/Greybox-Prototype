@@ -153,11 +153,12 @@ jobs:
           name: ${{ matrix.artifactName }}
           path: build
 
-  # StandaloneWindows64 on hosted macOS (Apple Silicon) is unsupported by game-ci Unity Hub; use a Windows runner
-  # so the Windows Editor and Nice Vibrations native plugins match the build target.
+  # StandaloneWindows64 on hosted macOS (Apple Silicon) is unsupported by game-ci Unity Hub.
+  # Use Ubuntu + Linux editor container for Windows builds and strip NiceVibrations sample .haptic assets
+  # that rely on editor plugins unavailable on Linux.
   build_windows:
-    name: Build (StandaloneWindows64 | Windows) on Windows
-    runs-on: windows-latest
+    name: Build (StandaloneWindows64 | Windows) on Ubuntu
+    runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -175,7 +176,14 @@ jobs:
 
       - name: Patch third-party asmdefs (Cinemachine, EngineCore)
         shell: bash
-        run: python scripts/ci/patch_thirdparty_asmdefs.py
+        run: python3 scripts/ci/patch_thirdparty_asmdefs.py
+
+      - name: Remove NiceVibrations HapticSamples on Linux
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf "Unity/Assets/3rdParty/Feel/NiceVibrations/HapticSamples" \
+                 "Unity/Assets/3rdParty/Feel/NiceVibrations/HapticSamples.meta"
 
       - name: Cache Unity Library
         uses: actions/cache@v4
@@ -198,7 +206,7 @@ jobs:
           allowDirtyBuild: true
           buildName: GreyboxPrototype
 
-      - name: Upload Unity Editor.log (Windows)
+      - name: Upload Unity Editor.log (Ubuntu)
         if: failure()
         uses: actions/upload-artifact@v4
         with:
@@ -206,7 +214,6 @@ jobs:
           path: |
             Unity/*.log
             **/Editor.log
-            C:/Users/runneradmin/AppData/Local/Unity/Editor/Editor.log
           if-no-files-found: warn
 
       - name: Upload artifact
@@ -258,7 +265,7 @@ jobs:
       - name: Set up Ruby
         uses: ruby/setup-ruby@v1
         with:
-          ruby-version: "3.2"
+          ruby-version: "3.1"
           bundler-cache: true
 
       - name: Download iOS artifact
