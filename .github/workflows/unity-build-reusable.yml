@@ -74,8 +74,8 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - targetPlatform: Android
-            artifactName: Android
+          # - targetPlatform: Android
+          #   artifactName: Android
           - targetPlatform: StandaloneOSX
             artifactName: macOS
           - targetPlatform: iOS
