@@ -82,3 +82,4 @@ fastlane/credentials.json
 # Third-party / vendor packages (not tracked; restore via Asset Store, submodule, or CI zip)
 Unity/Assets/3rdParty/
 Unity/Assets/3rdParty.meta
+temp/

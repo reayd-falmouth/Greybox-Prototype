@@ -93,6 +93,10 @@ jobs:
           s3-bucket: ${{ vars.S3_THIRDPARTY_BUCKET || 'masterblaster-unity-3rdparty-assets-eu-west-1-093581297635' }}
           s3-object-key: ${{ vars.S3_THIRDPARTY_OBJECT_KEY || '3rdparty-ci.zip' }}
 
+      - name: Patch third-party asmdefs (Cinemachine, EngineCore)
+        shell: bash
+        run: python3 scripts/ci/patch_thirdparty_asmdefs.py
+
       - name: Cache Unity Library
         uses: actions/cache@v4
         with:
@@ -174,6 +178,10 @@ jobs:
           aws-region: ${{ vars.S3_THIRDPARTY_REGION || 'eu-west-1' }}
           s3-bucket: ${{ vars.S3_THIRDPARTY_BUCKET || 'masterblaster-unity-3rdparty-assets-eu-west-1-093581297635' }}
           s3-object-key: ${{ vars.S3_THIRDPARTY_OBJECT_KEY || '3rdparty-ci.zip' }}
+
+      - name: Patch third-party asmdefs (Cinemachine, EngineCore)
+        shell: bash
+        run: python3 scripts/ci/patch_thirdparty_asmdefs.py
 
       - name: Cache Unity Library
         uses: actions/cache@v4
