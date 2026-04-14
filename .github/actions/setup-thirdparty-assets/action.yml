@@ -6,11 +6,13 @@ description: >-
 
 inputs:
   aws-access-key-id:
-    description: AWS access key with s3:GetObject on the bucket object
-    required: true
+    description: AWS access key with s3:GetObject on the bucket object (if empty, step is skipped)
+    required: false
+    default: ""
   aws-secret-access-key:
     description: AWS secret access key
-    required: true
+    required: false
+    default: ""
   aws-region:
     description: AWS region for the bucket
     required: false
@@ -28,21 +30,28 @@ runs:
   using: composite
   steps:
     - name: Configure AWS credentials
+      if: ${{ inputs['aws-access-key-id'] != '' }}
       uses: aws-actions/configure-aws-credentials@v4
       with:
-        aws-access-key-id: ${{ inputs.aws-access-key-id }}
-        aws-secret-access-key: ${{ inputs.aws-secret-access-key }}
+        aws-access-key-id: ${{ inputs['aws-access-key-id'] }}
+        aws-secret-access-key: ${{ inputs['aws-secret-access-key'] }}
         aws-region: ${{ inputs.aws-region }}
 
     - name: Download and extract third-party assets
+      if: ${{ inputs['aws-access-key-id'] != '' }}
       shell: bash
       run: |
         set -euo pipefail
-        BUCKET="${{ inputs.s3-bucket }}"
-        KEY="${{ inputs.s3-object-key }}"
+        BUCKET="${{ inputs['s3-bucket'] }}"
+        KEY="${{ inputs['s3-object-key'] }}"
         DEST="${RUNNER_TEMP}/thirdparty.zip"
         echo "Downloading s3://${BUCKET}/${KEY}"
         aws s3 cp "s3://${BUCKET}/${KEY}" "${DEST}"
         mkdir -p Unity/Assets
         unzip -q -o "${DEST}" -d Unity/Assets
         echo "Third-party assets extracted under Unity/Assets/"
+
+    - name: Skip third-party assets (no AWS_ACCESS_KEY_ID)
+      if: ${{ inputs['aws-access-key-id'] == '' }}
+      shell: bash
+      run: echo "Skipping S3 third-party download; set AWS_ACCESS_KEY_ID / AWS_SECRET_ACCESS_KEY secrets to enable."
