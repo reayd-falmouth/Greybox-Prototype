@@ -310,7 +310,8 @@ jobs:
 
   android_play:
     name: Publish Android to Google Play (internal)
-    if: inputs.do_release
+    # Temporarily disabled while Android build artifact generation is being reworked.
+    if: false
     needs: [build_mac]
     runs-on: ubuntu-latest
     steps:
