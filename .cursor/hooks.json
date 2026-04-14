@@ -1,0 +1,11 @@
+{
+  "version": 1,
+  "hooks": {
+    "afterShellExecution": [
+      {
+        "command": ".cursor/hooks/ci-babysit-reminder.sh",
+        "matcher": "git\\s+push"
+      }
+    ]
+  }
+}

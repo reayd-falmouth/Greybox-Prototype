@@ -296,7 +296,7 @@ jobs:
 
   release_itch:
     name: Release desktop builds to Itch.io
-    if: inputs.do_release && vars.ITCHIO_USER != '' && vars.ITCH_PROJECT != ''
+    if: always() && inputs.do_release && vars.ITCHIO_USER != '' && vars.ITCH_PROJECT != ''
     needs: [build_mac, build_windows]
     runs-on: ubuntu-latest
     strategy:
@@ -317,6 +317,8 @@ jobs:
 
       - name: Resolve source run id
         id: resolve_run
+        env:
+          GH_TOKEN: ${{ github.token }}
         shell: bash
         run: |
           set -euo pipefail
@@ -367,7 +369,7 @@ jobs:
 
   ios_testflight:
     name: Publish iOS to TestFlight
-    if: inputs.do_release
+    if: always() && inputs.do_release
     needs: [build_mac]
     runs-on: macos-15
     env:
@@ -391,6 +393,8 @@ jobs:
 
       - name: Resolve source run id
         id: resolve_run
+        env:
+          GH_TOKEN: ${{ github.token }}
         shell: bash
         run: |
           set -euo pipefail

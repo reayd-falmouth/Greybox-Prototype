@@ -30,6 +30,20 @@ In `release.yml` manual dispatch:
 - `source_build_sha` - resolves latest successful build run for that SHA.
 - If both are empty, release uses artifacts from the current run.
 
+## Operating modes
+
+- Build-only (produce artifacts without store releases):
+  - Run [`build.yml`](d:/Users/david/StonesAndDice_Unity_Projects/greybox-prototype/.github/workflows/build.yml)
+  - This calls reusable workflow with `do_release: false` and uploads artifacts to S3.
+
+- Build + release (default push behavior):
+  - Run [`release.yml`](d:/Users/david/StonesAndDice_Unity_Projects/greybox-prototype/.github/workflows/release.yml) with no source inputs.
+  - Build jobs run, publish to S3, then release jobs consume artifacts.
+
+- Release-only from a prior successful build:
+  - Run `release.yml` with either `source_run_id` or `source_build_sha`.
+  - Reusable build jobs are skipped; release jobs resolve/download from S3.
+
 ## Lifecycle policy (14 days)
 
 Apply a prefix-scoped lifecycle policy to avoid storage cost growth.
