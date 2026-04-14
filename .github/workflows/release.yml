@@ -1,6 +1,10 @@
 name: Build and release
 
 on:
+  push:
+    branches:
+      - main
+      - master
   workflow_dispatch:
     inputs:
       release_version:
@@ -18,5 +22,5 @@ jobs:
     uses: ./.github/workflows/unity-build-reusable.yml
     with:
       do_release: true
-      release_version: ${{ github.event.inputs.release_version }}
+      release_version: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.release_version || github.ref_name }}
     secrets: inherit
