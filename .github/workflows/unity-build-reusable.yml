@@ -373,7 +373,7 @@ jobs:
     needs: [build_mac]
     runs-on: macos-15
     env:
-      IOS_BUILD_PATH: ${{ format('{0}/build', github.workspace) }}
+      IOS_BUILD_PATH: ${{ format('{0}/build/iOS/GreyboxPrototype', github.workspace) }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -435,7 +435,7 @@ jobs:
 
       - name: Install CocoaPods
         run: |
-          cd "$IOS_BUILD_PATH/iOS"
+          cd "$IOS_BUILD_PATH"
           if [ -f "Podfile" ]; then
             pod install --repo-update
           else
