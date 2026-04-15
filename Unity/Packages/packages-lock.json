@@ -292,13 +292,6 @@
       "dependencies": {},
       "url": "https://package.openupm.com"
     },
-    "gnubg.unity.installer": {
-      "version": "https://github.com/reayd-falmouth/gnubg-unity-installer.git",
-      "depth": 0,
-      "source": "git",
-      "dependencies": {},
-      "hash": "d7c33bc0a04bf6ade3a01e234588bb40536c35de"
-    },
     "com.unity.modules.accessibility": {
       "version": "1.0.0",
       "depth": 0,
