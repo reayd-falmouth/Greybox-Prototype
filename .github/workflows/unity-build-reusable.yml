@@ -78,6 +78,7 @@ on:
         required: false
 
 env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
   ITCHIO_USER: ${{ vars.ITCHIO_USER }}
   ITCH_PROJECT: ${{ vars.ITCH_PROJECT }}
   S3_ARTIFACT_BUCKET: ${{ vars.S3_THIRDPARTY_BUCKET || 'greybox-prototype-unity-3rdparty-assets-eu-west-1-093581297635' }}
@@ -100,7 +101,7 @@ jobs:
             artifactName: iOS
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           lfs: true
 
@@ -118,7 +119,7 @@ jobs:
         run: python3 scripts/ci/patch_thirdparty_asmdefs.py
 
       - name: Cache Unity Library
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: Unity/Library
           key: Library-${{ runner.os }}-${{ hashFiles('Unity/Assets/**', 'Unity/Packages/**', 'Unity/ProjectSettings/**') }}
@@ -159,14 +160,14 @@ jobs:
 
       - name: Upload Unity Editor.log (macOS)
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: unity-editor-log-${{ matrix.artifactName }}
           path: /Users/runner/Library/Logs/Unity/Editor.log
           if-no-files-found: warn
 
       - name: Upload artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: ${{ matrix.artifactName }}
           path: build
@@ -207,7 +208,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           lfs: true
 
@@ -232,7 +233,7 @@ jobs:
                  "Unity/Assets/3rdParty/Feel/NiceVibrations/HapticSamples.meta"
 
       - name: Cache Unity Library
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: Unity/Library
           key: Library-${{ runner.os }}-Windows-${{ hashFiles('Unity/Assets/**', 'Unity/Packages/**', 'Unity/ProjectSettings/**') }}
@@ -254,7 +255,7 @@ jobs:
 
       - name: Upload Unity Editor.log (Ubuntu)
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: unity-editor-log-Windows
           path: |
@@ -263,7 +264,7 @@ jobs:
           if-no-files-found: warn
 
       - name: Upload artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: Windows
           path: build
@@ -309,7 +310,7 @@ jobs:
             channel: mac
     steps:
       - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v4
+        uses: aws-actions/configure-aws-credentials@v6
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
@@ -353,7 +354,7 @@ jobs:
 
       - name: Download ${{ matrix.artifactName }} artifact (GitHub fallback)
         if: steps.s3_download.outcome == 'failure'
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v6
         with:
           name: ${{ matrix.artifactName }}
           path: ${{ matrix.artifactName }}
@@ -376,7 +377,7 @@ jobs:
       IOS_BUILD_PATH: ${{ format('{0}/build/iOS/GreyboxPrototype', github.workspace) }}
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Set up Ruby
         uses: ruby/setup-ruby@v1
@@ -385,7 +386,7 @@ jobs:
           bundler-cache: true
 
       - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v4
+        uses: aws-actions/configure-aws-credentials@v6
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
@@ -428,7 +429,7 @@ jobs:
 
       - name: Download iOS artifact (GitHub fallback)
         if: steps.s3_download_ios.outcome == 'failure'
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v6
         with:
           name: iOS
           path: build
@@ -464,7 +465,7 @@ jobs:
 
       - name: Upload iOS publish logs on failure
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: ios-testflight-logs
           path: |
@@ -482,10 +483,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Download Android artifact
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v6
         with:
           name: Android
           path: build
@@ -509,7 +510,7 @@ jobs:
 
       - name: Upload Android publish logs on failure
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: android-play-logs
           path: |
