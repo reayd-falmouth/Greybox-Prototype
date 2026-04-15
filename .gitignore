@@ -84,3 +84,4 @@ Unity/Assets/3rdParty/
 Unity/Assets/3rdParty.meta
 temp/
 **/__pycache__/**
+*.zip

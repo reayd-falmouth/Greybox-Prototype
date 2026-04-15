@@ -170,6 +170,7 @@ PlayerSettings:
   applicationIdentifier:
     Android: com.stonesandice.moneysession
     Standalone: com.DefaultCompany.Unity
+    iPhone: com.stonesandice.moneysession
   buildNumber:
     Bratwurst: 0
     Standalone: 0
@@ -246,7 +247,7 @@ PlayerSettings:
   metalCompileShaderBinary: 0
   iOSRenderExtraFrameOnPause: 0
   iosCopyPluginsCodeInsteadOfSymlink: 0
-  appleDeveloperTeamID: 
+  appleDeveloperTeamID: SJS2X2ZW87
   iOSManualSigningProvisioningProfileID: 
   tvOSManualSigningProvisioningProfileID: 
   VisionOSManualSigningProvisioningProfileID: 
@@ -579,6 +580,9 @@ PlayerSettings:
   - serializedVersion: 3
     m_BuildTarget: Android
     m_Formats: 01000000
+  - serializedVersion: 3
+    m_BuildTarget: iOS
+    m_Formats: 03000000
   playModeTestRunnerEnabled: 0
   runPlayModeTestAsEditModeTest: 0
   actionOnDotNetUnhandledException: 1
