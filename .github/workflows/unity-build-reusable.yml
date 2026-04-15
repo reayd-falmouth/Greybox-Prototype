@@ -444,7 +444,9 @@ jobs:
           fi
 
       - name: List Xcode projects under build (diagnostic)
-        run: find build -name "*.xcodeproj" -maxdepth 8 2>/dev/null || true
+        run: |
+          find build -name "*.xcodeproj" -maxdepth 8 2>/dev/null || true
+          find build -name "*.xcworkspace" -maxdepth 8 2>/dev/null || true
 
       - name: Build and upload TestFlight with fastlane
         env:
