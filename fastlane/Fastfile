@@ -54,23 +54,11 @@ platform :ios do
       profile_uuid: ENV["sigh_#{ENV['IOS_BUNDLE_ID']}_appstore"]
     )
 
-    ios_root = ENV["IOS_BUILD_PATH"]
-    workspace_path = "#{ios_root}/Unity-iPhone.xcworkspace"
-    project_path = "#{ios_root}/Unity-iPhone.xcodeproj"
-
-    if File.exist?(workspace_path)
-      build_app(
-        workspace: workspace_path,
-        scheme: "Unity-iPhone",
-        sdk: "iphoneos18.5"
-      )
-    else
-      build_app(
-        project: project_path,
-        scheme: "Unity-iPhone",
-        sdk: "iphoneos18.5"
-      )
-    end
+    build_app(
+      project: "#{ENV['IOS_BUILD_PATH']}/Unity-iPhone.xcodeproj",
+      scheme: "Unity-iPhone",
+      sdk: "iphoneos18.5"
+    )
   end
 end
 
