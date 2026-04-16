@@ -534,6 +534,9 @@ jobs:
         with:
           name: Android
           path: build
+          github-token: ${{ github.token }}
+          repository: ${{ github.repository }}
+          run-id: ${{ steps.resolve_run.outputs.run_id }}
 
       - name: Normalize AAB path for Fastlane
         shell: bash
