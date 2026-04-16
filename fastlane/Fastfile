@@ -1,4 +1,32 @@
 platform :ios do
+  private_lane :resolve_ios_version do
+    project_path = "#{ENV['IOS_BUILD_PATH']}/Unity-iPhone.xcodeproj"
+    plist_path = "#{ENV['IOS_BUILD_PATH']}/Info.plist"
+
+    begin
+      version = get_version_number(
+        xcodeproj: project_path,
+        target: "Unity-iPhone"
+      )
+      UI.message("Resolved iOS version from Xcode target: #{version}")
+      return version
+    rescue => ex
+      UI.important("get_version_number failed in CI-safe resolution: #{ex.message}")
+    end
+
+    version = get_info_plist_value(
+      path: plist_path,
+      key: "CFBundleShortVersionString"
+    )
+    UI.message("Resolved iOS version from Info.plist fallback: #{version}")
+
+    if version.to_s.strip.empty?
+      UI.user_error!("Unable to resolve iOS version from Xcode project or Info.plist")
+    end
+
+    version
+  end
+
   desc "Sync codesigning certificates"
   lane :sync_certificates do
     app_store_connect_api_key(
@@ -39,12 +67,10 @@ platform :ios do
 
     sync_certificates
 
+    ios_version = resolve_ios_version
     latest_build = latest_testflight_build_number(
       app_identifier: ENV["IOS_BUNDLE_ID"],
-      version: get_version_number(
-        xcodeproj: "#{ENV['IOS_BUILD_PATH']}/Unity-iPhone.xcodeproj",
-        target: "Unity-iPhone"
-      ),
+      version: ios_version,
       initial_build_number: 0
     )
     next_build = latest_build.to_i + 1
