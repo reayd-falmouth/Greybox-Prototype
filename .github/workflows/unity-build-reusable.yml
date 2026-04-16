@@ -93,8 +93,8 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          # - targetPlatform: Android
-          #   artifactName: Android
+          - targetPlatform: Android
+            artifactName: Android
           - targetPlatform: StandaloneOSX
             artifactName: macOS
           - targetPlatform: iOS
@@ -479,19 +479,75 @@ jobs:
 
   android_play:
     name: Publish Android to Google Play (internal)
-    # Temporarily disabled while Android build artifact generation is being reworked.
-    if: false
+    if: always() && inputs.do_release
     needs: [build_mac]
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
         uses: actions/checkout@v6
 
-      - name: Download Android artifact
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v6
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ vars.S3_THIRDPARTY_REGION || 'eu-west-1' }}
+
+      - name: Resolve source run id
+        id: resolve_run
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ -n "${{ inputs.source_run_id }}" ]; then
+            echo "run_id=${{ inputs.source_run_id }}" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          if [ -n "${{ inputs.source_build_sha }}" ]; then
+            RID="$(gh run list --limit 50 --json databaseId,headSha,workflowName,status,conclusion --jq '.[] | select(.headSha=="${{ inputs.source_build_sha }}" and .status=="completed" and .conclusion=="success" and (.workflowName=="Build" or .workflowName=="Build and release")) | .databaseId' | head -n1)"
+            if [ -n "${RID}" ]; then
+              echo "run_id=${RID}" >> "$GITHUB_OUTPUT"
+              exit 0
+            fi
+            echo "Unable to resolve source run for sha ${{ inputs.source_build_sha }}" >&2
+            exit 1
+          fi
+          echo "run_id=${GITHUB_RUN_ID}" >> "$GITHUB_OUTPUT"
+
+      - name: Download Android artifact from S3
+        id: s3_download_android
+        continue-on-error: true
+        shell: bash
+        run: |
+          set -euo pipefail
+          RUN_ID="${{ steps.resolve_run.outputs.run_id }}"
+          KEY="s3://${S3_ARTIFACT_BUCKET}/${S3_ARTIFACT_PREFIX}${GITHUB_REPOSITORY}/${RUN_ID}/Android/bundle.tar.gz"
+          ARCHIVE="${RUNNER_TEMP}/Android.tar.gz"
+          aws s3 cp "${KEY}" "${ARCHIVE}"
+          mkdir -p build
+          tar -xzf "${ARCHIVE}" -C build
+
+      - name: Download Android artifact (GitHub fallback)
+        if: steps.s3_download_android.outcome == 'failure'
         uses: actions/download-artifact@v6
         with:
           name: Android
           path: build
+
+      - name: Normalize AAB path for Fastlane
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p build/Android
+          AAB="$(find build -name '*.aab' -type f | head -n1)"
+          if [ -z "${AAB}" ]; then
+            echo "No .aab file found under build/" >&2
+            find build -type f 2>/dev/null | head -n80 >&2 || true
+            exit 1
+          fi
+          cp "${AAB}" build/Android/Android.aab
+          ls -la build/Android/Android.aab
 
       - name: Write Play credentials
         run: |
