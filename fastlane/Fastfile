@@ -42,7 +42,8 @@ platform :ios do
     latest_build = latest_testflight_build_number(
       app_identifier: ENV["IOS_BUNDLE_ID"],
       version: get_version_number(
-        xcodeproj: "#{ENV['IOS_BUILD_PATH']}/Unity-iPhone.xcodeproj"
+        xcodeproj: "#{ENV['IOS_BUILD_PATH']}/Unity-iPhone.xcodeproj",
+        target: "Unity-iPhone"
       ),
       initial_build_number: 0
     )
