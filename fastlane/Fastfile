@@ -39,6 +39,20 @@ platform :ios do
 
     sync_certificates
 
+    latest_build = latest_testflight_build_number(
+      app_identifier: ENV["IOS_BUNDLE_ID"],
+      version: get_version_number(
+        xcodeproj: "#{ENV['IOS_BUILD_PATH']}/Unity-iPhone.xcodeproj"
+      ),
+      initial_build_number: 0
+    )
+    next_build = latest_build.to_i + 1
+    UI.message("Setting iOS CFBundleVersion to #{next_build}")
+    increment_build_number(
+      xcodeproj: "#{ENV['IOS_BUILD_PATH']}/Unity-iPhone.xcodeproj",
+      build_number: next_build.to_s
+    )
+
     update_code_signing_settings(
       use_automatic_signing: true,
       path: "#{ENV['IOS_BUILD_PATH']}/Unity-iPhone.xcodeproj"
