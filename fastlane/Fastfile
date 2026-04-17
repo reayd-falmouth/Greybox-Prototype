@@ -117,7 +117,8 @@ platform :android do
   lane :internal do
     upload_to_play_store(
       track: "internal",
-      release_status: "completed",
+      # Draft apps only accept draft releases until first publish in Play Console.
+      release_status: "draft",
       aab: "build/Android/Android.aab"
     )
   end

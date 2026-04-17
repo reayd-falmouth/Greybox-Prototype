@@ -457,7 +457,7 @@ jobs:
           APPSTORE_KEY_ID: ${{ secrets.APPSTORE_KEY_ID }}
           APPSTORE_P8: ${{ secrets.APPSTORE_P8 }}
           IOS_BUNDLE_ID: ${{ secrets.IOS_BUNDLE_ID }}
-          ANDROID_PACKAGE_NAME: ${{ secrets.ANDROID_PACKAGE_NAME }}
+          ANDROID_PACKAGE_NAME: ${{ secrets.ANDROID_PACKAGE_NAME || vars.ANDROID_PACKAGE_NAME }}
           PROJECT_NAME: ${{ secrets.PROJECT_NAME }}
           MATCH_S3_BUCKET: ${{ secrets.MATCH_S3_BUCKET }}
           MATCH_S3_REGION: ${{ secrets.MATCH_S3_REGION }}
@@ -566,7 +566,7 @@ jobs:
 
       - name: Upload to Play (internal track)
         env:
-          ANDROID_PACKAGE_NAME: ${{ secrets.ANDROID_PACKAGE_NAME }}
+          ANDROID_PACKAGE_NAME: ${{ secrets.ANDROID_PACKAGE_NAME || vars.ANDROID_PACKAGE_NAME }}
         run: bundle exec fastlane android internal
 
       - name: Upload Android publish logs on failure
