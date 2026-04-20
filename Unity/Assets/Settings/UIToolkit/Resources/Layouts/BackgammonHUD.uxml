@@ -36,6 +36,7 @@
                     <ui:Button text="New Game" name="NewGameButton" class="rounded-button-large m16font button-rounded-large" style="width: 129px; height: 72px; margin-bottom: 10px; align-self: flex-start; -unity-text-align: middle-center; font-size: 28px; white-space: normal;"/>
                     <ui:Button text="Run Info" name="RunInfoButton" class="rounded-button-large m16font button-rounded-large" style="width: 129px; height: 120px; margin-bottom: 15px; align-self: flex-start; align-content: center; justify-content: center; -unity-text-align: middle-center; font-size: 42px; white-space: normal;"/>
                     <ui:Button text="Options" name="OptionsButton" class="rounded-button-large m16font button-rounded-large" style="width: 129px; height: 120px; margin-bottom: 15px; -unity-text-align: middle-center; white-space: normal; font-size: 34px;"/>
+                    <ui:Button text="Hints" name="HintsButton" class="rounded-button-large m16font button-rounded-large" style="width: 129px; height: 72px; margin-bottom: 10px; align-self: flex-start; -unity-text-align: middle-center; font-size: 28px; white-space: normal;"/>
                 </ui:VisualElement>
                 <ui:VisualElement name="GameStatsPanel" style="flex-grow: 1; width: 50%; -unity-text-align: middle-center; align-content: center; justify-content: space-around;">
                     <ui:VisualElement style="flex-direction: row; padding-bottom: 15px;">
@@ -75,15 +76,9 @@
                         </ui:VisualElement>
                     </ui:VisualElement>
                 </ui:VisualElement>
+                <ui:ScrollView name="LegalMovesScroll" style="display: none;"/>
             </ui:VisualElement>
-            <ui:VisualElement name="SettingsPanel" style="display: none; flex-direction: column; position: absolute; left: 8px; right: 8px; bottom: 8px; top: auto; max-height: 45%; background-color: rgb(31, 41, 43); padding: 12px; border-top-left-radius: 12px; border-top-right-radius: 12px; border-bottom-left-radius: 12px; border-bottom-right-radius: 12px; border-left-width: 2px; border-right-width: 2px; border-top-width: 2px; border-bottom-width: 2px; border-left-color: rgb(3, 102, 167); border-right-color: rgb(3, 102, 167); border-top-color: rgb(3, 102, 167); border-bottom-color: rgb(3, 102, 167);">
-                <ui:Label text="Settings" class="m16font" style="font-size: 28px; margin-bottom: 8px;"/>
-                <ui:FloatField label="Move anim (s)" name="MoveAnimField" value="0.25"/>
-                <ui:IntegerField label="AI depth" name="AiDepthField" value="2"/>
-                <ui:Toggle label="Opponent AI" name="OpponentAiToggle" value="true"/>
-                <ui:Slider label="Master volume" name="MasterVolSlider" low-value="0" high-value="1" value="1"/>
-                <ui:Slider label="SFX volume" name="SfxVolSlider" low-value="0" high-value="1" value="1"/>
-            </ui:VisualElement>
+            <ui:VisualElement name="SettingsPanel" style="display: none;"/>
         </ui:VisualElement>
         <ui:VisualElement name="BottomPanel" style="flex-grow: 1; height: auto; position: absolute; bottom: 3%; width: auto; flex-direction: row; align-content: flex-start; align-self: center; justify-content: flex-start; align-items: stretch; left: 37.5%;">
             <ui:Button text="Play Move" name="PlayMoveButton" selectable="true" class="rounded-button-large m16font button-rounded-large"/>
@@ -110,6 +105,28 @@
                 <ui:Button text="Double" name="DoubleButton" class="rounded-button-large m16font button-rounded-large" style="width: 130px; -unity-text-align: middle-center; font-size: 37px; margin-bottom: 14px;"/>
             </ui:VisualElement>
             <ui:Button text="Roll" name="RollButton" selectable="true" class="rounded-button-large m16font button-rounded-large" style="width: 130px; -unity-text-align: middle-center; font-size: 48px; margin-bottom: 14px;"/>
+        </ui:VisualElement>
+        <ui:VisualElement name="ModalLayer" class="modal-layer" style="display: none;">
+            <ui:VisualElement name="ModalBackdrop" class="modal-backdrop">
+                <ui:VisualElement name="ModalCard" class="modal-card">
+                    <ui:VisualElement name="ModalHeader" class="modal-header">
+                        <ui:Label text="Options" name="ModalTitleLabel" class="m16font modal-title"/>
+                        <ui:Button text="Close" name="ModalCloseButton" class="rounded-button-small m16font modal-close-button"/>
+                    </ui:VisualElement>
+                    <ui:ScrollView name="ModalBody" class="modal-body">
+                        <ui:VisualElement name="SettingsContent" class="modal-content">
+                            <ui:FloatField label="Move anim (s)" name="MoveAnimField" value="0.25"/>
+                            <ui:IntegerField label="AI depth" name="AiDepthField" value="2"/>
+                            <ui:Toggle label="Opponent AI" name="OpponentAiToggle" value="true"/>
+                            <ui:Slider label="Master volume" name="MasterVolSlider" low-value="0" high-value="1" value="1"/>
+                            <ui:Slider label="SFX volume" name="SfxVolSlider" low-value="0" high-value="1" value="1"/>
+                        </ui:VisualElement>
+                        <ui:VisualElement name="HintsContent" class="modal-content" style="display: none;">
+                            <ui:Label text="Hints appear here." name="HintsLabel" class="m16font modal-hints-label"/>
+                        </ui:VisualElement>
+                    </ui:ScrollView>
+                </ui:VisualElement>
+            </ui:VisualElement>
         </ui:VisualElement>
         <ui:VisualElement name="CenterNotificationOverlay" class="center-notification-overlay" style="display: none;">
             <ui:Label text="" name="CenterNotificationLabel" class="center-notification-label"/>

@@ -25,6 +25,12 @@ public class BackgammonHudController : MonoBehaviour
 
     private ScrollView _legalScroll;
     private VisualElement _settingsPanel;
+    private VisualElement _modalLayer;
+    private VisualElement _modalBackdrop;
+    private VisualElement _settingsContent;
+    private VisualElement _hintsContent;
+    private Label _modalTitleLabel;
+    private Label _hintsLabel;
     private VisualElement _takeDropPanel;
     private VisualElement _doublePanel;
     private FloatField _moveAnimField;
@@ -36,6 +42,8 @@ public class BackgammonHudController : MonoBehaviour
     private Button _rollButton;
     private Button _undoButton;
     private Button _playMoveButton;
+    private Button _hintsButton;
+    private Button _modalCloseButton;
 
     [Header("Board view")]
     [Tooltip("Log when Horiz/Vert toggles engine→board mapping (identity vs 23−e).")]
@@ -65,6 +73,12 @@ public class BackgammonHudController : MonoBehaviour
 
         _legalScroll = root.Q<ScrollView>("LegalMovesScroll");
         _settingsPanel = root.Q<VisualElement>("SettingsPanel");
+        _modalLayer = root.Q<VisualElement>("ModalLayer");
+        _modalBackdrop = root.Q<VisualElement>("ModalBackdrop");
+        _settingsContent = root.Q<VisualElement>("SettingsContent");
+        _hintsContent = root.Q<VisualElement>("HintsContent");
+        _modalTitleLabel = root.Q<Label>("ModalTitleLabel");
+        _hintsLabel = root.Q<Label>("HintsLabel");
         _takeDropPanel = root.Q<VisualElement>("TakeDropPanel");
         _doublePanel = root.Q<VisualElement>("DoublePanel");
 
@@ -86,8 +100,17 @@ public class BackgammonHudController : MonoBehaviour
         var optionsBtn = root.Q<Button>("OptionsButton");
         if (optionsBtn != null) optionsBtn.clicked += ToggleSettings;
 
+        _hintsButton = root.Q<Button>("HintsButton");
+        if (_hintsButton != null) _hintsButton.clicked += OnHintsClicked;
+
         var runInfoBtn = root.Q<Button>("RunInfoButton");
         if (runInfoBtn != null) runInfoBtn.clicked += OnRunInfoClicked;
+
+        _modalCloseButton = root.Q<Button>("ModalCloseButton");
+        if (_modalCloseButton != null) _modalCloseButton.clicked += HideModal;
+
+        if (_modalBackdrop != null)
+            _modalBackdrop.RegisterCallback<ClickEvent>(OnModalBackdropClicked);
 
         _playMoveButton = root.Q<Button>("PlayMoveButton");
         if (_playMoveButton != null) _playMoveButton.clicked += OnPlayMoveClicked;
@@ -148,8 +171,15 @@ public class BackgammonHudController : MonoBehaviour
         var optionsBtn = root.Q<Button>("OptionsButton");
         if (optionsBtn != null) optionsBtn.clicked -= ToggleSettings;
 
+        if (_hintsButton != null) _hintsButton.clicked -= OnHintsClicked;
+
         var runInfoBtn = root.Q<Button>("RunInfoButton");
         if (runInfoBtn != null) runInfoBtn.clicked -= OnRunInfoClicked;
+
+        if (_modalCloseButton != null) _modalCloseButton.clicked -= HideModal;
+
+        if (_modalBackdrop != null)
+            _modalBackdrop.UnregisterCallback<ClickEvent>(OnModalBackdropClicked);
 
         if (_playMoveButton != null) _playMoveButton.clicked -= OnPlayMoveClicked;
         if (_undoButton != null) _undoButton.clicked -= OnUndoClicked;
@@ -200,9 +230,73 @@ public class BackgammonHudController : MonoBehaviour
 
     private void ToggleSettings()
     {
-        if (_settingsPanel == null) return;
-        bool on = _settingsPanel.style.display == DisplayStyle.None;
-        _settingsPanel.style.display = on ? DisplayStyle.Flex : DisplayStyle.None;
+        if (_modalLayer == null) return;
+        if (_modalLayer.style.display == DisplayStyle.Flex && _settingsContent != null && _settingsContent.style.display == DisplayStyle.Flex)
+        {
+            Debug.Log("[Backgammon][UI][Modal] ToggleSettings requested close while settings were already visible.");
+            HideModal();
+            return;
+        }
+
+        ShowSettings();
+    }
+
+    private void ShowSettings()
+    {
+        SetModalVisible(true, "Options", true);
+        Debug.Log("[Backgammon][UI][Modal] Opened modal in Options mode.");
+    }
+
+    private void OnHintsClicked()
+    {
+        ShowHints();
+    }
+
+    public void ShowHints()
+    {
+        SetModalVisible(true, "Hints", false);
+        Debug.Log("[Backgammon][UI][Modal] Opened modal in Hints mode.");
+    }
+
+    public void SetHintsText(string hintsText)
+    {
+        if (_hintsLabel == null) return;
+        _hintsLabel.text = string.IsNullOrWhiteSpace(hintsText) ? "No hints available yet." : hintsText;
+        Debug.Log("[Backgammon][UI][Modal] Updated hints text.");
+    }
+
+    private void HideModal()
+    {
+        if (_modalLayer == null) return;
+        _modalLayer.style.display = DisplayStyle.None;
+        Debug.Log("[Backgammon][UI][Modal] Closed modal.");
+    }
+
+    private void SetModalVisible(bool isVisible, string title, bool showSettings)
+    {
+        if (_modalLayer == null) return;
+
+        _modalLayer.style.display = isVisible ? DisplayStyle.Flex : DisplayStyle.None;
+        if (_modalTitleLabel != null)
+            _modalTitleLabel.text = title;
+        if (_settingsContent != null)
+            _settingsContent.style.display = showSettings ? DisplayStyle.Flex : DisplayStyle.None;
+        if (_hintsContent != null)
+            _hintsContent.style.display = showSettings ? DisplayStyle.None : DisplayStyle.Flex;
+
+        if (!showSettings && _hintsLabel != null && string.IsNullOrWhiteSpace(_hintsLabel.text))
+            _hintsLabel.text = "Hints appear here.";
+    }
+
+    private void OnModalBackdropClicked(ClickEvent evt)
+    {
+        if (_modalBackdrop == null) return;
+        if (!ReferenceEquals(evt.target, _modalBackdrop))
+            return;
+
+        Debug.Log("[Backgammon][UI][Modal] Backdrop click detected. Closing modal.");
+        HideModal();
+        evt.StopPropagation();
     }
 
     public void SetDoubleOfferVisible(bool visible)

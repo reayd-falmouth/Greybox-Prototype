@@ -45,5 +45,14 @@ public class BackgammonHudUxmlEditModeTests
         Assert.IsNotNull(root.Q<VisualElement>("DoublePanel"));
         Assert.IsNotNull(root.Q<VisualElement>("TakeDropPanel"));
         Assert.IsNotNull(root.Q<VisualElement>("SettingsPanel"));
+        Assert.IsNotNull(root.Q<Button>("HintsButton"));
+        Assert.IsNotNull(root.Q<VisualElement>("ModalLayer"));
+        Assert.IsNotNull(root.Q<VisualElement>("ModalBackdrop"));
+        Assert.IsNotNull(root.Q<VisualElement>("ModalCard"));
+        Assert.IsNotNull(root.Q<Label>("ModalTitleLabel"));
+        Assert.IsNotNull(root.Q<Button>("ModalCloseButton"));
+        Assert.IsNotNull(root.Q<VisualElement>("SettingsContent"));
+        Assert.IsNotNull(root.Q<VisualElement>("HintsContent"));
+        Assert.IsNotNull(root.Q<Label>("HintsLabel"));
     }
 }

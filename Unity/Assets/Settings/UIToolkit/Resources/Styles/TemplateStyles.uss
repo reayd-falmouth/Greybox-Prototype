@@ -204,3 +204,76 @@ VisualElement {
     border-top-right-radius: 14px;
     border-bottom-right-radius: 14px;
 }
+
+.modal-layer {
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 0;
+    bottom: 0;
+    justify-content: center;
+    align-items: center;
+    z-index: 100;
+}
+
+.modal-backdrop {
+    flex-grow: 1;
+    width: 100%;
+    height: 100%;
+    justify-content: center;
+    align-items: center;
+    background-color: rgba(0, 0, 0, 0.62);
+}
+
+.modal-card {
+    width: 62%;
+    max-width: 980px;
+    min-width: 420px;
+    max-height: 78%;
+    background-color: rgb(31, 41, 43);
+    border-top-left-radius: 12px;
+    border-top-right-radius: 12px;
+    border-bottom-left-radius: 12px;
+    border-bottom-right-radius: 12px;
+    border-left-width: 2px;
+    border-right-width: 2px;
+    border-top-width: 2px;
+    border-bottom-width: 2px;
+    border-left-color: rgb(3, 102, 167);
+    border-right-color: rgb(3, 102, 167);
+    border-top-color: rgb(3, 102, 167);
+    border-bottom-color: rgb(3, 102, 167);
+    padding-left: 16px;
+    padding-right: 16px;
+    padding-top: 16px;
+    padding-bottom: 16px;
+}
+
+.modal-header {
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+}
+
+.modal-title {
+    font-size: 36px;
+}
+
+.modal-close-button {
+    min-width: 140px;
+}
+
+.modal-body {
+    flex-grow: 1;
+    width: 100%;
+}
+
+.modal-content {
+    flex-direction: column;
+}
+
+.modal-hints-label {
+    white-space: normal;
+    font-size: 28px;
+}
