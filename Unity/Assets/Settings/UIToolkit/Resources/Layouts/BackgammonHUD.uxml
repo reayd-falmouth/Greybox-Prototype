@@ -111,5 +111,8 @@
             </ui:VisualElement>
             <ui:Button text="Roll" name="RollButton" selectable="true" class="rounded-button-large m16font button-rounded-large" style="width: 130px; -unity-text-align: middle-center; font-size: 48px; margin-bottom: 14px;"/>
         </ui:VisualElement>
+        <ui:VisualElement name="CenterNotificationOverlay" class="center-notification-overlay" style="display: none;">
+            <ui:Label text="" name="CenterNotificationLabel" class="center-notification-label"/>
+        </ui:VisualElement>
     </ui:VisualElement>
 </ui:UXML>

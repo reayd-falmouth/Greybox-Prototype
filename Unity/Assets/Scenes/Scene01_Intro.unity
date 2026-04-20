@@ -2994,6 +2994,7 @@ GameObject:
   - component: {fileID: 1756644693}
   - component: {fileID: 1756644692}
   - component: {fileID: 1756644691}
+  - component: {fileID: 1756644694}
   m_Layer: 0
   m_Name: BackgammonHud
   m_TagString: Untagged
@@ -3015,6 +3016,30 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   uiDocument: {fileID: 1756644692}
   gameController: {fileID: 1554234147}
+--- !u!114 &1756644694
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1756644690}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f7e6d5c4b3a291807162534435261718, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  gameController: {fileID: 1554234147}
+  uiDocument: {fileID: 1756644692}
+  presets:
+  - eventType: 0
+    message: AutoDouble!
+    displayDurationSeconds: 0
+  visibleDuration: 1.25
+  fadeInSeconds: 0.2
+  fadeOutSeconds: 0.35
+  notificationFeedbackPlayer: {fileID: 0}
+  debugPreviewText: Preview
+  enableVerboseLogs: 0
 --- !u!114 &1756644692
 MonoBehaviour:
   m_ObjectHideFlags: 0
