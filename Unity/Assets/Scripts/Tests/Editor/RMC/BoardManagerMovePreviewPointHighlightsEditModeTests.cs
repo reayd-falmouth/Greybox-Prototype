@@ -5,6 +5,12 @@ using UnityEngine;
 
 public class BoardManagerMovePreviewPointHighlightsEditModeTests
 {
+    [SetUp]
+    public void SetUp()
+    {
+        BackgammonBoardLayout.SetHorizontal(true);
+    }
+
     [Test]
     public void PreviewMoveDestinationPoints_HighlightsOnlyMappedBoardDestinations()
     {

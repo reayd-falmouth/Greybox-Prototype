@@ -10,10 +10,13 @@ using Runtime.RMC.Backgammon.Core;
 public class BackgammonSyncMirrorEditModeTests
 {
     /// <summary>Keys = board slot 0..23; positive = white count, negative = black (see BoardManager.SpawnInitialCheckers).</summary>
+    /// <summary>
+    /// Identity engine→board: slot <c>b</c> shows <c>P1[b]</c> white and <c>P2[23-b]</c> black for the standard PID.
+    /// </summary>
     private static readonly Dictionary<int, int> FullSetupBoardCounts = new()
     {
-        { 0, 2 }, { 11, 5 }, { 16, 3 }, { 18, 5 },
-        { 5, -5 }, { 7, -3 }, { 12, -5 }, { 23, -2 }
+        { 0, -2 }, { 5, 5 }, { 7, 3 }, { 11, -5 }, { 12, 5 },
+        { 16, -3 }, { 18, -5 }, { 23, 2 }
     };
 
     private static void ExpectedWhiteBlack(int boardIdx, out int white, out int black)

@@ -11,13 +11,13 @@ public class BackgammonBoardMappingEditModeTests
         BackgammonBoardLayout.SetHorizontal(true);
         GameState st = PositionId.Decode("4HPwATDgc/ABMA");
         Assert.AreEqual(2, st.Player1Checkers[23]);
-        Assert.AreEqual(0, BackgammonBoardLayout.EnginePointToBoardIndex(23));
+        Assert.AreEqual(23, BackgammonBoardLayout.EnginePointToBoardIndex(23));
         Assert.AreEqual(5, st.Player1Checkers[5]);
-        Assert.AreEqual(18, BackgammonBoardLayout.EnginePointToBoardIndex(5));
+        Assert.AreEqual(5, BackgammonBoardLayout.EnginePointToBoardIndex(5));
         Assert.AreEqual(5, st.Player1Checkers[12]);
-        Assert.AreEqual(11, BackgammonBoardLayout.EnginePointToBoardIndex(12));
+        Assert.AreEqual(12, BackgammonBoardLayout.EnginePointToBoardIndex(12));
         Assert.AreEqual(3, st.Player1Checkers[7]);
-        Assert.AreEqual(16, BackgammonBoardLayout.EnginePointToBoardIndex(7));
+        Assert.AreEqual(7, BackgammonBoardLayout.EnginePointToBoardIndex(7));
     }
 
     [Test]

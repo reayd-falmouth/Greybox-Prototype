@@ -6,6 +6,12 @@ using UnityEngine;
 
 public class BoardManagerApplySingleVisualMoveEditModeTests
 {
+    [SetUp]
+    public void SetUp()
+    {
+        BackgammonBoardLayout.SetHorizontal(true);
+    }
+
     [Test]
     public void TryApplySingleVisualMove_PointToPoint_MovesTopChecker()
     {

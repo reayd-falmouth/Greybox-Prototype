@@ -8,31 +8,32 @@ namespace Runtime.RMC.Backgammon.Core
 
     /// <summary>
     /// Maps EngineCore point indices (0–23 board, 24 bar) to this scene's <see cref="BoardPoint.pointIndex"/>.
-    /// Derived from aligning GNUBG standard start with the scene BoardManager checker layout.
+    /// Horizontal: identity — engine <c>e</c> uses the point with <c>pointIndex == e</c> (matches <see cref="BoardManager.GenerateBoard"/> order).
+    /// Vertical: full reverse — board slot <c>23 - e</c> (swap 0↔23, 1↔22, …).
     /// </summary>
     public static class BackgammonBoardLayout
     {
         public const int BarEngineIndex = 24;
         private static BackgammonBoardViewMode _activeViewMode = BackgammonBoardViewMode.Horizontal;
 
-        // Existing board mapping (kept as default to preserve current behavior).
-        private static readonly int[] HorizontalEngineToBoard =
-        {
-            23, 22, 21, 20, 19, 18,
-            17, 16, 15, 14, 13, 12,
-            11, 10,  9,  8,  7,  6,
-             5,  4,  3,  2,  1,  0
-        };
+        private static readonly int[] HorizontalEngineToBoard = BuildIdentity();
+        private static readonly int[] VerticalEngineToBoard = BuildReverse();
 
-        // Alternate mapping used by HUD Vertical view. This is a full permutation table so
-        // visual placement can be changed without rotating checker game objects.
-        private static readonly int[] VerticalEngineToBoard =
+        private static int[] BuildIdentity()
         {
-            17, 16, 15, 14, 13, 12,
-            23, 22, 21, 20, 19, 18,
-             5,  4,  3,  2,  1,  0,
-            11, 10,  9,  8,  7,  6
-        };
+            var a = new int[24];
+            for (int i = 0; i < 24; i++)
+                a[i] = i;
+            return a;
+        }
+
+        private static int[] BuildReverse()
+        {
+            var a = new int[24];
+            for (int i = 0; i < 24; i++)
+                a[i] = 23 - i;
+            return a;
+        }
 
         public static BackgammonBoardViewMode ActiveViewMode => _activeViewMode;
 

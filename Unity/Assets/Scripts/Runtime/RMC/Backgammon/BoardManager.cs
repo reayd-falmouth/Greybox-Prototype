@@ -614,7 +614,12 @@ public class BoardManager : MonoBehaviour
 
     public void SpawnInitialCheckers()
     {
-        var setup = new Dictionary<int, int>() { { 0, 2 }, { 11, 5 }, { 16, 3 }, { 18, 5 }, { 5, -5 }, { 7, -3 }, { 12, -5 }, { 23, -2 } };
+        // Matches standard opening via identity engine→board (same counts as PositionId + SyncCheckersFromGameState).
+        var setup = new Dictionary<int, int>
+        {
+            { 0, -2 }, { 5, 5 }, { 7, 3 }, { 11, -5 }, { 12, 5 },
+            { 16, -3 }, { 18, -5 }, { 23, 2 }
+        };
 
         foreach (var entry in setup)
         {
@@ -1095,11 +1100,9 @@ public class BoardManager : MonoBehaviour
         _movePreviewHighlightedBoardIndices.Clear();
     }
 
-    /// <summary>HUD "Change view" — rotates an optional pivot (assign in Inspector).</summary>
+    /// <summary>HUD view: toggles engine→board mapping (identity vs 23−e). Does not rotate the board pivot.</summary>
     public void SetBoardViewHorizontal(bool horizontal)
     {
         BackgammonBoardLayout.SetHorizontal(horizontal);
-        if (boardViewPivot == null) return;
-        boardViewPivot.localRotation = Quaternion.Euler(horizontal ? horizontalBoardEuler : verticalBoardEuler);
     }
 }
