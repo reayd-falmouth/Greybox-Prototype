@@ -16,6 +16,7 @@ public class BackgammonGameController : MonoBehaviour
 {
     [Header("Debug")]
     [SerializeField] private bool enableMoveSelectionDebugLogs = true;
+    [SerializeField] private bool enableDiceFeedbackDebugLogs;
 
     [SerializeField] private BoardManager boardManager;
     [Header("Dice (required)")]
@@ -59,6 +60,13 @@ public class BackgammonGameController : MonoBehaviour
 
     public event Action OnStateChanged;
     public event Action<CheckerSoundEventData> OnCheckerSoundEvent;
+    public event Action<DiceFeedbackEventData> OnDiceFeedbackEvent;
+
+    /// <summary>Opening / player 0 side dice manager (one die each during opening).</summary>
+    public DiceManager DiceManagerPlayer0 => diceManagerPlayer0;
+
+    /// <summary>Player 1 side dice manager.</summary>
+    public DiceManager DiceManagerPlayer1 => diceManagerPlayer1;
 
     private readonly List<Turn> _legalTurns = new();
     private readonly HashSet<int> _movableFromScratch = new();
@@ -229,6 +237,11 @@ public class BackgammonGameController : MonoBehaviour
         {
             BackgammonOpeningRollRules.ApplyOpeningTieAutodouble(State);
             _openingRollTieAwaitingReroll = true;
+            EmitDiceFeedbackEvent(new DiceFeedbackEventData(
+                DiceFeedbackEventType.OpeningRollTieAutodouble,
+                State != null ? State.CubeValue : 0,
+                dieForPlayer0,
+                dieForPlayer1));
             State.Dice1 = 0;
             State.Dice2 = 0;
             SyncMatchFromState();
@@ -624,6 +637,17 @@ public class BackgammonGameController : MonoBehaviour
             move.To,
             move.IsHit,
             isUndo));
+    }
+
+    private void EmitDiceFeedbackEvent(DiceFeedbackEventData data)
+    {
+        Debug.Log(
+            $"[Backgammon][DiceFeedback] Emit event={data.EventType} cubeAfter={data.CubeValueAfter} openingP0={data.OpeningDiePlayer0} openingP1={data.OpeningDiePlayer1} openingResolved={_openingRollResolved} openingTieAwaitingReroll={_openingRollTieAwaitingReroll}");
+        if (enableDiceFeedbackDebugLogs)
+            Debug.Log(
+                $"[Backgammon][DiceFeedback] subscribers={(OnDiceFeedbackEvent != null ? OnDiceFeedbackEvent.GetInvocationList().Length : 0)}");
+
+        OnDiceFeedbackEvent?.Invoke(data);
     }
 
     private void FinalizeTurnAndAdvance()
