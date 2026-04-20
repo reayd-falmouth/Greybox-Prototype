@@ -8,16 +8,20 @@ public readonly struct DiceFeedbackEventData
     public readonly int OpeningDiePlayer0;
     /// <summary>Opening roll: P1 die value.</summary>
     public readonly int OpeningDiePlayer1;
+    /// <summary>Opening winner player index (0/1) when event is OpeningRollWinnerResolved; otherwise -1.</summary>
+    public readonly int OpeningRollWinnerPlayerIndex;
 
     public DiceFeedbackEventData(
         DiceFeedbackEventType eventType,
         int cubeValueAfter,
         int openingDiePlayer0 = 0,
-        int openingDiePlayer1 = 0)
+        int openingDiePlayer1 = 0,
+        int openingRollWinnerPlayerIndex = -1)
     {
         EventType = eventType;
         CubeValueAfter = cubeValueAfter;
         OpeningDiePlayer0 = openingDiePlayer0;
         OpeningDiePlayer1 = openingDiePlayer1;
+        OpeningRollWinnerPlayerIndex = openingRollWinnerPlayerIndex;
     }
 }

@@ -2,5 +2,6 @@
 public enum DiceFeedbackEventType
 {
     OpeningRollTieAutodouble = 0,
-    OpeningRollTieDiceResetPickup = 1
+    OpeningRollTieDiceResetPickup = 1,
+    OpeningRollWinnerResolved = 2
 }

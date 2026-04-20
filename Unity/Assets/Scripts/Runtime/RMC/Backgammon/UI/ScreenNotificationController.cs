@@ -86,6 +86,10 @@ public class ScreenNotificationController : MonoBehaviour
     [SerializeField] private int debugFontSize;
     [SerializeField] private Vector2 debugLabelOffsetPixels;
 
+    [Header("Opening roll winner messages")]
+    [SerializeField] private string openingRollPlayerWinsMessage = "Your go";
+    [SerializeField] private string openingRollAiWinsMessage = "AI goes first";
+
     private VisualElement _overlay;
     private Label _label;
     private Coroutine _activeRoutine;
@@ -157,6 +161,24 @@ public class ScreenNotificationController : MonoBehaviour
 
     private void HandleDiceFeedback(DiceFeedbackEventData data)
     {
+        if (data.EventType == DiceFeedbackEventType.OpeningRollWinnerResolved)
+        {
+            string winnerMessage = ResolveOpeningRollWinnerMessage(
+                data.OpeningRollWinnerPlayerIndex,
+                openingRollPlayerWinsMessage,
+                openingRollAiWinsMessage);
+            var winnerResolved = new NotificationPresetResolved(
+                winnerMessage,
+                visibleDuration,
+                defaultFontSize,
+                defaultLabelOffsetPixels);
+            if (enableVerboseLogs)
+                Debug.Log(
+                    $"[Backgammon][Notify] opening-winner winnerIndex={data.OpeningRollWinnerPlayerIndex} message=\"{winnerMessage}\"");
+            ShowNotificationInternal(winnerResolved, visibleDuration);
+            return;
+        }
+
         if (!TryResolvePreset(
                 presets,
                 data.EventType,
@@ -346,6 +368,14 @@ public class ScreenNotificationController : MonoBehaviour
         }
 
         return false;
+    }
+
+    public static string ResolveOpeningRollWinnerMessage(int winnerPlayerIndex, string playerWinsMessage, string aiWinsMessage)
+    {
+        // In this project, player index 1 is the local player and index 0 is the AI/opponent.
+        return winnerPlayerIndex == 1
+            ? (string.IsNullOrEmpty(playerWinsMessage) ? "Your go" : playerWinsMessage)
+            : (string.IsNullOrEmpty(aiWinsMessage) ? "AI goes first" : aiWinsMessage);
     }
 
     /// <summary>Resolves preset including font and offset (uses defaults when row uses 0 / zero vector).</summary>

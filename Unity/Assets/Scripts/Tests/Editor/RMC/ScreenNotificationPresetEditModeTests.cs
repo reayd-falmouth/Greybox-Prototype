@@ -84,4 +84,18 @@ public class ScreenNotificationPresetEditModeTests
         Assert.AreEqual(99, r.ResolvedFontSize);
         Assert.AreEqual(new Vector2(3f, 4f), r.ResolvedLabelOffsetPixels);
     }
+
+    [Test]
+    public void ResolveOpeningRollWinnerMessage_PlayerWinner_UsesPlayerMessage()
+    {
+        string msg = ScreenNotificationController.ResolveOpeningRollWinnerMessage(1, "Your go", "AI goes first");
+        Assert.AreEqual("Your go", msg);
+    }
+
+    [Test]
+    public void ResolveOpeningRollWinnerMessage_AiWinner_UsesAiMessage()
+    {
+        string msg = ScreenNotificationController.ResolveOpeningRollWinnerMessage(0, "Your go", "AI goes first");
+        Assert.AreEqual("AI goes first", msg);
+    }
 }

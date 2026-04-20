@@ -67,4 +67,54 @@ public class DiceFeedbackEventRoutingEditModeTests
         Assert.AreEqual(6, captured.OpeningDiePlayer0);
         Assert.AreEqual(6, captured.OpeningDiePlayer1);
     }
+
+    [Test]
+    public void ApplyOpeningRollFromDice_NonTie_EmitsOpeningRollWinnerResolved()
+    {
+        var go = new GameObject("BackgammonGameController_DiceFeedback_WinnerEmit");
+        var controller = go.AddComponent<BackgammonGameController>();
+        controller.NewGame();
+        DiceFeedbackEventData captured = default;
+        bool raised = false;
+        controller.OnDiceFeedbackEvent += evt =>
+        {
+            if (evt.EventType != DiceFeedbackEventType.OpeningRollWinnerResolved) return;
+            captured = evt;
+            raised = true;
+        };
+
+        MethodInfo applyOpening = typeof(BackgammonGameController).GetMethod(
+            "ApplyOpeningRollFromDice",
+            BindingFlags.Instance | BindingFlags.NonPublic);
+        Assert.IsNotNull(applyOpening, "Expected private opening-roll method to exist.");
+        applyOpening.Invoke(controller, new object[] { 2, 5 });
+
+        Assert.IsTrue(raised);
+        Assert.AreEqual(DiceFeedbackEventType.OpeningRollWinnerResolved, captured.EventType);
+        Assert.AreEqual(2, captured.OpeningDiePlayer0);
+        Assert.AreEqual(5, captured.OpeningDiePlayer1);
+        Assert.AreEqual(1, captured.OpeningRollWinnerPlayerIndex);
+    }
+
+    [Test]
+    public void ApplyOpeningRollFromDice_Tie_DoesNotEmitOpeningRollWinnerResolved()
+    {
+        var go = new GameObject("BackgammonGameController_DiceFeedback_NoWinnerOnTie");
+        var controller = go.AddComponent<BackgammonGameController>();
+        controller.NewGame();
+        bool raised = false;
+        controller.OnDiceFeedbackEvent += evt =>
+        {
+            if (evt.EventType == DiceFeedbackEventType.OpeningRollWinnerResolved)
+                raised = true;
+        };
+
+        MethodInfo applyOpening = typeof(BackgammonGameController).GetMethod(
+            "ApplyOpeningRollFromDice",
+            BindingFlags.Instance | BindingFlags.NonPublic);
+        Assert.IsNotNull(applyOpening, "Expected private opening-roll method to exist.");
+        applyOpening.Invoke(controller, new object[] { 4, 4 });
+
+        Assert.IsFalse(raised);
+    }
 }

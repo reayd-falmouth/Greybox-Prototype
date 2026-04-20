@@ -264,6 +264,12 @@ public class BackgammonGameController : MonoBehaviour
         _openingRollResolved = true;
         _rolledThisTurn = true;
         RollsThisGame++;
+        EmitDiceFeedbackEvent(new DiceFeedbackEventData(
+            DiceFeedbackEventType.OpeningRollWinnerResolved,
+            State != null ? State.CubeValue : 0,
+            dieForPlayer0,
+            dieForPlayer1,
+            State != null ? State.PlayerOnRoll : -1));
         BackgammonGameRules.SyncBoardArrayFromCheckerArrays(State);
         SyncMatchFromState();
         RefreshLegals();
