@@ -37,6 +37,10 @@ public class BackgammonHudController : MonoBehaviour
     private Button _undoButton;
     private Button _playMoveButton;
 
+    [Header("Board view")]
+    [Tooltip("Log when Horiz/Vert toggles engine→board mapping (identity vs 23−e).")]
+    [SerializeField] private bool enableBoardViewDebugLogs;
+
     private int _selectedLegalIndex;
 
     private void OnEnable()
@@ -92,10 +96,10 @@ public class BackgammonHudController : MonoBehaviour
         if (_undoButton != null) _undoButton.clicked += OnUndoClicked;
 
         var viewHoriz = root.Q<Button>("ViewHorizButton");
-        if (viewHoriz != null) viewHoriz.clicked += OnViewHorizClicked;
+        if (viewHoriz != null) viewHoriz.clicked += OnBoardViewToggleClicked;
 
         var viewVert = root.Q<Button>("ViewVertButton");
-        if (viewVert != null) viewVert.clicked += OnViewVertClicked;
+        if (viewVert != null) viewVert.clicked += OnBoardViewToggleClicked;
 
         var doubleBtn = root.Q<Button>("DoubleButton");
         if (doubleBtn != null) doubleBtn.clicked += OnDoubleClicked;
@@ -160,20 +164,29 @@ public class BackgammonHudController : MonoBehaviour
         if (dropBtn != null) dropBtn.clicked -= OnDropDoubleClicked;
 
         var viewHoriz = root.Q<Button>("ViewHorizButton");
-        if (viewHoriz != null) viewHoriz.clicked -= OnViewHorizClicked;
+        if (viewHoriz != null) viewHoriz.clicked -= OnBoardViewToggleClicked;
 
         var viewVert = root.Q<Button>("ViewVertButton");
-        if (viewVert != null) viewVert.clicked -= OnViewVertClicked;
+        if (viewVert != null) viewVert.clicked -= OnBoardViewToggleClicked;
     }
 
-    private void OnViewHorizClicked()
+    /// <summary>
+    /// Both buttons flip between identity mapping and 23−e reverse (no stuck state when already in one mode).
+    /// </summary>
+    private void OnBoardViewToggleClicked()
     {
-        gameController?.SetBoardViewHorizontal(true);
-    }
+        if (gameController == null) return;
+        bool wasIdentityMapping = BackgammonBoardLayout.ActiveViewMode == BackgammonBoardViewMode.Horizontal;
+        bool nextWantsIdentityMapping = !wasIdentityMapping;
+        gameController.SetBoardViewHorizontal(nextWantsIdentityMapping);
 
-    private void OnViewVertClicked()
-    {
-        gameController?.SetBoardViewHorizontal(false);
+        if (enableBoardViewDebugLogs)
+        {
+            bool nowIdentity = BackgammonBoardLayout.ActiveViewMode == BackgammonBoardViewMode.Horizontal;
+            Debug.Log(
+                $"[Backgammon][View] toggled board mapping: wasIdentity={wasIdentityMapping}, nowIdentity={nowIdentity}, " +
+                $"paramSent={nextWantsIdentityMapping}");
+        }
     }
 
     private void LoadSettingsIntoFields()
