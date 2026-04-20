@@ -18,6 +18,30 @@ public class ScreenNotificationController : MonoBehaviour
         public string message = "";
         [Tooltip("0 uses global Visible Duration.")]
         public float displayDurationSeconds;
+        [Tooltip("0 uses Default Font Size. Otherwise pixel size for UI Toolkit label.")]
+        public int fontSize;
+        [Tooltip("Offset from center in pixels. (0,0) uses Default Label Offset.")]
+        public Vector2 labelOffsetPixels;
+    }
+
+    public readonly struct NotificationPresetResolved
+    {
+        public readonly string Message;
+        public readonly float DisplayDurationSeconds;
+        public readonly int ResolvedFontSize;
+        public readonly Vector2 ResolvedLabelOffsetPixels;
+
+        public NotificationPresetResolved(
+            string message,
+            float displayDurationSeconds,
+            int resolvedFontSize,
+            Vector2 resolvedLabelOffsetPixels)
+        {
+            Message = message;
+            DisplayDurationSeconds = displayDurationSeconds;
+            ResolvedFontSize = resolvedFontSize;
+            ResolvedLabelOffsetPixels = resolvedLabelOffsetPixels;
+        }
     }
 
     [SerializeField] private BackgammonGameController gameController;
@@ -30,9 +54,17 @@ public class ScreenNotificationController : MonoBehaviour
         {
             eventType = DiceFeedbackEventType.OpeningRollTieAutodouble,
             message = "AutoDouble!",
-            displayDurationSeconds = 0f
+            displayDurationSeconds = 0f,
+            fontSize = 0,
+            labelOffsetPixels = Vector2.zero
         }
     };
+
+    [Header("Default label style")]
+    [Tooltip("Used when a preset row has Font Size = 0.")]
+    [SerializeField] private int defaultFontSize = 72;
+    [Tooltip("Used when a preset row has Label Offset = (0,0).")]
+    [SerializeField] private Vector2 defaultLabelOffsetPixels;
 
     [Header("Timing")]
     [SerializeField] private float visibleDuration = 1.25f;
@@ -46,6 +78,13 @@ public class ScreenNotificationController : MonoBehaviour
     [Header("Debug")]
     [SerializeField] private string debugPreviewText = "Preview";
     [SerializeField] private bool enableVerboseLogs;
+
+    [Header("Preset authoring")]
+    [Tooltip("Event key used when saving the debug fields into the Presets list.")]
+    [SerializeField] private DiceFeedbackEventType debugPresetEventType = DiceFeedbackEventType.OpeningRollTieAutodouble;
+    [Tooltip("0 uses Default Font Size.")]
+    [SerializeField] private int debugFontSize;
+    [SerializeField] private Vector2 debugLabelOffsetPixels;
 
     private VisualElement _overlay;
     private Label _label;
@@ -118,28 +157,38 @@ public class ScreenNotificationController : MonoBehaviour
 
     private void HandleDiceFeedback(DiceFeedbackEventData data)
     {
-        if (!TryResolveMessage(presets, data.EventType, out string msg, out float perEventDur))
+        if (!TryResolvePreset(
+                presets,
+                data.EventType,
+                defaultFontSize,
+                defaultLabelOffsetPixels,
+                out NotificationPresetResolved resolved))
         {
             if (enableVerboseLogs)
                 Debug.LogWarning($"[Backgammon][Notify] No preset for event={data.EventType}");
             return;
         }
 
-        float hold = perEventDur > 0f ? perEventDur : visibleDuration;
+        float hold = resolved.DisplayDurationSeconds > 0f ? resolved.DisplayDurationSeconds : visibleDuration;
         if (enableVerboseLogs)
             Debug.Log(
-                $"[Backgammon][Notify] event={data.EventType} cubeAfter={data.CubeValueAfter} message=\"{msg}\" hold={hold:F2}s");
-        ShowNotificationInternal(msg, hold);
+                $"[Backgammon][Notify] event={data.EventType} cubeAfter={data.CubeValueAfter} message=\"{resolved.Message}\" hold={hold:F2}s font={resolved.ResolvedFontSize} offset={resolved.ResolvedLabelOffsetPixels}");
+        ShowNotificationInternal(resolved, hold);
     }
 
     /// <summary>Inspector / editor: same path as live events (fades + optional MMF).</summary>
     public void PlayDebugPreview()
     {
+        if (enableVerboseLogs)
+            Debug.Log($"[Backgammon][Notify] Preview authoring event={debugPresetEventType}");
         string msg = string.IsNullOrEmpty(debugPreviewText) ? "Preview" : debugPreviewText;
-        ShowNotificationInternal(msg, visibleDuration);
+        int font = debugFontSize > 0 ? debugFontSize : defaultFontSize;
+        Vector2 offset = debugLabelOffsetPixels;
+        var resolved = new NotificationPresetResolved(msg, visibleDuration, font, offset);
+        ShowNotificationInternal(resolved, visibleDuration);
     }
 
-    private void ShowNotificationInternal(string message, float holdDuration)
+    private void ShowNotificationInternal(NotificationPresetResolved style, float holdDuration)
     {
         TryBindUi();
         if (_overlay == null || _label == null)
@@ -154,10 +203,25 @@ public class ScreenNotificationController : MonoBehaviour
             _activeRoutine = null;
         }
 
-        _label.text = message;
-        Debug.Log($"[Backgammon][Notify] Show message=\"{message}\" hold={holdDuration:F2}s fadeIn={fadeInSeconds:F2}s fadeOut={fadeOutSeconds:F2}s");
+        ResetLabelPresentation();
+        _label.text = style.Message;
+        ApplyLabelPresentation(style.ResolvedFontSize, style.ResolvedLabelOffsetPixels);
+        Debug.Log(
+            $"[Backgammon][Notify] Show message=\"{style.Message}\" hold={holdDuration:F2}s fadeIn={fadeInSeconds:F2}s fadeOut={fadeOutSeconds:F2}s font={style.ResolvedFontSize} offset={style.ResolvedLabelOffsetPixels}");
         TryPlayNotificationMmf();
         _activeRoutine = StartCoroutine(NotificationRoutine(holdDuration));
+    }
+
+    private void ApplyLabelPresentation(int resolvedFontSize, Vector2 resolvedOffsetPixels)
+    {
+        _label.style.fontSize = new StyleLength(new Length(resolvedFontSize, LengthUnit.Pixel));
+        _label.style.translate = new Translate(resolvedOffsetPixels.x, resolvedOffsetPixels.y, 0f);
+    }
+
+    private void ResetLabelPresentation()
+    {
+        _label.style.fontSize = new StyleLength(StyleKeyword.Null);
+        _label.style.translate = new Translate(0f, 0f, 0f);
     }
 
     private IEnumerator NotificationRoutine(float holdDuration)
@@ -186,6 +250,7 @@ public class ScreenNotificationController : MonoBehaviour
 
         _overlay.style.opacity = 0f;
         _overlay.style.display = DisplayStyle.None;
+        ResetLabelPresentation();
         _activeRoutine = null;
     }
 
@@ -283,7 +348,32 @@ public class ScreenNotificationController : MonoBehaviour
         return false;
     }
 
-    /// <summary>Resolves preset message and per-row duration (0 = caller should use global).</summary>
+    /// <summary>Resolves preset including font and offset (uses defaults when row uses 0 / zero vector).</summary>
+    public static bool TryResolvePreset(
+        IReadOnlyList<DiceFeedbackNotificationEntry> entries,
+        DiceFeedbackEventType eventType,
+        int defaultFontSize,
+        Vector2 defaultLabelOffsetPixels,
+        out NotificationPresetResolved resolved)
+    {
+        resolved = default;
+        if (entries == null) return false;
+        for (int i = 0; i < entries.Count; i++)
+        {
+            DiceFeedbackNotificationEntry e = entries[i];
+            if (e == null || e.eventType != eventType || string.IsNullOrEmpty(e.message))
+                continue;
+
+            int font = e.fontSize > 0 ? e.fontSize : defaultFontSize;
+            Vector2 offset = e.labelOffsetPixels.sqrMagnitude > 1e-6f ? e.labelOffsetPixels : defaultLabelOffsetPixels;
+            resolved = new NotificationPresetResolved(e.message, e.displayDurationSeconds, font, offset);
+            return true;
+        }
+
+        return false;
+    }
+
+    /// <summary>Resolves preset message and per-row duration (0 = caller should use global). Uses 72 / zero for default font/offset in resolution.</summary>
     public static bool TryResolveMessage(
         IReadOnlyList<DiceFeedbackNotificationEntry> entries,
         DiceFeedbackEventType eventType,
@@ -292,18 +382,10 @@ public class ScreenNotificationController : MonoBehaviour
     {
         message = null;
         displayDurationSeconds = 0f;
-        if (entries == null) return false;
-        for (int i = 0; i < entries.Count; i++)
-        {
-            DiceFeedbackNotificationEntry e = entries[i];
-            if (e != null && e.eventType == eventType && !string.IsNullOrEmpty(e.message))
-            {
-                message = e.message;
-                displayDurationSeconds = e.displayDurationSeconds;
-                return true;
-            }
-        }
-
-        return false;
+        if (!TryResolvePreset(entries, eventType, 72, Vector2.zero, out NotificationPresetResolved r))
+            return false;
+        message = r.Message;
+        displayDurationSeconds = r.DisplayDurationSeconds;
+        return true;
     }
 }
