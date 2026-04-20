@@ -476,6 +476,29 @@ namespace Runtime.RMC._MyProject_.Dice
             SpawnDice();
         }
 
+        /// <summary>Resets spawned dice transforms/rigidbodies to idle state for opening reroll.</summary>
+        public void ResetDiceForOpeningReroll()
+        {
+            if (Dices == null || initialDicePositions == null) return;
+            int count = Mathf.Min(Dices.Count, initialDicePositions.Count);
+            for (int i = 0; i < count; i++)
+            {
+                Transform die = Dices[i];
+                if (die == null) continue;
+                die.position = initialDicePositions[i];
+                die.rotation = Quaternion.identity;
+
+                Rigidbody rb = die.GetComponent<Rigidbody>();
+                if (rb == null) continue;
+                rb.linearVelocity = Vector3.zero;
+                rb.angularVelocity = Vector3.zero;
+                rb.isKinematic = true;
+                rb.useGravity = false;
+            }
+
+            Debug.Log($"[Backgammon][Dice] Reset dice for opening reroll. manager={name} count={count}");
+        }
+
         /// <summary>
         ///     Clears the recorded animation data for all dice.
         /// </summary>

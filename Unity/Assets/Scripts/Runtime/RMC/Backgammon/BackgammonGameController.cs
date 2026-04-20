@@ -152,6 +152,9 @@ public class BackgammonGameController : MonoBehaviour
         if (_busy || _rolledThisTurn || _awaitingDoubleResponse) return;
         if (!HasTwoDiceManagers()) return;
 
+        if (!_openingRollResolved && _openingRollTieAwaitingReroll)
+            ResetBothOpeningDiceManagersForReroll();
+
         _diceBufferedDie0 = null;
         _diceBufferedDie1 = null;
         diceManagerPlayer0.SetDiceCount(1);
@@ -237,8 +240,14 @@ public class BackgammonGameController : MonoBehaviour
         {
             BackgammonOpeningRollRules.ApplyOpeningTieAutodouble(State);
             _openingRollTieAwaitingReroll = true;
+            ResetBothOpeningDiceManagersForReroll();
             EmitDiceFeedbackEvent(new DiceFeedbackEventData(
                 DiceFeedbackEventType.OpeningRollTieAutodouble,
+                State != null ? State.CubeValue : 0,
+                dieForPlayer0,
+                dieForPlayer1));
+            EmitDiceFeedbackEvent(new DiceFeedbackEventData(
+                DiceFeedbackEventType.OpeningRollTieDiceResetPickup,
                 State != null ? State.CubeValue : 0,
                 dieForPlayer0,
                 dieForPlayer1));
@@ -267,6 +276,13 @@ public class BackgammonGameController : MonoBehaviour
             RefreshMovableCheckerHighlights();
             MaybeStartAiTurn();
         }
+    }
+
+    private void ResetBothOpeningDiceManagersForReroll()
+    {
+        if (!HasTwoDiceManagers()) return;
+        diceManagerPlayer0.ResetDiceForOpeningReroll();
+        diceManagerPlayer1.ResetDiceForOpeningReroll();
     }
 
     private void RefreshLegals()

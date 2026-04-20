@@ -49,6 +49,9 @@ public class DiceFeedbackController : MonoBehaviour
             case DiceFeedbackEventType.OpeningRollTieAutodouble:
                 PlayOnAllOpeningDice(data);
                 break;
+            case DiceFeedbackEventType.OpeningRollTieDiceResetPickup:
+                PlayOnAllOpeningDice(data);
+                break;
             default:
                 if (enableDebugLogs)
                     Debug.LogWarning($"[Backgammon][DiceFeedback] No routing for {data.EventType}");
@@ -71,7 +74,7 @@ public class DiceFeedbackController : MonoBehaviour
         played += TryPlayOnManagerDice(p1, data.EventType);
 
         if (enableDebugLogs)
-            Debug.Log($"[Backgammon][DiceFeedback] OpeningRollTieAutodouble played={played} cubeAfter={data.CubeValueAfter}");
+            Debug.Log($"[Backgammon][DiceFeedback] event={data.EventType} played={played} cubeAfter={data.CubeValueAfter}");
     }
 
     private static int TryPlayOnManagerDice(DiceManager manager, DiceFeedbackEventType eventType)
