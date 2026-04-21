@@ -1,5 +1,8 @@
+using System.Collections;
+using System.Reflection;
 using EngineCore;
 using NUnit.Framework;
+using Runtime.RMC.Backgammon.Settings;
 using UnityEngine;
 
 public class BackgammonStagedTurnFlowEditModeTests
@@ -72,6 +75,39 @@ public class BackgammonStagedTurnFlowEditModeTests
             Assert.IsFalse(ctrl.HasRolledThisTurn);
             Assert.AreEqual(startPlayer == 0 ? 1 : 0, ctrl.State.PlayerOnRoll);
             Assert.AreEqual(1, ctrl.TurnsCompletedThisGame);
+            Assert.IsFalse(ctrl.CanUndo, "Undo stack should clear when the turn completes.");
+        }
+        finally
+        {
+            Object.DestroyImmediate(go);
+        }
+    }
+
+    [Test]
+    public void UndoStack_ClearedAfterHumanFinalizesTurn_WithStagedMoves()
+    {
+        var go = new GameObject("BackgammonGameController_Test");
+        try
+        {
+            var ctrl = go.AddComponent<BackgammonGameController>();
+            ctrl.NewGame();
+            ctrl.DebugSetDiceAndRefresh(1, 1);
+
+            Assert.Greater(ctrl.CurrentLegalTurns.Count, 0);
+            Move m1 = ctrl.CurrentLegalTurns[0].Moves[0];
+            Assert.IsTrue(ctrl.TryApplyPreferredTurnForFrom(m1.From, true));
+            Assert.IsTrue(ctrl.CanUndo, "Expected at least one undo frame after a move within the roll.");
+
+            int guard = 0;
+            while (ctrl.CurrentLegalTurns.Count > 0 && guard++ < 16)
+            {
+                Move m = ctrl.CurrentLegalTurns[0].Moves[0];
+                Assert.IsTrue(ctrl.TryApplyPreferredTurnForFrom(m.From, true));
+            }
+
+            Assert.AreEqual(0, ctrl.CurrentLegalTurns.Count);
+            Assert.IsTrue(ctrl.TryFinalizeCurrentTurn());
+            Assert.IsFalse(ctrl.CanUndo, "Undo must not span completed turns.");
         }
         finally
         {
@@ -114,5 +150,50 @@ public class BackgammonStagedTurnFlowEditModeTests
         {
             Object.DestroyImmediate(go);
         }
+    }
+
+    [Test]
+    public void AiTurn_ClearsUndoStack_OnCompletion()
+    {
+        var go = new GameObject("BackgammonGameController_AiUndoTest");
+        try
+        {
+            BackgammonSettings.OpponentIsAi = true;
+            var ctrl = go.AddComponent<BackgammonGameController>();
+            SetPrivateField(ctrl, "<Match>k__BackingField", new MatchState());
+            ctrl.NewGame();
+            ctrl.DebugSetDiceAndRefresh(6, 1);
+            ctrl.State.PlayerOnRoll = 0;
+
+            IEnumerator aiTurn = InvokeNonPublicEnumerator(ctrl, "CoAiTurn");
+            int guard = 0;
+            while (aiTurn.MoveNext() && guard++ < 128)
+            {
+            }
+
+            Assert.Less(guard, 128, "Expected AI coroutine to complete within guard limit.");
+            Assert.IsFalse(ctrl.CanUndo, "Undo stack should clear when the AI turn completes.");
+        }
+        finally
+        {
+            BackgammonSettings.OpponentIsAi = true;
+            Object.DestroyImmediate(go);
+        }
+    }
+
+    private static IEnumerator InvokeNonPublicEnumerator(object target, string methodName, params object[] args)
+    {
+        MethodInfo method = target.GetType().GetMethod(methodName, BindingFlags.Instance | BindingFlags.NonPublic);
+        Assert.That(method, Is.Not.Null, $"Expected method '{methodName}' to exist.");
+        object result = method.Invoke(target, args);
+        Assert.That(result, Is.InstanceOf<IEnumerator>(), $"Expected '{methodName}' to return IEnumerator.");
+        return (IEnumerator)result;
+    }
+
+    private static void SetPrivateField(object target, string fieldName, object value)
+    {
+        FieldInfo field = target.GetType().GetField(fieldName, BindingFlags.Instance | BindingFlags.NonPublic);
+        Assert.That(field, Is.Not.Null, $"Expected field '{fieldName}' to exist.");
+        field.SetValue(target, value);
     }
 }

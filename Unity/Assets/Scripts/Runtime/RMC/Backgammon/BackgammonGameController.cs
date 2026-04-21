@@ -387,7 +387,6 @@ public class BackgammonGameController : MonoBehaviour
     public bool TryFinalizeCurrentTurn()
     {
         if (_busy || !_rolledThisTurn || _legalTurns.Count > 0) return false;
-        PushUndoFrame();
         FinalizeTurnAndAdvance();
         return true;
     }
@@ -419,7 +418,7 @@ public class BackgammonGameController : MonoBehaviour
         return selectedIdx >= 0;
     }
 
-    /// <summary>Revert the last player-visible state change (move or forced pass).</summary>
+    /// <summary>Revert the last player-visible state change (single checker move within the current roll).</summary>
     public bool TryUndoLastMove()
     {
         if (_busy || _undoStack.Count == 0) return false;
@@ -520,6 +519,14 @@ public class BackgammonGameController : MonoBehaviour
         _undoStack.Push(UndoFrame.Capture(State, _rolledThisTurn, TurnsCompletedThisGame, appliedMove));
     }
 
+    private void ClearUndoStackAfterTurnCompleted(string reason)
+    {
+        int dropped = _undoStack.Count;
+        if (dropped == 0) return;
+        _undoStack.Clear();
+        Debug.Log($"[Backgammon][Undo] Cleared undo stack after turn completed reason={reason} droppedFrames={dropped}");
+    }
+
     private void RestoreUndoFrame(UndoFrame f)
     {
         f.ApplyTo(State);
@@ -540,7 +547,6 @@ public class BackgammonGameController : MonoBehaviour
     private void PassTurnNoMoves()
     {
         if (!_rolledThisTurn) return;
-        PushUndoFrame();
         _busy = true;
         BackgammonGameRules.SwapSidesForNextTurn(State);
         BackgammonGameRules.SyncBoardArrayFromCheckerArrays(State);
@@ -556,6 +562,7 @@ public class BackgammonGameController : MonoBehaviour
         OnStateChanged?.Invoke();
         hud?.RefreshAll(this);
         RefreshMovableCheckerHighlights();
+        ClearUndoStackAfterTurnCompleted("pass-no-moves");
         MaybeStartAiTurn();
     }
 
@@ -686,6 +693,7 @@ public class BackgammonGameController : MonoBehaviour
         _busy = false;
         SyncMatchFromState();
         TurnsCompletedThisGame++;
+        ClearUndoStackAfterTurnCompleted("finalize-turn");
 
         if (IsGameOver(out _))
         {
@@ -764,6 +772,7 @@ public class BackgammonGameController : MonoBehaviour
         _busy = false;
         SyncMatchFromState();
         TurnsCompletedThisGame++;
+        ClearUndoStackAfterTurnCompleted("ai-turn-complete");
         OnStateChanged?.Invoke();
         hud?.RefreshAll(this);
         RefreshMovableCheckerHighlights();
