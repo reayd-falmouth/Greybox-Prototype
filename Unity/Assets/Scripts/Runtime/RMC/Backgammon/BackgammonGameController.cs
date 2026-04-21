@@ -18,6 +18,10 @@ public class BackgammonGameController : MonoBehaviour
     [SerializeField] private bool enableMoveSelectionDebugLogs = true;
     [SerializeField] private bool enableDiceFeedbackDebugLogs;
 
+    [Tooltip("Chance the AI (player 0) offers a double before rolling, when the human must take or drop.")]
+    [Range(0f, 1f)]
+    [SerializeField] private float aiOfferDoubleProbabilityBeforeRoll = 0.18f;
+
     [SerializeField] private BoardManager boardManager;
     [Header("Dice (required)")]
     [Tooltip("One die per manager. Opening: P0 vs P1. Later turns: both roll for the current player’s two values.")]
@@ -49,6 +53,37 @@ public class BackgammonGameController : MonoBehaviour
 
     /// <summary>Completed turn boundaries this game (move applied or pass).</summary>
     public int TurnsCompletedThisGame { get; private set; }
+
+    /// <summary>Higher of the two players’ match scores in <see cref="State"/> (HUD display).</summary>
+    public int CurrentMatchScore =>
+        State != null ? Mathf.Max(State.Player1Score, State.Player2Score) : 0;
+
+    /// <summary>Placeholder target until full match progression is wired; HUD only.</summary>
+    public int CurrentMatchTargetScore => 1000;
+
+    /// <summary>Placeholder base stake until currency/ante progression is wired; HUD only.</summary>
+    public int CurrentMatchBaseStake => 100;
+
+    /// <summary>Placeholder cap on games per match; HUD only.</summary>
+    public int CurrentMatchMaxGames => 3;
+
+    /// <summary>Games completed this session (incremented each <see cref="NewGame"/>); HUD proxy for “games in match”.</summary>
+    public int CurrentMatchGamesPlayed => Mathf.Max(0, GameRoundIndex - 1);
+
+    /// <summary>Placeholder run currency; HUD only.</summary>
+    public int RunCurrency => 0;
+
+    /// <summary>Placeholder ante index; HUD only.</summary>
+    public int CurrentAnteNumber => 1;
+
+    /// <summary>1-based match index within current ante; HUD/tests placeholder.</summary>
+    public int CurrentMatchNumber => 1;
+
+    /// <summary>Placeholder ante count; HUD only.</summary>
+    public int TotalAntes => 1;
+
+    /// <summary>Placeholder matches counter; HUD only.</summary>
+    public int MatchesPlayedInRun => 0;
 
     public bool AwaitingDoubleResponse => _awaitingDoubleResponse;
 
@@ -142,6 +177,7 @@ public class BackgammonGameController : MonoBehaviour
         boardManager?.EnsureBoardGenerated();
         boardManager?.SyncCheckersFromGameState(State);
         hud?.SetDoubleOfferVisible(false);
+        ResetBothDiceManagersBetweenTurns("new-game");
         OnStateChanged?.Invoke();
         hud?.RefreshAll(this);
         RefreshMovableCheckerHighlights();
@@ -289,6 +325,27 @@ public class BackgammonGameController : MonoBehaviour
         if (!HasTwoDiceManagers()) return;
         diceManagerPlayer0.ResetDiceForOpeningReroll();
         diceManagerPlayer1.ResetDiceForOpeningReroll();
+    }
+
+    /// <summary>Hides and re-poses 3D dice after a turn boundary so they match cleared <see cref="GameState"/> dice.</summary>
+    private void ResetBothDiceManagersBetweenTurns(string context)
+    {
+        if (!HasTwoDiceManagers()) return;
+        diceManagerPlayer0.ResetDiceToIdleBetweenTurns();
+        diceManagerPlayer1.ResetDiceToIdleBetweenTurns();
+        Debug.Log($"[Backgammon][Dice] Both managers reset between turns. context={context}");
+    }
+
+    /// <summary>Shows AI roll on both dice managers (one die each) without firing roll-finished events.</summary>
+    private void SyncAiRollDiceVisualsFromState()
+    {
+        if (!HasTwoDiceManagers()) return;
+        diceManagerPlayer0.SetDiceCount(1);
+        diceManagerPlayer1.SetDiceCount(1);
+        diceManagerPlayer0.ApplySettledDisplayValue(State.Dice1);
+        diceManagerPlayer1.ApplySettledDisplayValue(State.Dice2);
+        Debug.Log(
+            $"[Backgammon][Dice] AI roll visuals synced d1={State.Dice1} d2={State.Dice2} managers=({diceManagerPlayer0.name},{diceManagerPlayer1.name})");
     }
 
     private void RefreshLegals()
@@ -457,7 +514,8 @@ public class BackgammonGameController : MonoBehaviour
         hud?.SetDoubleOfferVisible(true);
         hud?.RefreshAll(this);
 
-        if (BackgammonSettings.OpponentIsAi)
+        int responder = OpponentIndex(_doubleOfferedByPlayer);
+        if (BackgammonSettings.OpponentIsAi && responder == 0)
             StartCoroutine(CoAiRespondDouble());
     }
 
@@ -563,6 +621,7 @@ public class BackgammonGameController : MonoBehaviour
         hud?.RefreshAll(this);
         RefreshMovableCheckerHighlights();
         ClearUndoStackAfterTurnCompleted("pass-no-moves");
+        ResetBothDiceManagersBetweenTurns("pass-no-moves");
         MaybeStartAiTurn();
     }
 
@@ -694,6 +753,7 @@ public class BackgammonGameController : MonoBehaviour
         SyncMatchFromState();
         TurnsCompletedThisGame++;
         ClearUndoStackAfterTurnCompleted("finalize-turn");
+        ResetBothDiceManagersBetweenTurns("finalize-turn");
 
         if (IsGameOver(out _))
         {
@@ -729,8 +789,34 @@ public class BackgammonGameController : MonoBehaviour
 
     private IEnumerator CoAiTurn()
     {
-        _busy = true;
         yield return new WaitForSeconds(0.35f);
+
+        if (_openingRollResolved
+            && State.CubeValue < 64
+            && !_awaitingDoubleResponse
+            && !_rolledThisTurn
+            && UnityEngine.Random.value < aiOfferDoubleProbabilityBeforeRoll)
+        {
+            Debug.Log("[Backgammon][AI] Offering double before roll (human responds).");
+            OfferDouble();
+            float waitSeconds = 0f;
+            while (_awaitingDoubleResponse && waitSeconds < 120f && !IsGameOver(out _))
+            {
+                waitSeconds += Time.deltaTime;
+                yield return null;
+            }
+
+            if (_awaitingDoubleResponse && !IsGameOver(out _))
+            {
+                Debug.LogWarning("[Backgammon][AI] Double offer wait exceeded 120s; auto-take to unblock.");
+                RespondDoubleTake();
+            }
+
+            if (IsGameOver(out _))
+                yield break;
+        }
+
+        _busy = true;
         bool needNewRoll = State.Dice1 <= 0 || State.Dice2 <= 0 || !_rolledThisTurn;
         if (needNewRoll)
         {
@@ -738,6 +824,7 @@ public class BackgammonGameController : MonoBehaviour
             State.Dice2 = UnityEngine.Random.Range(1, 7);
             _rolledThisTurn = true;
             RollsThisGame++;
+            SyncAiRollDiceVisualsFromState();
         }
         RefreshLegals();
         OnStateChanged?.Invoke();
@@ -773,6 +860,7 @@ public class BackgammonGameController : MonoBehaviour
         SyncMatchFromState();
         TurnsCompletedThisGame++;
         ClearUndoStackAfterTurnCompleted("ai-turn-complete");
+        ResetBothDiceManagersBetweenTurns("ai-turn-complete");
         OnStateChanged?.Invoke();
         hud?.RefreshAll(this);
         RefreshMovableCheckerHighlights();

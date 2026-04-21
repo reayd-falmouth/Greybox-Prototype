@@ -126,6 +126,8 @@ namespace Runtime.RMC._MyProject_.Dice
         private Quaternion rotation;
         private Vector3 torque;
         private List<Transform> spawnedDice = new();
+        private readonly List<Renderer> _diceRenderers = new();
+        private bool _diceVisualsVisible = true;
 
         // 2. Setup the UI connection when the script enables
         private void OnEnable()
@@ -172,6 +174,7 @@ namespace Runtime.RMC._MyProject_.Dice
             // 1. Cleanup
             foreach (var d in spawnedDice) if (d != null) Destroy(d.gameObject);
             spawnedDice.Clear();
+            _diceRenderers.Clear();
             initialDicePositions.Clear();
             diceAnimationData.Clear();
 
@@ -225,11 +228,13 @@ namespace Runtime.RMC._MyProject_.Dice
                 spawnedDice.Add(go.transform);
                 initialDicePositions.Add(go.transform.position);
                 diceAnimationData.Add(i, new List<TransformData>());
+                CacheDiceRenderers(go.transform);
         
                 DisablePhysics(go.transform);
             }
 
             Dices = spawnedDice; 
+            HideDiceVisuals();
         }
         
         // 4. Handle the button click
@@ -302,6 +307,7 @@ namespace Runtime.RMC._MyProject_.Dice
         /// </summary>
         public void SimulateThrow()
         {
+            ShowDiceVisuals();
             Physics.autoSimulation = false;
             SetInitialState();
             diceHasThrown = true;
@@ -441,9 +447,12 @@ namespace Runtime.RMC._MyProject_.Dice
                 var rb = dice.GetComponent<Rigidbody>();
                 if (rb != null)
                 {
-                    rb.isKinematic = true; // Locks the physics
-                    rb.linearVelocity = Vector3.zero; // Clears momentum
-                    rb.angularVelocity = Vector3.zero; // Clears spin
+                    // Clear momentum before locking; Unity logs errors if velocity is set while kinematic.
+                    if (rb.isKinematic)
+                        rb.isKinematic = false;
+                    rb.linearVelocity = Vector3.zero;
+                    rb.angularVelocity = Vector3.zero;
+                    rb.isKinematic = true;
                 }
             }
 
@@ -479,6 +488,57 @@ namespace Runtime.RMC._MyProject_.Dice
         /// <summary>Resets spawned dice transforms/rigidbodies to idle state for opening reroll.</summary>
         public void ResetDiceForOpeningReroll()
         {
+            ResetAllDiceTransformsToIdleHidden("opening-reroll");
+        }
+
+        /// <summary>Hides dice and returns them to cached spawn poses between turns (same physics reset as opening reroll).</summary>
+        public void ResetDiceToIdleBetweenTurns()
+        {
+            ResetAllDiceTransformsToIdleHidden("between-turns");
+        }
+
+        /// <summary>
+        /// Shows one die at its idle pose with the given face (no roll animation, no <see cref="OnDiceRollFinished"/>).
+        /// Used for AI roll display parity with human dice.
+        /// </summary>
+        public void ApplySettledDisplayValue(int value)
+        {
+            int v = Mathf.Clamp(value, 1, 6);
+            if (manualRollValues != null && manualRollValues.Count > 0)
+                manualRollValues[0] = v;
+            if (Dices == null || Dices.Count == 0 || initialDicePositions == null || initialDicePositions.Count == 0)
+                return;
+
+            Transform die = Dices[0];
+            if (die == null) return;
+
+            die.position = initialDicePositions[0];
+            die.rotation = Quaternion.identity;
+
+            Rigidbody rb = die.GetComponent<Rigidbody>();
+            if (rb != null)
+            {
+                if (rb.isKinematic)
+                    rb.isKinematic = false;
+                rb.linearVelocity = Vector3.zero;
+                rb.angularVelocity = Vector3.zero;
+                rb.isKinematic = true;
+                rb.useGravity = false;
+            }
+
+            if (die.TryGetComponent(out Dice diceScript)
+                && diceScript.diceRotationData != null
+                && diceScript.diceRotationData.rotationsForIndexFaces != null
+                && v >= 0
+                && v < diceScript.diceRotationData.rotationsForIndexFaces.Count)
+                diceScript.RotateDice(v);
+
+            ShowDiceVisuals();
+            Debug.Log($"[Backgammon][Dice] Apply settled display value={v} (no roll event). manager={name}");
+        }
+
+        private void ResetAllDiceTransformsToIdleHidden(string logContext)
+        {
             if (Dices == null || initialDicePositions == null) return;
             int count = Mathf.Min(Dices.Count, initialDicePositions.Count);
             for (int i = 0; i < count; i++)
@@ -490,13 +550,57 @@ namespace Runtime.RMC._MyProject_.Dice
 
                 Rigidbody rb = die.GetComponent<Rigidbody>();
                 if (rb == null) continue;
+                if (rb.isKinematic)
+                    rb.isKinematic = false;
                 rb.linearVelocity = Vector3.zero;
                 rb.angularVelocity = Vector3.zero;
                 rb.isKinematic = true;
                 rb.useGravity = false;
             }
 
-            Debug.Log($"[Backgammon][Dice] Reset dice for opening reroll. manager={name} count={count}");
+            HideDiceVisuals();
+            Debug.Log($"[Backgammon][Dice] Dice reset to idle ({logContext}). manager={name} count={count}");
+        }
+
+        private void CacheDiceRenderers(Transform dieRoot)
+        {
+            if (dieRoot == null) return;
+            Renderer[] renderers = dieRoot.GetComponentsInChildren<Renderer>(true);
+            if (renderers == null || renderers.Length == 0) return;
+            for (int i = 0; i < renderers.Length; i++)
+            {
+                Renderer renderer = renderers[i];
+                if (renderer == null || _diceRenderers.Contains(renderer)) continue;
+                _diceRenderers.Add(renderer);
+            }
+        }
+
+        public void ShowDiceVisuals()
+        {
+            SetDiceVisualsVisible(true);
+        }
+
+        public void HideDiceVisuals()
+        {
+            SetDiceVisualsVisible(false);
+        }
+
+        private void SetDiceVisualsVisible(bool visible)
+        {
+            _diceVisualsVisible = visible;
+            for (int i = _diceRenderers.Count - 1; i >= 0; i--)
+            {
+                Renderer renderer = _diceRenderers[i];
+                if (renderer == null)
+                {
+                    _diceRenderers.RemoveAt(i);
+                    continue;
+                }
+
+                renderer.enabled = visible;
+            }
+
+            Debug.Log($"[Backgammon][Dice] Visuals {(visible ? "shown" : "hidden")}. manager={name} renderers={_diceRenderers.Count}");
         }
 
         /// <summary>
