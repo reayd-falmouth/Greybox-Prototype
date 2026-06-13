@@ -76,6 +76,12 @@ on:
         required: false
       AWS_SECRET_ACCESS_KEY:
         required: false
+      GIT_LFS_USERNAME:
+        required: true
+      GIT_LFS_PASSWORD:
+        required: true
+      GIT_LFS_ENDPOINT:
+        required: true
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
