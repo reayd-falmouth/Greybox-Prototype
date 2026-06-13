@@ -12,6 +12,7 @@ using Runtime.RMC._MyProject_.Core;
 using Runtime.RMC._MyProject_.Dice;
 using Runtime.RMC.Backgammon.Core;
 using Runtime.RMC.Backgammon.Settings;
+using Runtime.RMC.Backgammon.Stats;
 using UnityEngine;
 using Unity.Profiling;
 using UnityEngine.Serialization;
@@ -71,6 +72,8 @@ public class BackgammonGameController : MonoBehaviour
     public bool CanFinalizeCurrentTurn => !_busy && _rolledThisTurn && _legalTurns.Count == 0 && !IsGameOver(out _);
 
     public int RollsThisGame { get; private set; }
+    // Only counts rolls made by the human player (LocalPlayerIndex). Used by Run Mode HUD.
+    public int PlayerRollsThisGame { get; private set; }
 
     /// <summary>Increments each <see cref="NewGame"/> (session counter).</summary>
     public int GameRoundIndex { get; private set; }
@@ -129,7 +132,7 @@ public class BackgammonGameController : MonoBehaviour
     /// <summary>Total matches completed in this run (across all antes).</summary>
     public int MatchesPlayedInRun => (_currentAnteIndex * 3) + _currentMatchIndex;
 
-    public bool AwaitingDoubleResponse => _awaitingDoubleResponse;
+    public bool AwaitingDoubleResponse => _cubeNegotiator?.AwaitingDoubleResponse ?? false;
     public bool PlayerOnRollVisual => _isPlayerOnRollVisual;
     public bool IsAwaitingNextGameFromPopup => _gameEndedAwaitingNextGame;
     public string LastGameOverSummary => _lastGameOverSummary;
@@ -145,6 +148,10 @@ public class BackgammonGameController : MonoBehaviour
     public event Action<DiceFeedbackEventData> OnDiceFeedbackEvent;
     public event Action<DiceFeedbackEventData> OnScreenNotificationEvent;
     public event Action<int> OnCubeRotatedMarker;
+    public event Action<int, int> OnDiceRolled;
+    public event Action OnNewSessionStarted;
+    // Fired once per game end; consumed by BackgammonRunModeManager to accumulate Run Mode scores.
+    public event Action<int, int, int, int> OnGameEndedWithScore;
 
     /// <summary>Opening / player 0 side dice manager (one die each during opening).</summary>
     public DiceManager DiceManagerPlayer0 => diceManagerPlayer0;
@@ -158,8 +165,9 @@ public class BackgammonGameController : MonoBehaviour
     private readonly Stack<UndoFrame> _undoStack = new();
     private bool _rolledThisTurn;
     private bool _busy;
-    private bool _awaitingDoubleResponse;
-    private int _doubleOfferedByPlayer;
+    private bool _cubeDisabledForSession;
+    private bool _doubletsDisabledForSession;
+    // Doubling cube negotiation state is managed by BackgammonDoublingCubeNegotiator
     private bool _openingRollResolved;
     private bool _openingRollTieAwaitingReroll;
     private bool _hasLastMovableHighlightState;
@@ -174,24 +182,7 @@ public class BackgammonGameController : MonoBehaviour
     private static readonly ProfilerMarker UndoHudRefreshMarker = new("Backgammon.UndoHudRefresh");
     private static readonly ProfilerMarker UndoPushFrameMarker = new("Backgammon.PushUndoFrame");
     private static readonly ProfilerMarker UndoCaptureFrameMarker = new("Backgammon.UndoFrameCapture");
-    private const string AiMoveCacheVersion = "v1";
-    private const int AiMoveCacheCapacity = 512;
-    private const string AiCubeDecisionCacheVersion = "v1";
-    private const int AiCubeDecisionCacheCapacity = 512;
-    private static readonly Dictionary<string, Turn> AiMoveCache = new(StringComparer.Ordinal);
-    private static readonly Queue<string> AiMoveCacheKeyOrder = new();
-    private static readonly Dictionary<string, AiCubeDecision> AiCubeOfferCache = new(StringComparer.Ordinal);
-    private static readonly Queue<string> AiCubeOfferCacheKeyOrder = new();
-    private static readonly Dictionary<string, AiDoubleResponseDecision> AiCubeResponseCache = new(StringComparer.Ordinal);
-    private static readonly Queue<string> AiCubeResponseCacheKeyOrder = new();
-    private static int _aiMoveCacheHitCount;
-    private static int _aiMoveCacheMissCount;
-    private static int _aiCubeOfferCacheHitCount;
-    private static int _aiCubeOfferCacheMissCount;
-    private static int _aiCubeResponseCacheHitCount;
-    private static int _aiCubeResponseCacheMissCount;
-    private static bool _aiMoveCacheLoadedFromDisk;
-    private static bool _aiMoveCacheLoadAttempted;
+    // AI cache state is managed by BackgammonAiMoveCache (static class)
 
     // Ante progression system fields
     private List<int[]> _anteProgression;
@@ -245,20 +236,12 @@ public class BackgammonGameController : MonoBehaviour
             pips += checkers[24] * 25;
         return pips;
     }
-    private static BackgammonAiMoveCacheStorageMode _activeAiMoveCacheStorageMode = BackgammonAiMoveCacheStorageMode.None;
-    private static Func<SearchEngine, GameState, MatchState, int, Task<Turn>> AiSearchTaskFactory =
+    private static readonly Func<SearchEngine, GameState, MatchState, int, Task<Turn>> AiSearchTaskFactory =
         (engine, state, match, depth) => Task.Run(() => engine.GetBestTurn(state, match, depth));
-    private int? _diceBufferedDie0;
-    private int? _diceBufferedDie1;
-    private bool _singleManagerRollInProgress;
-    private int _singleManagerRollManagerIndex = -1;
     private bool _isPlayerOnRollVisual;
-    private bool _aiRollInProgress;
-    private int _aiRollToken;
-    private int _aiActiveRollToken;
-    private int _aiActiveRollManagerIndex = -1;
-    private int? _aiRollBufferedDie0;
-    private int? _aiRollBufferedDie1;
+    private BackgammonAiTurnManager _aiTurnManager;
+    private BackgammonDiceRollCoordinator _diceRollCoordinator;
+    private BackgammonDoublingCubeNegotiator _cubeNegotiator;
     private BackgammonEventQueue _presentationEventQueue;
     private bool _presentationQueueDrivenByCoroutine;
     private bool _forcedGameOver;
@@ -269,8 +252,13 @@ public class BackgammonGameController : MonoBehaviour
 
     private void Awake()
     {
-        ConfigureAiMoveCacheStorageMode(aiMoveCacheStorageMode);
-        EnsureAiMoveCacheLoadedFromDisk();
+        BackgammonAiMoveCache.Configure(aiMoveCacheStorageMode);
+        BackgammonAiMoveCache.EnsureLoadedFromDisk();
+        _aiTurnManager = new BackgammonAiTurnManager(enableAiTimingLogs);
+        _diceRollCoordinator = new BackgammonDiceRollCoordinator(
+            FireDiceFeedbackEventImmediate,
+            () => State != null ? State.CubeValue : 0);
+        _cubeNegotiator = new BackgammonDoublingCubeNegotiator();
         _presentationEventQueue = new BackgammonEventQueue(enableEventQueueDebugLogs);
         Match = new MatchState
         {
@@ -294,6 +282,8 @@ public class BackgammonGameController : MonoBehaviour
             diceManagerPlayer0.OnDiceRollFinished += OnDiceManagerPlayer0Finished;
         if (diceManagerPlayer1 != null)
             diceManagerPlayer1.OnDiceRollFinished += OnDiceManagerPlayer1Finished;
+        _aiTurnManager.RegisterDiceCallbacks(diceManagerPlayer0, diceManagerPlayer1);
+        _diceRollCoordinator.RegisterDiceManagers(diceManagerPlayer0, diceManagerPlayer1);
         if (!HasTwoDiceManagers())
             Debug.LogError("BackgammonGameController: assign Dice Manager Player 0 and Player 1 (two DiceManager instances).");
         SetBoardViewHorizontal(BackgammonSettings.BoardViewIsHorizontal);
@@ -319,10 +309,52 @@ public class BackgammonGameController : MonoBehaviour
             diceManagerPlayer1.OnDiceRollFinished -= OnDiceManagerPlayer1Finished;
     }
 
+    private string _pendingStartPositionId;
+
     public void NewGame()
     {
-        StartNewGameFromPositionId("4HPwATDgc/ABMA", "new-game-default");
+        string posId = string.IsNullOrEmpty(_pendingStartPositionId)
+            ? "4HPwATDgc/ABMA"
+            : _pendingStartPositionId;
+        _pendingStartPositionId = null;
+        StartNewGameFromPositionId(posId, "new-game-default");
     }
+
+    // ── Run Mode session controls ─────────────────────────────────────────────
+
+    public void SetCubeDisabled(bool disabled)
+    {
+        _cubeDisabledForSession = disabled;
+        Debug.Log($"[Backgammon][Run] Cube disabled: {disabled}");
+    }
+
+    public void SetDoubletsDisabled(bool disabled)
+    {
+        _doubletsDisabledForSession = disabled;
+        Debug.Log($"[Backgammon][Run] Doublets disabled: {disabled}");
+    }
+
+    public void StartRunSession(RunConfig cfg, RunState state)
+    {
+        _currentGameMode = GameModeType.Run;
+        _runCurrency = state.TotalCurrency;
+
+        var session = state.CurrentSession(cfg);
+        int baseStake = 1; // Threshold drives the goal; base stake stays at 1 for run mode
+        if (_moneySessionConfig == null)
+            _moneySessionConfig = new MoneySessionConfig { BaseStake = baseStake };
+        else
+            _moneySessionConfig.BaseStake = baseStake;
+
+        // Apply boss variant constraints
+        SetCubeDisabled(state.ActiveBossVariant == BossVariantType.NoCube);
+        SetDoubletsDisabled(state.ActiveBossVariant == BossVariantType.NoDoublets);
+
+        Debug.Log($"[Backgammon][Run] StartRunSession A{state.CurrentAnteIndex + 1} S{state.CurrentSessionIndex + 1} boss={state.ActiveBossVariant} threshold={session.ScoreThreshold}");
+        NewGame();
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
 
     /// <summary>
     /// Starts a new game with a specific game mode, initializing ante progression for Run mode.
@@ -375,8 +407,13 @@ public class BackgammonGameController : MonoBehaviour
     /// <summary>
     /// Starts a new game with a specific game mode and optional Money Session configuration.
     /// </summary>
-    public void StartNewGameWithConfig(GameModeType mode, MoneySessionConfig config)
+    public void StartNewGameWithConfig(GameModeType mode, MoneySessionConfig config,
+        string startingPositionId = null, string seedString = null)
     {
+        if (!string.IsNullOrEmpty(seedString) && DeterministicRNG.Instance != null)
+            DeterministicRNG.Instance.SetMasterSeed(seedString);
+        _pendingStartPositionId = startingPositionId;
+
         _currentGameMode = mode;
 
         // Store configuration for Money Session mode
@@ -390,6 +427,7 @@ public class BackgammonGameController : MonoBehaviour
             _moneySessionPlayer2Score = 0;
             _moneySessionGamesPlayed = 0;
             _moneySessionBankBalance = 0;
+            OnNewSessionStarted?.Invoke();
             // Raccoons and Ardvarks will be used by cube evaluator in future
             Debug.Log($"[Backgammon][MoneySession] Config applied: BaseStake={config.BaseStake}, Jacoby={config.JacobyRule}, Beavers={config.BeaversAllowed}, Raccoons={config.RaccoonsAllowed}, Ardvarks={config.ArdvarksAllowed}");
         }
@@ -433,6 +471,42 @@ public class BackgammonGameController : MonoBehaviour
         NewGame();
     }
 
+    public SavedGameData BuildSaveData()
+    {
+        if (State == null) return null;
+        return new SavedGameData
+        {
+            positionId               = PositionId.Encode(State),
+            gameModeType             = (int)_currentGameMode,
+            moneySessionConfig       = _moneySessionConfig,
+            moneySessionPlayer1Score = _moneySessionPlayer1Score,
+            moneySessionPlayer2Score = _moneySessionPlayer2Score,
+            moneySessionGamesPlayed  = _moneySessionGamesPlayed,
+            moneySessionBankBalance  = _moneySessionBankBalance,
+            player1MatchScore        = _player1MatchScore,
+            player2MatchScore        = _player2MatchScore,
+            matchTargetScore         = _matchTargetScore,
+        };
+    }
+
+    public void RestoreFromSave(SavedGameData data)
+    {
+        if (data == null) return;
+        var mode = (GameModeType)data.gameModeType;
+        // Set up mode and config (resets scores internally, we restore them after)
+        StartNewGameWithConfig(mode, data.moneySessionConfig, data.positionId);
+        // Restore session/match scores that were reset by StartNewGameWithConfig
+        _moneySessionPlayer1Score = data.moneySessionPlayer1Score;
+        _moneySessionPlayer2Score = data.moneySessionPlayer2Score;
+        _moneySessionGamesPlayed  = data.moneySessionGamesPlayed;
+        _moneySessionBankBalance  = data.moneySessionBankBalance;
+        _player1MatchScore        = data.player1MatchScore;
+        _player2MatchScore        = data.player2MatchScore;
+        _matchTargetScore         = data.matchTargetScore;
+        hud?.RefreshAll(this);
+        Debug.Log($"[SavedGame] Restored mode={mode} pid={data.positionId}");
+    }
+
     public bool TryStartFromPositionId(string positionId)
     {
         if (string.IsNullOrWhiteSpace(positionId))
@@ -458,7 +532,7 @@ public class BackgammonGameController : MonoBehaviour
         StopAllCoroutines();
         BackgammonAIService.ClearSearchEngineCache();
         _busy = false;
-        _awaitingDoubleResponse = false;
+        _cubeNegotiator.Reset();
         _undoStack.Clear();
         State = PositionId.Decode(positionId);
         _isPlayerOnRollVisual = true;
@@ -467,10 +541,6 @@ public class BackgammonGameController : MonoBehaviour
         _rolledThisTurn = false;
         _openingRollResolved = false;
         _openingRollTieAwaitingReroll = false;
-        _diceBufferedDie0 = null;
-        _diceBufferedDie1 = null;
-        _singleManagerRollInProgress = false;
-        _singleManagerRollManagerIndex = -1;
         _legalTurns.Clear();
         _forcedGameOver = false;
         _forcedWinnerPlayerIndex = -1;
@@ -479,6 +549,7 @@ public class BackgammonGameController : MonoBehaviour
         _lastGameOverSummary = null;
         InvalidateMovableHighlightCache(context);
         RollsThisGame = 0;
+        PlayerRollsThisGame = 0;
         TurnsCompletedThisGame = 0;
         GameRoundIndex++;
         BackgammonGameRules.SyncBoardArrayFromCheckerArrays(State);
@@ -494,55 +565,26 @@ public class BackgammonGameController : MonoBehaviour
         RefreshMovableCheckerHighlights();
     }
 
-    public static void ClearPersistentAiMoveCache()
-    {
-        AiMoveCache.Clear();
-        AiMoveCacheKeyOrder.Clear();
-        AiCubeOfferCache.Clear();
-        AiCubeOfferCacheKeyOrder.Clear();
-        AiCubeResponseCache.Clear();
-        AiCubeResponseCacheKeyOrder.Clear();
-        _aiMoveCacheHitCount = 0;
-        _aiMoveCacheMissCount = 0;
-        _aiCubeOfferCacheHitCount = 0;
-        _aiCubeOfferCacheMissCount = 0;
-        _aiCubeResponseCacheHitCount = 0;
-        _aiCubeResponseCacheMissCount = 0;
-        BackgammonAiMoveDiskCache.ClearFiles();
-        Debug.Log("[Backgammon][AI][Cache] Cleared persistent move + cube caches via explicit call.");
-    }
+    public static void ClearPersistentAiMoveCache() => BackgammonAiMoveCache.Clear();
 
     public void RequestRollDice()
     {
-        if (_busy || _rolledThisTurn || _awaitingDoubleResponse) return;
-        if (!HasTwoDiceManagers()) return;
+        if (_busy || _rolledThisTurn || _cubeNegotiator.AwaitingDoubleResponse) return;
+        if (!_diceRollCoordinator.HasTwoDiceManagers()) return;
 
         if (!_openingRollResolved && _openingRollTieAwaitingReroll)
-            ResetBothOpeningDiceManagersForReroll();
+            _diceRollCoordinator.ResetForOpeningReroll();
 
-        _diceBufferedDie0 = null;
-        _diceBufferedDie1 = null;
         if (!_openingRollResolved)
         {
-            // Opening roll: one die per side.
-            diceManagerPlayer0.SetDiceCount(1);
-            diceManagerPlayer1.SetDiceCount(1);
-            diceManagerPlayer0.RequestRoll();
-            diceManagerPlayer1.RequestRoll();
+            _diceRollCoordinator.RequestOpeningRoll();
             return;
         }
 
-        // Normal turns: current side rolls two dice from its own manager.
-        int managerIndex = IsPlayerOnRollVisual() ? 1 : 0;
-        BeginSingleManagerTurnRoll(managerIndex);
+        _diceRollCoordinator.RequestNormalRoll(IsPlayerOnRollVisual());
     }
 
-    private bool HasTwoDiceManagers()
-    {
-        return diceManagerPlayer0 != null
-               && diceManagerPlayer1 != null
-               && diceManagerPlayer0 != diceManagerPlayer1;
-    }
+    private bool HasTwoDiceManagers() => _diceRollCoordinator.HasTwoDiceManagers();
 
     private void TryAutoAssignDiceManagersFromBoard()
     {
@@ -567,148 +609,73 @@ public class BackgammonGameController : MonoBehaviour
     private void OnDiceManagerPlayer0Finished(int d1, int d2)
     {
         if (!HasTwoDiceManagers()) return;
-        if (TryHandleSingleManagerTurnRollFinished(0, d1, d2))
+        if (_diceRollCoordinator.TryHandleManagerFinished(0, d1, d2,
+                out bool _, out int sd0, out int sd1))
+        {
+            if (sd0 > 0) ApplyNormalRollFromDice(sd0, sd1);
             return;
-        if (_aiRollInProgress)
+        }
+        if (_aiTurnManager != null && _aiTurnManager.RollInProgress)
         {
             HandleAiDiceRollFinished(0, d1, d2);
             return;
         }
         if (_busy) return;
-        _diceBufferedDie0 = d1;
-        TryCompleteBufferedDiceRoll();
+        if (_diceRollCoordinator.TryBufferOpeningDie(0, d1, out int die0a, out int die1a))
+            RouteBufferedOpeningRoll(die0a, die1a);
     }
 
     private void OnDiceManagerPlayer1Finished(int d1, int d2)
     {
         if (!HasTwoDiceManagers()) return;
-        if (TryHandleSingleManagerTurnRollFinished(1, d1, d2))
+        if (_diceRollCoordinator.TryHandleManagerFinished(1, d1, d2,
+                out bool _, out int sd0, out int sd1))
+        {
+            ApplyNormalRollFromDice(sd0, sd1);
             return;
-        if (_aiRollInProgress)
+        }
+        if (_aiTurnManager != null && _aiTurnManager.RollInProgress)
         {
             HandleAiDiceRollFinished(1, d1, d2);
             return;
         }
         if (_busy) return;
-        _diceBufferedDie1 = d1;
-        TryCompleteBufferedDiceRoll();
+        if (_diceRollCoordinator.TryBufferOpeningDie(1, d1, out int die0b, out int die1b))
+            RouteBufferedOpeningRoll(die0b, die1b);
     }
 
-    private void BeginSingleManagerTurnRoll(int managerIndex)
+    private void RouteBufferedOpeningRoll(int die0, int die1)
     {
-        DiceManager active = GetDiceManagerByIndex(managerIndex);
-        DiceManager inactive = GetDiceManagerByIndex(managerIndex == 0 ? 1 : 0);
-        if (active == null || inactive == null) return;
-
-        _singleManagerRollInProgress = true;
-        _singleManagerRollManagerIndex = managerIndex;
-        active.SetDiceCount(2);
-        inactive.ResetDiceToIdleBetweenTurns();
-        active.RequestRoll();
-        Debug.Log($"[Backgammon][Dice] Single-side roll start managerIndex={managerIndex} manager={active.name}");
-    }
-
-    private bool TryHandleSingleManagerTurnRollFinished(int managerIndex, int d1, int d2)
-    {
-        if (!_singleManagerRollInProgress) return false;
-        if (managerIndex != _singleManagerRollManagerIndex) return true;
-
-        _singleManagerRollInProgress = false;
-        _singleManagerRollManagerIndex = -1;
-        ApplyNormalRollFromDice(d1, d2);
-        return true;
-    }
-
-    private DiceManager GetDiceManagerByIndex(int managerIndex)
-    {
-        return managerIndex == 0 ? diceManagerPlayer0 : diceManagerPlayer1;
+        if (!_openingRollResolved)
+            ApplyOpeningRollFromDice(die0, die1);
+        else
+            ApplyNormalRollFromDice(die0, die1);
     }
 
     private void BeginAiPhysicalRoll()
     {
         if (!HasTwoDiceManagers()) return;
-        _aiRollToken++;
-        _aiActiveRollToken = _aiRollToken;
-        _aiRollInProgress = true;
-        _aiActiveRollManagerIndex = -1;
-        _aiRollBufferedDie0 = null;
-        _aiRollBufferedDie1 = null;
-        if (_openingRollResolved)
-        {
-            int managerIndex = IsPlayerOnRollVisual() ? 1 : 0;
-            _aiActiveRollManagerIndex = managerIndex;
-            DiceManager active = GetDiceManagerByIndex(managerIndex);
-            DiceManager inactive = GetDiceManagerByIndex(managerIndex == 0 ? 1 : 0);
-            if (active == null || inactive == null)
-            {
-                _aiRollInProgress = false;
-                return;
-            }
-
-            active.SetDiceCount(2);
-            inactive.ResetDiceToIdleBetweenTurns();
-            Debug.Log($"[Backgammon][AI][Dice] Roll start token={_aiActiveRollToken} mode=single managerIndex={managerIndex} manager={active.name}");
-            active.RequestRoll();
-            return;
-        }
-
-        // Opening mode fallback: one die per side.
-        diceManagerPlayer0.SetDiceCount(1);
-        diceManagerPlayer1.SetDiceCount(1);
-        Debug.Log($"[Backgammon][AI][Dice] Roll start token={_aiActiveRollToken} mode=opening managers=({diceManagerPlayer0.name},{diceManagerPlayer1.name})");
-        diceManagerPlayer0.RequestRoll();
-        diceManagerPlayer1.RequestRoll();
+        _aiTurnManager.BeginPhysicalRoll(_openingRollResolved, IsPlayerOnRollVisual());
     }
 
     private void HandleAiDiceRollFinished(int managerIndex, int d1, int d2)
     {
-        if (!_aiRollInProgress) return;
-        if (_aiActiveRollManagerIndex >= 0)
-        {
-            if (managerIndex != _aiActiveRollManagerIndex) return;
-            _aiRollBufferedDie0 = Mathf.Clamp(d1, 1, 6);
-            _aiRollBufferedDie1 = Mathf.Clamp(d2, 1, 6);
-            Debug.Log(
-                $"[Backgammon][AI][Dice] Dice finished token={_aiActiveRollToken} manager={managerIndex} d1={_aiRollBufferedDie0} d2={_aiRollBufferedDie1}");
-            TryCompleteAiRollIfReady();
-            return;
-        }
-
-        int clamped = Mathf.Clamp(d1, 1, 6);
-        if (managerIndex == 0) _aiRollBufferedDie0 = clamped;
-        else _aiRollBufferedDie1 = clamped;
-        Debug.Log($"[Backgammon][AI][Dice] Opening die finished token={_aiActiveRollToken} manager={managerIndex} value={clamped} buffered=({_aiRollBufferedDie0?.ToString() ?? "-"}, {_aiRollBufferedDie1?.ToString() ?? "-"})");
-        TryCompleteAiRollIfReady();
-    }
-
-    private void TryCompleteAiRollIfReady()
-    {
-        if (!_aiRollInProgress) return;
-        if (!_aiRollBufferedDie0.HasValue || !_aiRollBufferedDie1.HasValue) return;
-        _aiRollInProgress = false;
-        Debug.Log(
-            $"[Backgammon][AI][Dice] Roll complete token={_aiActiveRollToken} d1={_aiRollBufferedDie0.Value} d2={_aiRollBufferedDie1.Value}");
-    }
-
-    private void TryCompleteBufferedDiceRoll()
-    {
-        if (!_diceBufferedDie0.HasValue || !_diceBufferedDie1.HasValue) return;
-        int v0 = _diceBufferedDie0.Value;
-        int v1 = _diceBufferedDie1.Value;
-        _diceBufferedDie0 = null;
-        _diceBufferedDie1 = null;
-        if (!_openingRollResolved)
-            ApplyOpeningRollFromDice(v0, v1);
-        else
-            ApplyNormalRollFromDice(v0, v1);
+        _aiTurnManager.HandleDiceManagerFinished(managerIndex, d1, d2);
     }
 
     private void ApplyNormalRollFromDice(int d1, int d2)
     {
+        // NoDoublets boss variant: break doublets so only 2 moves are available
+        if (_doubletsDisabledForSession && d1 == d2)
+            d2 = d1 == 6 ? 5 : d1 + 1;
+
         State.Dice1 = d1;
         State.Dice2 = d2;
         _rolledThisTurn = true;
         RollsThisGame++;
+        if (_isPlayerOnRollVisual)
+            PlayerRollsThisGame++;
+        OnDiceRolled?.Invoke(State.Dice1, State.Dice2);
         RefreshLegals();
         if (_legalTurns.Count == 0)
             PassTurnNoMoves();
@@ -735,7 +702,7 @@ public class BackgammonGameController : MonoBehaviour
             EmitDiceFeedbackEvent(autoDoubleEvent);
             EmitQueuedScreenNotificationEvent(autoDoubleEvent);
             EnqueueCubeRotatedMarkerEvent("opening-roll-autodouble", customDelaySeconds: 0.50f);
-            EmitDiceFeedbackEvent(new DiceFeedbackEventData(
+            FireDiceFeedbackEventImmediate(new DiceFeedbackEventData(
                 DiceFeedbackEventType.OpeningRollTieDiceResetPickup,
                 State != null ? State.CubeValue : 0,
                 dieForPlayer0,
@@ -752,6 +719,14 @@ public class BackgammonGameController : MonoBehaviour
         _openingRollResolved = true;
         _rolledThisTurn = true;
         RollsThisGame++;
+        // Sync visual player flag to whoever won the opening roll.
+        // In AI mode: human=P1, so _isPlayerOnRollVisual = (State.PlayerOnRoll == LocalPlayerIndex).
+        // In hotseat mode the flag still toggles correctly via AdvanceVisualTurnAfterEngineSwap.
+        if (BackgammonSettings.OpponentIsAi)
+            _isPlayerOnRollVisual = State.PlayerOnRoll == BackgammonPlayerRoles.LocalPlayerIndex;
+        if (_isPlayerOnRollVisual)
+            PlayerRollsThisGame++;
+        OnDiceRolled?.Invoke(State.Dice1, State.Dice2);
         EmitDiceFeedbackEvent(new DiceFeedbackEventData(
             DiceFeedbackEventType.OpeningRollWinnerResolved,
             State != null ? State.CubeValue : 0,
@@ -772,40 +747,14 @@ public class BackgammonGameController : MonoBehaviour
         }
     }
 
-    private void ResetBothOpeningDiceManagersForReroll()
-    {
-        if (!HasTwoDiceManagers()) return;
-        diceManagerPlayer0.ResetDiceForOpeningReroll();
-        diceManagerPlayer1.ResetDiceForOpeningReroll();
-    }
+    private void ResetBothOpeningDiceManagersForReroll() =>
+        _diceRollCoordinator.ResetForOpeningReroll();
 
-    /// <summary>Hides and re-poses 3D dice after a turn boundary so they match cleared <see cref="GameState"/> dice.</summary>
-    private void ResetBothDiceManagersBetweenTurns(string context, bool shouldEmitResetPickupFeedback)
-    {
-        if (!HasTwoDiceManagers()) return;
-        diceManagerPlayer0.ResetDiceToIdleBetweenTurns();
-        diceManagerPlayer1.ResetDiceToIdleBetweenTurns();
-        if (shouldEmitResetPickupFeedback)
-        {
-            EmitDiceFeedbackEvent(new DiceFeedbackEventData(
-                DiceFeedbackEventType.GeneralDiceResetPickup,
-                State != null ? State.CubeValue : 0));
-            Debug.Log($"[Backgammon][DiceFeedback] Emitted generalized reset pickup feedback. context={context}");
-        }
-        Debug.Log($"[Backgammon][Dice] Both managers reset between turns. context={context}");
-    }
+    private void ResetBothDiceManagersBetweenTurns(string context, bool shouldEmitResetPickupFeedback) =>
+        _diceRollCoordinator.ResetBetweenTurns(context, shouldEmitResetPickupFeedback);
 
-    /// <summary>Shows AI roll on both dice managers (one die each) without firing roll-finished events.</summary>
-    private void SyncAiRollDiceVisualsFromState()
-    {
-        if (!HasTwoDiceManagers()) return;
-        diceManagerPlayer0.SetDiceCount(1);
-        diceManagerPlayer1.SetDiceCount(1);
-        diceManagerPlayer0.ApplySettledDisplayValue(State.Dice1);
-        diceManagerPlayer1.ApplySettledDisplayValue(State.Dice2);
-        Debug.Log(
-            $"[Backgammon][Dice] AI roll visuals synced d1={State.Dice1} d2={State.Dice2} managers=({diceManagerPlayer0.name},{diceManagerPlayer1.name})");
-    }
+    private void SyncAiRollDiceVisualsFromState() =>
+        _diceRollCoordinator.SyncAiRollVisualsFromState(State.Dice1, State.Dice2);
 
     private void RefreshLegals()
     {
@@ -1040,7 +989,7 @@ public class BackgammonGameController : MonoBehaviour
             boardManager?.SyncCheckersFromGameState(State);
             _forceMovableHighlightRebuild = true;
         }
-        _awaitingDoubleResponse = false;
+        _cubeNegotiator.CancelPendingOffer();
         hud?.SetDoubleOfferVisible(false);
         TurnsCompletedThisGame = f.TurnsCompletedThisGame;
         OnStateChanged?.Invoke();
@@ -1060,48 +1009,26 @@ public class BackgammonGameController : MonoBehaviour
     public void OfferDouble()
     {
         if (!CanCurrentPlayerOfferDouble()) return;
-
-        _doubleOfferedByPlayer = State.PlayerOnRoll;
-        _awaitingDoubleResponse = true;
+        int responder = _cubeNegotiator.BeginOffer(State);
         SyncMatchFromState();
         hud?.SetDoubleOfferVisible(true);
         hud?.RefreshAll(this);
-
-        int responder = OpponentIndex(_doubleOfferedByPlayer);
+        OnDiceFeedbackEvent?.Invoke(new DiceFeedbackEventData(DiceFeedbackEventType.CubeOffered, State != null ? State.CubeValue : 0));
         if (BackgammonSettings.OpponentIsAi && responder == 0)
             StartCoroutine(CoAiRespondDouble());
     }
 
-    public bool CanCurrentPlayerOfferDouble()
-    {
-        if (State == null) return false;
-        if (!_openingRollResolved || _busy || IsGameOver(out _) || State.CubeValue >= 64 || _awaitingDoubleResponse || _rolledThisTurn)
-            return false;
-
-        int cubeOwner = State.CubeOwner;
-        bool cubeIsCentered = cubeOwner == 3 || cubeOwner < 0;
-        bool cubeOwnedByCurrentPlayer = cubeOwner == State.PlayerOnRoll;
-        bool cubeOwnedByLocalPlayer = cubeOwner == BackgammonPlayerRoles.LocalPlayerIndex;
-        bool localCanOfferByOwnership = cubeIsCentered || cubeOwnedByLocalPlayer;
-        return (cubeIsCentered || cubeOwnedByCurrentPlayer) && localCanOfferByOwnership;
-    }
+    public bool CanCurrentPlayerOfferDouble() =>
+        !_cubeDisabledForSession &&
+        _cubeNegotiator.CanOffer(State, _openingRollResolved, _busy, IsGameOver(out _), _rolledThisTurn);
 
     public void RespondDoubleTake()
     {
-        if (!_awaitingDoubleResponse || _busy) return;
-
-        int newVal = Mathf.Min(64, State.CubeValue * 2);
-        State.CubeValue = newVal;
-        int responder = OpponentIndex(_doubleOfferedByPlayer);
-        State.CubeOwner = responder;
-        Match.Cube = newVal;
-        Match.CubeOwner = responder;
-        Match.Doubled = true;
-        _awaitingDoubleResponse = false;
+        if (!_cubeNegotiator.AwaitingDoubleResponse || _busy) return;
+        _cubeNegotiator.ApplyTake(State, Match);
         hud?.SetDoubleOfferVisible(false);
         OnStateChanged?.Invoke();
         hud?.RefreshAll(this);
-        // Show notification first, then cube animation
         EmitQueuedScreenNotificationEvent(new DiceFeedbackEventData(
             DiceFeedbackEventType.CubeValueChanged,
             State != null ? State.CubeValue : 0));
@@ -1110,14 +1037,32 @@ public class BackgammonGameController : MonoBehaviour
 
     public void RespondDoubleDrop()
     {
-        if (!_awaitingDoubleResponse || _busy) return;
-        _awaitingDoubleResponse = false;
+        if (!_cubeNegotiator.AwaitingDoubleResponse || _busy) return;
+        int winner = _cubeNegotiator.ApplyDrop();
         hud?.SetDoubleOfferVisible(false);
-        int winner = _doubleOfferedByPlayer;
         FinalizeGameAndQueuePresentation(
             winnerPlayerIndex: winner,
             reason: GameEndReason.DoubleDrop,
             scoreKindOverride: GameEndScoreKind.Single);
+    }
+
+    public bool CanCurrentPlayerBeaver() =>
+        _cubeNegotiator.CanBeaver(State, Match?.BeaversAllowed ?? false);
+
+    /// <summary>Beaver: responder immediately re-doubles. Ownership stays with the responder. Original offerer must now take/drop.</summary>
+    public void OfferBeaver()
+    {
+        if (!CanCurrentPlayerBeaver() || _busy) return;
+        _cubeNegotiator.ApplyBeaver(State, Match);
+        SyncMatchFromState();
+        hud?.SetDoubleOfferVisible(true);
+        hud?.RefreshAll(this);
+        OnStateChanged?.Invoke();
+        EmitQueuedScreenNotificationEvent(new DiceFeedbackEventData(DiceFeedbackEventType.BeaverOffered, State != null ? State.CubeValue : 0));
+        EnqueueCubeRotatedMarkerEvent("beaver");
+        // If the original offerer is now AI (player index 0), trigger AI response
+        if (BackgammonSettings.OpponentIsAi && _cubeNegotiator.DoubleOfferedByPlayer == BackgammonPlayerRoles.LocalPlayerIndex)
+            StartCoroutine(CoAiRespondDouble());
     }
 
     public void SetBoardViewHorizontal(bool horizontal)
@@ -1138,7 +1083,7 @@ public class BackgammonGameController : MonoBehaviour
         _busy = true;
         yield return new WaitForSeconds(0.4f);
         _busy = false;
-        if (!_awaitingDoubleResponse) yield break;
+        if (!_cubeNegotiator.AwaitingDoubleResponse) yield break;
         string cacheKey = BuildAiCubeDecisionCacheKey(State, Match, "response");
         bool hit = TryGetCachedAiCubeResponseDecision(cacheKey, out AiDoubleResponseDecision decision);
         bool aiEvaluated = false;
@@ -1396,6 +1341,13 @@ public class BackgammonGameController : MonoBehaviour
             dispatch: () => OnCheckerSoundEvent?.Invoke(data));
     }
 
+    // Fires a dice feedback event immediately (no queue) so audio coincides with the visual action.
+    private void FireDiceFeedbackEventImmediate(DiceFeedbackEventData data)
+    {
+        Debug.Log($"[Backgammon][DiceFeedback] Immediate fire event={data.EventType}");
+        OnDiceFeedbackEvent?.Invoke(data);
+    }
+
     private void EmitDiceFeedbackEvent(DiceFeedbackEventData data)
     {
         Debug.Log(
@@ -1550,14 +1502,14 @@ public class BackgammonGameController : MonoBehaviour
 
     private IEnumerator CoAiTurn()
     {
-        Stopwatch aiTurnStopwatch = enableAiTimingLogs ? Stopwatch.StartNew() : null;
-        float preRollDelay = GetAiPreRollDelaySeconds();
-        float postRollRevealDelay = GetAiPostRollRevealDelaySeconds();
-        float postApplyDelay = GetAiPostApplyDelaySeconds();
+        Stopwatch aiTurnStopwatch = _aiTurnManager.StartTimingStopwatch();
+        float preRollDelay = BackgammonAiTurnManager.GetPreRollDelaySeconds();
+        float postRollRevealDelay = BackgammonAiTurnManager.GetPostRollRevealDelaySeconds();
+        float postApplyDelay = BackgammonAiTurnManager.GetPostApplyDelaySeconds();
         Debug.Log(
             $"[Backgammon][AI] pacing speedStep={BackgammonSettings.GameSpeedSecondsPerStep:F2} preRoll={preRollDelay:F2}s postRollReveal={postRollRevealDelay:F2}s postApply={postApplyDelay:F2}s");
         yield return new WaitForSeconds(preRollDelay);
-        LogAiTiming("pre-roll-wait", preRollDelay * 1000f, $"depth={BackgammonSettings.AiSearchDepth} speedStep={BackgammonSettings.GameSpeedSecondsPerStep:F2}");
+        _aiTurnManager.LogAiTiming("pre-roll-wait", preRollDelay * 1000f, $"depth={BackgammonSettings.AiSearchDepth} speedStep={BackgammonSettings.GameSpeedSecondsPerStep:F2}");
 
         bool shouldOfferDouble = false;
         yield return CoShouldAiOfferDoubleBeforeRoll(result => shouldOfferDouble = result);
@@ -1567,13 +1519,13 @@ public class BackgammonGameController : MonoBehaviour
             Debug.Log("[Backgammon][AI] Offering double before roll (human responds).");
             OfferDouble();
             float waitSeconds = 0f;
-            while (_awaitingDoubleResponse && waitSeconds < 120f && !IsGameOver(out _))
+            while (_cubeNegotiator.AwaitingDoubleResponse && waitSeconds < 120f && !IsGameOver(out _))
             {
                 waitSeconds += Time.deltaTime;
                 yield return null;
             }
 
-            if (_awaitingDoubleResponse && !IsGameOver(out _))
+            if (_cubeNegotiator.AwaitingDoubleResponse && !IsGameOver(out _))
             {
                 Debug.LogWarning("[Backgammon][AI] Double offer wait exceeded 120s; auto-take to unblock.");
                 RespondDoubleTake();
@@ -1590,47 +1542,46 @@ public class BackgammonGameController : MonoBehaviour
             if (HasTwoDiceManagers())
             {
                 BeginAiPhysicalRoll();
-                float timeoutSeconds = Mathf.Clamp(GetAiPacingBaseSeconds() * 8f, 0.5f, 6f);
+                float timeoutSeconds = Mathf.Clamp(BackgammonAiTurnManager.GetPacingBaseSeconds() * 8f, 0.5f, 6f);
                 float waited = 0f;
-                while (_aiRollInProgress && waited < timeoutSeconds)
+                while (_aiTurnManager.RollInProgress && waited < timeoutSeconds)
                 {
                     waited += Time.deltaTime;
                     yield return null;
                 }
-                LogAiTiming("dice-roll-wait", waited * 1000f, $"timeoutMs={timeoutSeconds * 1000f:F0} token={_aiActiveRollToken}");
+                _aiTurnManager.LogAiTiming("dice-roll-wait", waited * 1000f, $"timeoutMs={timeoutSeconds * 1000f:F0} token={_aiTurnManager.ActiveRollToken}");
 
-                if (_aiRollInProgress)
+                if (_aiTurnManager.RollInProgress)
                 {
-                    _aiRollInProgress = false;
+                    _aiTurnManager.ForceRollTimeout();
                     Debug.LogWarning(
-                        $"[Backgammon][AI][Dice] Roll timeout token={_aiActiveRollToken} waited={waited:F2}s fallback=random");
+                        $"[Backgammon][AI][Dice] Roll timeout token={_aiTurnManager.ActiveRollToken} waited={waited:F2}s fallback=random");
                 }
             }
 
-            if (_aiRollBufferedDie0.HasValue && _aiRollBufferedDie1.HasValue)
+            if (_aiTurnManager.BufferedDie0.HasValue && _aiTurnManager.BufferedDie1.HasValue)
             {
-                State.Dice1 = _aiRollBufferedDie0.Value;
-                State.Dice2 = _aiRollBufferedDie1.Value;
+                State.Dice1 = _aiTurnManager.BufferedDie0.Value;
+                State.Dice2 = _aiTurnManager.BufferedDie1.Value;
             }
             else
             {
                 State.Dice1 = UnityEngine.Random.Range(1, 7);
                 State.Dice2 = UnityEngine.Random.Range(1, 7);
                 Debug.LogWarning(
-                    $"[Backgammon][AI][Dice] Missing physical roll result token={_aiActiveRollToken}; using fallback d1={State.Dice1} d2={State.Dice2}");
+                    $"[Backgammon][AI][Dice] Missing physical roll result token={_aiTurnManager.ActiveRollToken}; using fallback d1={State.Dice1} d2={State.Dice2}");
             }
 
             _rolledThisTurn = true;
             RollsThisGame++;
-            _aiActiveRollManagerIndex = -1;
-            _aiRollBufferedDie0 = null;
-            _aiRollBufferedDie1 = null;
+            OnDiceRolled?.Invoke(State.Dice1, State.Dice2);
+            _aiTurnManager.ConsumeBufferedRoll();
         }
         RefreshLegals();
         OnStateChanged?.Invoke();
         hud?.RefreshAll(this);
         yield return new WaitForSeconds(postRollRevealDelay);
-        LogAiTiming("post-roll-reveal-wait", postRollRevealDelay * 1000f, $"legalTurns={_legalTurns.Count}");
+        _aiTurnManager.LogAiTiming("post-roll-reveal-wait", postRollRevealDelay * 1000f, $"legalTurns={_legalTurns.Count}");
 
         if (_legalTurns.Count == 0)
         {
@@ -1639,7 +1590,7 @@ public class BackgammonGameController : MonoBehaviour
             if (aiTurnStopwatch != null)
             {
                 aiTurnStopwatch.Stop();
-                LogAiTiming("total-ai-turn", aiTurnStopwatch.ElapsedMilliseconds, "reason=no-legal-moves");
+                _aiTurnManager.LogAiTiming("total-ai-turn", aiTurnStopwatch.ElapsedMilliseconds, "reason=no-legal-moves");
             }
             yield break;
         }
@@ -1662,24 +1613,24 @@ public class BackgammonGameController : MonoBehaviour
             Debug.Log(
                 $"[Backgammon][AI][Search] invoking evaluator depth={BackgammonSettings.AiSearchDepth} " +
                 $"engine={BackgammonSettings.AiEngineType} playerOnRoll={State.PlayerOnRoll} dice={State.Dice1}/{State.Dice2}");
-            Stopwatch searchStopwatch = enableAiTimingLogs ? Stopwatch.StartNew() : null;
+            Stopwatch searchStopwatch = _aiTurnManager.StartTimingStopwatch();
             GameState stateSnapshot = CloneGameState(State);
             MatchState matchSnapshot = CloneMatchState(Match, State);
-            string cacheKey = BuildAiMoveCacheKey(
+            string cacheKey = BackgammonAiMoveCache.BuildMoveKey(
                 stateSnapshot,
                 matchSnapshot,
                 BackgammonSettings.AiSearchDepth,
                 SearchEngine.SearchQualityPreset.Balanced,
                 true,
                 false);
-            if (TryGetCachedAiTurn(cacheKey, out Turn cachedPick))
+            if (BackgammonAiMoveCache.TryGetTurn(cacheKey, out Turn cachedPick))
             {
                 pick = cachedPick;
-                LogAiCacheDecision("get", cacheKey, hit: true);
+                BackgammonAiMoveCache.LogMoveDecision("get", cacheKey, hit: true, enableAiCacheDebugLogs);
             }
             else
             {
-                LogAiCacheDecision("get", cacheKey, hit: false);
+                BackgammonAiMoveCache.LogMoveDecision("get", cacheKey, hit: false, enableAiCacheDebugLogs);
                 Task<Turn> searchTask = evaluator.EvaluateBestTurnAsync(
                     stateSnapshot, matchSnapshot, BackgammonSettings.AiSearchDepth);
 
@@ -1699,8 +1650,8 @@ public class BackgammonGameController : MonoBehaviour
                     pick = searchTask.Result;
                     if (pick?.Moves != null && pick.ResultingState != null)
                     {
-                        CacheAiTurn(cacheKey, pick);
-                        LogAiCacheDecision("store", cacheKey, hit: false);
+                        BackgammonAiMoveCache.StoreTurn(cacheKey, pick);
+                        BackgammonAiMoveCache.LogMoveDecision("store", cacheKey, hit: false, enableAiCacheDebugLogs);
                     }
                 }
             }
@@ -1751,7 +1702,7 @@ public class BackgammonGameController : MonoBehaviour
         }
         else
         {
-            Stopwatch playbackStopwatch = enableAiTimingLogs ? Stopwatch.StartNew() : null;
+            Stopwatch playbackStopwatch = _aiTurnManager.StartTimingStopwatch();
             yield return CoPlayAiTurnMovesSequentially(pick);
             if (playbackStopwatch != null)
             {
@@ -1880,238 +1831,17 @@ public class BackgammonGameController : MonoBehaviour
         return clone;
     }
 
-    private static bool TryGetCachedAiTurn(string cacheKey, out Turn cachedTurn)
-    {
-        cachedTurn = null;
-        if (string.IsNullOrWhiteSpace(cacheKey))
-        {
-            _aiMoveCacheMissCount++;
-            return false;
-        }
-
-        if (!AiMoveCache.TryGetValue(cacheKey, out Turn stored))
-        {
-            _aiMoveCacheMissCount++;
-            return false;
-        }
-
-        cachedTurn = CloneTurn(stored);
-        _aiMoveCacheHitCount++;
-        return cachedTurn != null;
-    }
-
-    private static void CacheAiTurn(string cacheKey, Turn turn)
-    {
-        if (string.IsNullOrWhiteSpace(cacheKey) || turn == null || turn.Moves == null || turn.ResultingState == null)
-        {
-            return;
-        }
-
-        AiMoveCache[cacheKey] = CloneTurn(turn);
-        AiMoveCacheKeyOrder.Enqueue(cacheKey);
-        while (AiMoveCache.Count > AiMoveCacheCapacity && AiMoveCacheKeyOrder.Count > 0)
-        {
-            string evicted = AiMoveCacheKeyOrder.Dequeue();
-            if (!AiMoveCache.ContainsKey(evicted))
-            {
-                continue;
-            }
-
-            // Keep last write for duplicate keys while preserving bounded memory.
-            if (!string.Equals(evicted, cacheKey, StringComparison.Ordinal))
-            {
-                AiMoveCache.Remove(evicted);
-            }
-        }
-
-        PersistAiMoveCacheToDisk("store");
-    }
-
-    private static bool TryGetCachedAiCubeOfferDecision(string cacheKey, out AiCubeDecision decision)
-    {
-        decision = default;
-        if (string.IsNullOrWhiteSpace(cacheKey))
-        {
-            _aiCubeOfferCacheMissCount++;
-            // #region agent log
-            WriteAgentDebugLog(
-                "run1",
-                "H3",
-                "BackgammonGameController.TryGetCachedAiCubeOfferDecision:emptyKey",
-                "offer cache miss due empty key",
-                "{\"cacheKeyEmpty\":true}");
-            // #endregion
-            return false;
-        }
-
-        if (!AiCubeOfferCache.TryGetValue(cacheKey, out decision))
-        {
-            _aiCubeOfferCacheMissCount++;
-            // #region agent log
-            WriteAgentDebugLog(
-                "run1",
-                "H3",
-                "BackgammonGameController.TryGetCachedAiCubeOfferDecision:miss",
-                "offer cache miss",
-                $"{{\"cacheKeyHash\":\"{cacheKey.GetHashCode():X8}\",\"size\":{AiCubeOfferCache.Count}}}");
-            // #endregion
-            LogAiCubeCacheDecision("offer-get", cacheKey, hit: false, decisionSummary: "none");
-            return false;
-        }
-
-        _aiCubeOfferCacheHitCount++;
-        // #region agent log
-        WriteAgentDebugLog(
-            "run1",
-            "H3",
-            "BackgammonGameController.TryGetCachedAiCubeOfferDecision:hit",
-            "offer cache hit",
-            $"{{\"cacheKeyHash\":\"{cacheKey.GetHashCode():X8}\",\"size\":{AiCubeOfferCache.Count},\"shouldOffer\":{decision.ShouldOffer.ToString().ToLowerInvariant()}}}");
-        // #endregion
-        LogAiCubeCacheDecision("offer-get", cacheKey, hit: true, decisionSummary: $"offer={decision.ShouldOffer}");
-        return true;
-    }
-
-    private static void CacheAiCubeOfferDecision(string cacheKey, AiCubeDecision decision)
-    {
-        if (string.IsNullOrWhiteSpace(cacheKey))
-            return;
-
-        AiCubeOfferCache[cacheKey] = decision;
-        AiCubeOfferCacheKeyOrder.Enqueue(cacheKey);
-        while (AiCubeOfferCache.Count > AiCubeDecisionCacheCapacity && AiCubeOfferCacheKeyOrder.Count > 0)
-        {
-            string evicted = AiCubeOfferCacheKeyOrder.Dequeue();
-            if (!AiCubeOfferCache.ContainsKey(evicted))
-                continue;
-            if (!string.Equals(evicted, cacheKey, StringComparison.Ordinal))
-                AiCubeOfferCache.Remove(evicted);
-        }
-
-        LogAiCubeCacheDecision("offer-store", cacheKey, hit: false, decisionSummary: $"offer={decision.ShouldOffer}");
-        PersistAiMoveCacheToDisk("cube-offer-store");
-    }
-
-    private static bool TryGetCachedAiCubeResponseDecision(string cacheKey, out AiDoubleResponseDecision decision)
-    {
-        decision = default;
-        if (string.IsNullOrWhiteSpace(cacheKey))
-        {
-            _aiCubeResponseCacheMissCount++;
-            return false;
-        }
-
-        if (!AiCubeResponseCache.TryGetValue(cacheKey, out decision))
-        {
-            _aiCubeResponseCacheMissCount++;
-            LogAiCubeCacheDecision("response-get", cacheKey, hit: false, decisionSummary: "none");
-            return false;
-        }
-
-        _aiCubeResponseCacheHitCount++;
-        LogAiCubeCacheDecision("response-get", cacheKey, hit: true, decisionSummary: $"action={decision.Action}");
-        return true;
-    }
-
-    private static void CacheAiCubeResponseDecision(string cacheKey, AiDoubleResponseDecision decision)
-    {
-        if (string.IsNullOrWhiteSpace(cacheKey))
-            return;
-
-        AiCubeResponseCache[cacheKey] = decision;
-        AiCubeResponseCacheKeyOrder.Enqueue(cacheKey);
-        while (AiCubeResponseCache.Count > AiCubeDecisionCacheCapacity && AiCubeResponseCacheKeyOrder.Count > 0)
-        {
-            string evicted = AiCubeResponseCacheKeyOrder.Dequeue();
-            if (!AiCubeResponseCache.ContainsKey(evicted))
-                continue;
-            if (!string.Equals(evicted, cacheKey, StringComparison.Ordinal))
-                AiCubeResponseCache.Remove(evicted);
-        }
-
-        LogAiCubeCacheDecision("response-store", cacheKey, hit: false, decisionSummary: $"action={decision.Action}");
-        PersistAiMoveCacheToDisk("cube-response-store");
-    }
-
-    private static Turn CloneTurn(Turn turn)
-    {
-        if (turn == null || turn.Moves == null || turn.ResultingState == null)
-        {
-            return null;
-        }
-
-        var clonedMoves = new List<Move>(turn.Moves.Count);
-        for (int i = 0; i < turn.Moves.Count; i++)
-        {
-            Move move = turn.Moves[i];
-            clonedMoves.Add(new Move
-            {
-                From = move.From,
-                To = move.To,
-                IsHit = move.IsHit
-            });
-        }
-
-        return new Turn
-        {
-            Moves = clonedMoves,
-            ResultingState = CloneGameState(turn.ResultingState)
-        };
-    }
-
-    private static string BuildAiMoveCacheKey(
-        GameState state,
-        MatchState match,
-        int depth,
-        SearchEngine.SearchQualityPreset qualityPreset,
-        bool stagedPruneFilteringEnabled,
-        bool forceFullTurnEvaluation)
-    {
-        if (state == null || match == null)
-        {
-            return string.Empty;
-        }
-
-        string snapshotId = BuildGnubgSnapshotId(state, match);
-        if (string.IsNullOrWhiteSpace(snapshotId))
-        {
-            return string.Empty;
-        }
-
-        return $"{AiMoveCacheVersion}:{snapshotId}:d={depth}:q={(int)qualityPreset}:prune={stagedPruneFilteringEnabled}:full={forceFullTurnEvaluation}";
-    }
-
-    private static string BuildAiCubeDecisionCacheKey(GameState state, MatchState match, string decisionKind)
-    {
-        if (state == null || match == null || string.IsNullOrWhiteSpace(decisionKind))
-        {
-            // #region agent log
-            WriteAgentDebugLog(
-                "run1",
-                "H2",
-                "BackgammonGameController.BuildAiCubeDecisionCacheKey:nullInput",
-                "cube cache key skipped due invalid input",
-                $"{{\"hasState\":{(state != null).ToString().ToLowerInvariant()},\"hasMatch\":{(match != null).ToString().ToLowerInvariant()},\"decisionKind\":\"{EscapeAgentLog(decisionKind)}\"}}");
-            // #endregion
-            return string.Empty;
-        }
-
-        string snapshotId = BuildGnubgSnapshotId(state, match);
-        if (string.IsNullOrWhiteSpace(snapshotId))
-        {
-            // #region agent log
-            WriteAgentDebugLog(
-                "run1",
-                "H2",
-                "BackgammonGameController.BuildAiCubeDecisionCacheKey:emptySnapshot",
-                "cube cache key skipped due empty snapshot",
-                $"{{\"decisionKind\":\"{EscapeAgentLog(decisionKind)}\",\"playerOnRoll\":{state.PlayerOnRoll},\"cubeValue\":{state.CubeValue},\"cubeOwner\":{state.CubeOwner}}}");
-            // #endregion
-            return string.Empty;
-        }
-
-        return $"{AiCubeDecisionCacheVersion}:{decisionKind}:{snapshotId}";
-    }
+    // Forwarding shims — bodies moved to BackgammonAiMoveCache
+    private static bool TryGetCachedAiTurn(string k, out Turn t) => BackgammonAiMoveCache.TryGetTurn(k, out t);
+    private static void CacheAiTurn(string k, Turn t) => BackgammonAiMoveCache.StoreTurn(k, t);
+    private static bool TryGetCachedAiCubeOfferDecision(string k, out AiCubeDecision d) => BackgammonAiMoveCache.TryGetCubeOffer(k, out d);
+    private static void CacheAiCubeOfferDecision(string k, AiCubeDecision d) => BackgammonAiMoveCache.StoreCubeOffer(k, d);
+    private static bool TryGetCachedAiCubeResponseDecision(string k, out AiDoubleResponseDecision d) => BackgammonAiMoveCache.TryGetCubeResponse(k, out d);
+    private static void CacheAiCubeResponseDecision(string k, AiDoubleResponseDecision d) => BackgammonAiMoveCache.StoreCubeResponse(k, d);
+    private static string BuildAiMoveCacheKey(GameState s, MatchState m, int depth, SearchEngine.SearchQualityPreset q, bool prune, bool full)
+        => BackgammonAiMoveCache.BuildMoveKey(s, m, depth, q, prune, full);
+    private static string BuildAiCubeDecisionCacheKey(GameState s, MatchState m, string kind)
+        => BackgammonAiMoveCache.BuildCubeDecisionKey(s, m, kind);
 
     private static Task<string> InvokeGnubgBridgeAsync(
         string matchRef,
@@ -2147,65 +1877,19 @@ public class BackgammonGameController : MonoBehaviour
         return taskObj as Task<string>;
     }
 
-    private static string BuildGnubgSnapshotId(GameState state, MatchState match)
-    {
-        if (state == null || match == null)
-        {
-            return string.Empty;
-        }
-
-        var oracleMatch = new MatchState
-        {
-            Cube = match.Cube,
-            CubeOwner = match.CubeOwner,
-            PlayerOnRoll = state.PlayerOnRoll,
-            IsCrawford = match.IsCrawford,
-            GameState = 0,
-            Turn = 0,
-            Doubled = false,
-            Resigned = 0,
-            MatchLength = match.MatchLength,
-            Player0Score = match.Player0Score,
-            Player1Score = match.Player1Score,
-            JacobyRule = match.JacobyRule,
-            BeaversAllowed = match.BeaversAllowed
-        };
-        oracleMatch.Dice[0] = state.Dice1;
-        oracleMatch.Dice[1] = state.Dice2;
-        return $"{PositionId.Encode(state)}:{MatchId.Encode(oracleMatch)}";
-    }
-
-    private static float GetAiPacingBaseSeconds()
-    {
-        return Mathf.Clamp(BackgammonSettings.GameSpeedSecondsPerStep, 0.05f, 2f);
-    }
-
-    private static float GetAiPreRollDelaySeconds()
-    {
-        return Mathf.Clamp(GetAiPacingBaseSeconds() * 1.0f, 0.05f, 2.5f);
-    }
-
-    private static float GetAiPostRollRevealDelaySeconds()
-    {
-        return Mathf.Clamp(GetAiPacingBaseSeconds() * 0.8f, 0.05f, 2.0f);
-    }
-
-    private static float GetAiPostApplyDelaySeconds()
-    {
-        return Mathf.Clamp(GetAiPacingBaseSeconds() * 0.6f, 0.05f, 1.5f);
-    }
-
-    private static float GetAiBetweenMovesDelaySeconds()
-    {
-        return Mathf.Clamp(GetAiPacingBaseSeconds() * 0.5f, 0.03f, 1.0f);
-    }
+    // Forwarding shims for pacing helpers — implementations moved to BackgammonAiTurnManager
+    private static float GetAiPacingBaseSeconds() => BackgammonAiTurnManager.GetPacingBaseSeconds();
+    private static float GetAiPreRollDelaySeconds() => BackgammonAiTurnManager.GetPreRollDelaySeconds();
+    private static float GetAiPostRollRevealDelaySeconds() => BackgammonAiTurnManager.GetPostRollRevealDelaySeconds();
+    private static float GetAiPostApplyDelaySeconds() => BackgammonAiTurnManager.GetPostApplyDelaySeconds();
+    private static float GetAiBetweenMovesDelaySeconds() => BackgammonAiTurnManager.GetBetweenMovesDelaySeconds();
 
     private IEnumerator CoPlayAiTurnMovesSequentially(Turn pick)
     {
         if (pick?.Moves == null || pick.Moves.Count == 0)
             yield break;
 
-        Stopwatch playbackStopwatch = enableAiTimingLogs ? Stopwatch.StartNew() : null;
+        Stopwatch playbackStopwatch = _aiTurnManager.StartTimingStopwatch();
         float betweenMovesDelay = GetAiBetweenMovesDelaySeconds();
         Debug.Log($"[Backgammon][AI][MovePlayback] start moveCount={pick.Moves.Count} betweenDelay={betweenMovesDelay:F2}s queueDriven=true");
         _presentationQueueDrivenByCoroutine = true;
@@ -2214,7 +1898,7 @@ public class BackgammonGameController : MonoBehaviour
         {
             for (int i = 0; i < pick.Moves.Count; i++)
             {
-                Stopwatch moveStopwatch = enableAiTimingLogs ? Stopwatch.StartNew() : null;
+                Stopwatch moveStopwatch = _aiTurnManager.StartTimingStopwatch();
                 Move move = pick.Moves[i];
                 PlayerColor moverColor = GetVisualMoverColorForCurrentTurn();
                 Debug.Log(
@@ -2299,40 +1983,13 @@ public class BackgammonGameController : MonoBehaviour
         nextState.CubeValue = previousCubeValue;
     }
 
-    private static string BuildAiTimingLogLine(string phase, double elapsedMs, string extra)
-    {
-        string suffix = string.IsNullOrWhiteSpace(extra) ? string.Empty : $" {extra}";
-        return $"[Backgammon][AI][Timing] phase={phase} ms={elapsedMs:F1}{suffix}";
-    }
-
+    // Forwarding shim kept so remaining inline call sites in coroutines compile unchanged.
     private void LogAiTiming(string phase, double elapsedMs, string extra)
-    {
-        if (!enableAiTimingLogs) return;
-        Debug.Log(BuildAiTimingLogLine(phase, elapsedMs, extra));
-    }
-
-    private void LogAiCacheDecision(string phase, string cacheKey, bool hit)
-    {
-        if (!enableAiCacheDebugLogs)
-            return;
-
-        Debug.Log(
-            $"[Backgammon][AI][Cache] phase={phase} hit={hit} key={cacheKey} hits={_aiMoveCacheHitCount} misses={_aiMoveCacheMissCount} size={AiMoveCache.Count}");
-    }
+        => _aiTurnManager?.LogAiTiming(phase, elapsedMs, extra);
 
     private static void LogAiCubeCacheDecision(string phase, string cacheKey, bool hit, string decisionSummary)
-    {
-        string compactKey = string.IsNullOrWhiteSpace(cacheKey) ? "<none>" : cacheKey.GetHashCode().ToString("X8");
-        Debug.Log(
-            $"[Backgammon][AI][Cube][Cache] phase={phase} hit={hit} keyHash={compactKey} decision={decisionSummary} " +
-            $"offerHits={_aiCubeOfferCacheHitCount} offerMisses={_aiCubeOfferCacheMissCount} offerSize={AiCubeOfferCache.Count} " +
-            $"responseHits={_aiCubeResponseCacheHitCount} responseMisses={_aiCubeResponseCacheMissCount} responseSize={AiCubeResponseCache.Count}");
-    }
+        => BackgammonAiMoveCache.LogCubeDecision(phase, cacheKey, hit, decisionSummary);
 
-    private static void ConfigureAiMoveCacheStorageMode(BackgammonAiMoveCacheStorageMode mode)
-    {
-        _activeAiMoveCacheStorageMode = mode;
-    }
 
     private static string EscapeAgentLog(string value)
     {
@@ -2355,173 +2012,9 @@ public class BackgammonGameController : MonoBehaviour
         }
     }
 
-    private static void EnsureAiMoveCacheLoadedFromDisk()
-    {
-        if (_aiMoveCacheLoadAttempted)
-            return;
-        _aiMoveCacheLoadAttempted = true;
-        // #region agent log
-        WriteAgentDebugLog(
-            "run1",
-            "H1",
-            "BackgammonGameController.EnsureAiMoveCacheLoadedFromDisk:entry",
-            "startup cache load begin",
-            $"{{\"mode\":\"{_activeAiMoveCacheStorageMode}\",\"attempted\":{_aiMoveCacheLoadAttempted.ToString().ToLowerInvariant()}}}");
-        // #endregion
-
-        if (_activeAiMoveCacheStorageMode == BackgammonAiMoveCacheStorageMode.None)
-        {
-            Debug.Log("[Backgammon][AI][Cache] Startup mode=memory-only loaded=0 discarded=0");
-            return;
-        }
-
-        var orderedKeys = new List<string>();
-        var orderedCubeOfferKeys = new List<string>();
-        var orderedCubeResponseKeys = new List<string>();
-        bool loadedOk = BackgammonAiMoveDiskCache.TryLoad(
-            _activeAiMoveCacheStorageMode,
-            orderedKeys,
-            AiMoveCache,
-            out int loadedCount,
-            out int discardedCount,
-            out string message,
-            orderedCubeOfferKeys,
-            AiCubeOfferCache,
-            orderedCubeResponseKeys,
-            AiCubeResponseCache,
-            out int loadedCubeOfferCount,
-            out int discardedCubeOfferCount,
-            out int loadedCubeResponseCount,
-            out int discardedCubeResponseCount);
-        // #region agent log
-        WriteAgentDebugLog(
-            "run1",
-            "H1",
-            "BackgammonGameController.EnsureAiMoveCacheLoadedFromDisk:afterLoad",
-            "startup cache load complete",
-            $"{{\"loadedOk\":{loadedOk.ToString().ToLowerInvariant()},\"moveLoaded\":{loadedCount},\"moveDiscarded\":{discardedCount},\"offerLoaded\":{loadedCubeOfferCount},\"offerDiscarded\":{discardedCubeOfferCount},\"responseLoaded\":{loadedCubeResponseCount},\"responseDiscarded\":{discardedCubeResponseCount},\"state\":\"{EscapeAgentLog(message)}\"}}");
-        // #endregion
-
-        AiMoveCacheKeyOrder.Clear();
-        for (int i = 0; i < orderedKeys.Count; i++)
-            AiMoveCacheKeyOrder.Enqueue(orderedKeys[i]);
-        AiCubeOfferCacheKeyOrder.Clear();
-        for (int i = 0; i < orderedCubeOfferKeys.Count; i++)
-            AiCubeOfferCacheKeyOrder.Enqueue(orderedCubeOfferKeys[i]);
-        AiCubeResponseCacheKeyOrder.Clear();
-        for (int i = 0; i < orderedCubeResponseKeys.Count; i++)
-            AiCubeResponseCacheKeyOrder.Enqueue(orderedCubeResponseKeys[i]);
-
-        _aiMoveCacheLoadedFromDisk = loadedOk;
-        string path = BackgammonAiMoveDiskCache.GetCachePath(_activeAiMoveCacheStorageMode);
-        string modeLabel = _activeAiMoveCacheStorageMode == BackgammonAiMoveCacheStorageMode.Json ? "disk-json" : "disk-binary";
-        if (loadedOk)
-        {
-            Debug.Log($"[Backgammon][AI][Cache] Startup mode={modeLabel} path={path} loaded={loadedCount} discarded={discardedCount} size={AiMoveCache.Count} state={message}");
-            Debug.Log($"[Backgammon][AI][Cube][Cache] Startup mode={modeLabel} path={path} offerLoaded={loadedCubeOfferCount} offerDiscarded={discardedCubeOfferCount} offerSize={AiCubeOfferCache.Count} responseLoaded={loadedCubeResponseCount} responseDiscarded={discardedCubeResponseCount} responseSize={AiCubeResponseCache.Count} state={message}");
-        }
-        else
-        {
-            Debug.LogWarning($"[Backgammon][AI][Cache] Startup load failed mode={modeLabel} path={path} loaded={loadedCount} discarded={discardedCount} state={message}; using memory cache.");
-            Debug.LogWarning($"[Backgammon][AI][Cube][Cache] Startup load failed mode={modeLabel} path={path} offerLoaded={loadedCubeOfferCount} offerDiscarded={discardedCubeOfferCount} responseLoaded={loadedCubeResponseCount} responseDiscarded={discardedCubeResponseCount} state={message}; using memory cache.");
-        }
-    }
-
-    private static void PersistAiMoveCacheToDisk(string context)
-    {
-        if (_activeAiMoveCacheStorageMode == BackgammonAiMoveCacheStorageMode.None)
-            return;
-
-        var ordered = BuildOrderedAiCacheEntries();
-        var orderedCubeOffer = BuildOrderedAiCubeOfferCacheEntries();
-        var orderedCubeResponse = BuildOrderedAiCubeResponseCacheEntries();
-        bool saved = BackgammonAiMoveDiskCache.TrySave(_activeAiMoveCacheStorageMode, ordered, out string message, orderedCubeOffer, orderedCubeResponse);
-        if (!saved)
-        {
-            string path = BackgammonAiMoveDiskCache.GetCachePath(_activeAiMoveCacheStorageMode);
-            Debug.LogWarning($"[Backgammon][AI][Cache] Persist failed context={context} path={path} state={message}");
-            Debug.LogWarning($"[Backgammon][AI][Cube][Cache] Persist failed context={context} path={path} state={message}");
-        }
-    }
-
-    private static List<KeyValuePair<string, Turn>> BuildOrderedAiCacheEntries()
-    {
-        var ordered = new List<KeyValuePair<string, Turn>>(AiMoveCache.Count);
-        var seen = new HashSet<string>(StringComparer.Ordinal);
-        foreach (string key in AiMoveCacheKeyOrder)
-        {
-            if (string.IsNullOrWhiteSpace(key) || seen.Contains(key))
-                continue;
-            if (!AiMoveCache.TryGetValue(key, out Turn turn) || turn == null)
-                continue;
-            seen.Add(key);
-            ordered.Add(new KeyValuePair<string, Turn>(key, CloneTurn(turn)));
-        }
-
-        foreach (KeyValuePair<string, Turn> kvp in AiMoveCache)
-        {
-            if (seen.Contains(kvp.Key) || kvp.Value == null)
-                continue;
-            seen.Add(kvp.Key);
-            ordered.Add(new KeyValuePair<string, Turn>(kvp.Key, CloneTurn(kvp.Value)));
-        }
-
-        return ordered;
-    }
-
-    private static List<KeyValuePair<string, AiCubeDecision>> BuildOrderedAiCubeOfferCacheEntries()
-    {
-        var ordered = new List<KeyValuePair<string, AiCubeDecision>>(AiCubeOfferCache.Count);
-        var seen = new HashSet<string>(StringComparer.Ordinal);
-        foreach (string key in AiCubeOfferCacheKeyOrder)
-        {
-            if (string.IsNullOrWhiteSpace(key) || seen.Contains(key))
-                continue;
-            if (!AiCubeOfferCache.TryGetValue(key, out AiCubeDecision decision))
-                continue;
-            seen.Add(key);
-            ordered.Add(new KeyValuePair<string, AiCubeDecision>(key, decision));
-        }
-
-        foreach (KeyValuePair<string, AiCubeDecision> kvp in AiCubeOfferCache)
-        {
-            if (seen.Contains(kvp.Key))
-                continue;
-            seen.Add(kvp.Key);
-            ordered.Add(new KeyValuePair<string, AiCubeDecision>(kvp.Key, kvp.Value));
-        }
-
-        return ordered;
-    }
-
-    private static List<KeyValuePair<string, AiDoubleResponseDecision>> BuildOrderedAiCubeResponseCacheEntries()
-    {
-        var ordered = new List<KeyValuePair<string, AiDoubleResponseDecision>>(AiCubeResponseCache.Count);
-        var seen = new HashSet<string>(StringComparer.Ordinal);
-        foreach (string key in AiCubeResponseCacheKeyOrder)
-        {
-            if (string.IsNullOrWhiteSpace(key) || seen.Contains(key))
-                continue;
-            if (!AiCubeResponseCache.TryGetValue(key, out AiDoubleResponseDecision decision))
-                continue;
-            seen.Add(key);
-            ordered.Add(new KeyValuePair<string, AiDoubleResponseDecision>(key, decision));
-        }
-
-        foreach (KeyValuePair<string, AiDoubleResponseDecision> kvp in AiCubeResponseCache)
-        {
-            if (seen.Contains(kvp.Key))
-                continue;
-            seen.Add(kvp.Key);
-            ordered.Add(new KeyValuePair<string, AiDoubleResponseDecision>(kvp.Key, kvp.Value));
-        }
-
-        return ordered;
-    }
-
     private void OnApplicationQuit()
     {
-        PersistAiMoveCacheToDisk("application-quit");
+        BackgammonAiMoveCache.PersistToDisk("application-quit");
     }
 
     private PlayerColor GetVisualMoverColorForCurrentTurn()
@@ -2715,6 +2208,7 @@ public class BackgammonGameController : MonoBehaviour
         _openingRollTieAwaitingReroll = false;
         _rolledThisTurn = true;
         RollsThisGame++;
+        OnDiceRolled?.Invoke(State.Dice1, State.Dice2);
         RefreshLegals();
         OnStateChanged?.Invoke();
         hud?.RefreshAll(this);
@@ -2818,11 +2312,20 @@ public class BackgammonGameController : MonoBehaviour
         _legalTurns.Clear();
         InvalidateMovableHighlightCache("game-end");
         boardManager?.ClearAllPointHighlights();
-        _awaitingDoubleResponse = false;
+        _cubeNegotiator.CancelPendingOffer();
         hud?.SetDoubleOfferVisible(false);
         ClearUndoStackAfterTurnCompleted("game-end");
 
         int pointsAwarded = ApplyGameEndScore(_forcedWinnerPlayerIndex, reason, scoreKindOverride, out GameEndScoreKind scoreKind);
+
+        // Notify Run Mode manager (winnerIdx, baseStake, cubeValue, gammonMultiplier)
+        if (OnGameEndedWithScore != null)
+        {
+            int baseStakeForEvent = _moneySessionConfig?.BaseStake ?? 1;
+            int cubeValEvent   = Mathf.Max(1, State?.CubeValue ?? 1);
+            int gammonMultEvent = (int)scoreKind; // Single=1, Gammon=2, Backgammon=3
+            OnGameEndedWithScore.Invoke(_forcedWinnerPlayerIndex, baseStakeForEvent, cubeValEvent, gammonMultEvent);
+        }
 
         // Update Money Session score tracking
         if (_currentGameMode == GameModeType.MoneySession)
@@ -2841,10 +2344,11 @@ public class BackgammonGameController : MonoBehaviour
             // Bank accumulates winnings for the human player (index 0)
             if (_forcedWinnerPlayerIndex == 0)
                 _moneySessionBankBalance += sessionPoints;
+            // PlayerStats.RecordGameEnd is called by SessionStatsTracker (observer) to avoid double-counting.
         }
 
-        // Update ante progression for Run mode
-        if (_currentGameMode == GameModeType.Run)
+        // Update ante progression for Run mode (legacy path — bypassed when BackgammonRunModeManager is subscribed)
+        if (_currentGameMode == GameModeType.Run && OnGameEndedWithScore == null)
         {
             bool playerWon = _forcedWinnerPlayerIndex == 0;
 

@@ -22,6 +22,7 @@ public class ScreenNotificationControllerEditor : UnityEditor.Editor
             SerializedProperty debugText = serializedObject.FindProperty("debugPreviewText");
             SerializedProperty debugFont = serializedObject.FindProperty("debugFontSize");
             SerializedProperty debugOff = serializedObject.FindProperty("debugLabelOffsetPixels");
+            SerializedProperty debugAudio = serializedObject.FindProperty("debugAudioClip");
 
             int key = debugEvent.enumValueIndex;
             int foundIndex = -1;
@@ -51,6 +52,7 @@ public class ScreenNotificationControllerEditor : UnityEditor.Editor
             slot.FindPropertyRelative("message").stringValue = debugText.stringValue;
             slot.FindPropertyRelative("fontSize").intValue = debugFont.intValue;
             slot.FindPropertyRelative("labelOffsetPixels").vector2Value = debugOff.vector2Value;
+            slot.FindPropertyRelative("audioClipOverride").objectReferenceValue = debugAudio.objectReferenceValue;
 
             serializedObject.ApplyModifiedProperties();
             EditorUtility.SetDirty(target);

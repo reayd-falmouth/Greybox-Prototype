@@ -212,6 +212,11 @@ namespace Runtime.RMC._MyProject_.Dice
         private void PlayHitSound(float velocity)
         {
             if (audioSource == null || _currentImpactSounds.Count == 0) return;
+            if (!audioSource.enabled || !audioSource.gameObject.activeInHierarchy)
+            {
+                Debug.LogWarning($"[Backgammon][Audio] Skipping dice hit sound because AudioSource is disabled or inactive. dice={name}");
+                return;
+            }
 
             AudioClip clipToPlay = _currentImpactSounds[Random.Range(0, _currentImpactSounds.Count)];
 

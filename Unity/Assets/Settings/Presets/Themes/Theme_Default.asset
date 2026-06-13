@@ -1,0 +1,38 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 8db1fe441cab04545a0084b335279f6b, type: 3}
+  m_Name: Theme_Default
+  m_EditorClassIdentifier: RMC.MyProject.Runtime::Runtime.RMC.Backgammon.Theme.BackgammonThemeSo
+  displayName: Default
+  checker1BaseMaterial: {fileID: 0}
+  checker1BaseColor: {r: 1, g: 0.42, b: 0, a: 1}
+  checker1EmissionColor: {r: 1, g: 0.92156863, b: 0.015686275, a: 1}
+  checker1EmissionIntensity: 3.41
+  checker2BaseMaterial: {fileID: 0}
+  checker2BaseColor: {r: 0.1, g: 0.1, b: 0.1, a: 1}
+  checker2EmissionColor: {r: 1, g: 0, b: 0, a: 1}
+  checker2EmissionIntensity: 2
+  movableHighlightColor: {r: 0.2, g: 0.85, b: 1, a: 1}
+  boardPointDarkColor: {r: 0.1, g: 0.1, b: 0.1, a: 1}
+  boardPointLightColor: {r: 0.9, g: 0.9, b: 0.9, a: 1}
+  doublingCubeMaterial: {fileID: 0}
+  doublingCubeColor: {r: 1, g: 1, b: 1, a: 1}
+  doublingCubeEmission: {r: 0, g: 0, b: 0, a: 1}
+  doublingCubeEmissionIntensity: 0
+  diceMaterial: {fileID: 0}
+  diceBodyColor: {r: 1, g: 0, b: 0, a: 1}
+  dicePipColor: {r: 1, g: 1, b: 1, a: 1}
+  diceLuminosity: 1
+  boardSurfaceMaterial: {fileID: 0}
+  boardSurfaceColor: {r: 0.18, g: 0.22, b: 0.2, a: 1}
+  uiAccentColor: {r: 0.012, g: 0.4, b: 0.655, a: 1}
+  uiSecondaryColor: {r: 0.34, g: 0.34, b: 0.34, a: 1}

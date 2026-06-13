@@ -1,0 +1,13 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements" xmlns:uie="UnityEditor.UIElements" editor-extension-mode="False">
+    <Style src="project://database/Assets/Settings/UIToolkit/Resources/Styles/TemplateStyles.uss?fileID=7433441132597879392&amp;guid=6ebbbe798c96bf344b8b9360316b9108&amp;type=3#TemplateStyles"/>
+    <ui:VisualElement name="LayoutSelectRoot" class="screen-root panel-fill" style="width: 100%; height: 100%; background-color: rgb(10, 19, 25); align-items: center; justify-content: center;">
+        <ui:VisualElement name="LayoutSelectCard" style="align-items: center; justify-content: center; background-color: rgba(10, 20, 26, 0.6); padding-top: 60px; padding-bottom: 60px; padding-left: 80px; padding-right: 80px; border-top-left-radius: 14px; border-bottom-left-radius: 14px; border-top-right-radius: 14px; border-bottom-right-radius: 14px;">
+            <ui:Label text="Choose Layout" name="LayoutSelectTitleLabel" class="m16font" style="font-size: 64px; color: rgb(255, 255, 255); margin-bottom: 48px; -unity-text-align: middle-center;"/>
+            <ui:VisualElement name="LayoutSelectButtonGroup" style="flex-direction: row; justify-content: center; align-items: center;">
+                <ui:Button text="DESKTOP" name="SelectDesktopButton" class="rounded-button-large m16font button-rounded-large button-primary" style="width: 320px; height: 160px; font-size: 48px; -unity-text-align: middle-center; margin-right: 40px;"/>
+                <ui:Button text="MOBILE" name="SelectMobileButton" class="rounded-button-large m16font button-rounded-large button-secondary" style="width: 320px; height: 160px; font-size: 48px; -unity-text-align: middle-center;"/>
+            </ui:VisualElement>
+        </ui:VisualElement>
+        <ui:Label text="" name="VersionDebugLabel" picking-mode="Ignore" style="position: absolute; right: 8px; bottom: 6px; font-size: 18px; color: rgba(255, 255, 255, 0.5); -unity-text-align: middle-right;"/>
+    </ui:VisualElement>
+</ui:UXML>

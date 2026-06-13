@@ -1,0 +1,24 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 48a89cd94aa96be41aacef726495fe7a, type: 3}
+  m_Name: StakeLevelLibrary_GBP
+  m_EditorClassIdentifier: RMC.MyProject.Runtime::Runtime.RMC.Backgammon.Core.StakeLevelLibrarySo
+  levels:
+  - {fileID: 11400000, guid: 1c62c230e9e94cb29de55f4f21679e84, type: 2}
+  - {fileID: 11400000, guid: d344ed20a2a8448fb94866a41f423f78, type: 2}
+  - {fileID: 11400000, guid: 8adf44e93ac94135a1dbe3b58476ec71, type: 2}
+  - {fileID: 11400000, guid: 7ce9d96485914adb8b1e3821f6a1e434, type: 2}
+  - {fileID: 11400000, guid: a5e8c6972d2c435382cd929dbe0f217a, type: 2}
+  - {fileID: 11400000, guid: a92e08c1700a4687a38969043dfb68a1, type: 2}
+  - {fileID: 11400000, guid: e07d113b7aeb4170877b4b0f1d40406d, type: 2}
+  - {fileID: 11400000, guid: a33b7bc2c48a42c6867b04807ac463b7, type: 2}
+  - {fileID: 11400000, guid: 674844f1df564c7f975a721fa20d083a, type: 2}

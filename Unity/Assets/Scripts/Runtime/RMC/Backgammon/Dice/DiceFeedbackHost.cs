@@ -49,6 +49,17 @@ public class DiceFeedbackHost : MonoBehaviour
                 return s.feedbackPlayer;
         }
 
+        // Backward-compatible fallback for prefabs missing the generalized reset slot.
+        if (eventType == DiceFeedbackEventType.GeneralDiceResetPickup)
+        {
+            for (int i = 0; i < feedbackSlots.Count; i++)
+            {
+                FeedbackSlot s = feedbackSlots[i];
+                if (s != null && s.eventType == DiceFeedbackEventType.OpeningRollTieDiceResetPickup && s.feedbackPlayer != null)
+                    return s.feedbackPlayer;
+            }
+        }
+
         return null;
     }
 

@@ -1,0 +1,57 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements" xmlns:uie="UnityEditor.UIElements" editor-extension-mode="False">
+    <Style src="../Styles/TemplateStyles.uss"/>
+    <ui:VisualElement name="NewGameModalCard" class="modal-card new-game-modal-card">
+        <ui:VisualElement name="NewGameModalHeader" class="modal-header">
+            <ui:Label text="New Game" name="NewGameModalTitleLabel" class="m16font modal-title"/>
+            <ui:Button text="Close" name="NewGameModalCloseButton" class="rounded-button-small m16font modal-close-button"/>
+        </ui:VisualElement>
+        <ui:VisualElement name="NewGameModalBody" class="new-game-modal-body">
+            <!-- World selector — reuses GameTypePrevButton/GameTypeNextButton names for wiring -->
+            <ui:VisualElement name="GameTypeSelector" class="game-type-selector">
+                <ui:Button text="&lt;" name="GameTypePrevButton" class="game-type-arrow-button m16font"/>
+                <ui:VisualElement name="WorldChipContainer" class="ng-world-chip-container">
+                    <ui:Image name="WorldChipImage" class="ng-world-chip-image"/>
+                </ui:VisualElement>
+                <ui:Button text="&gt;" name="GameTypeNextButton" class="game-type-arrow-button m16font"/>
+            </ui:VisualElement>
+            <ui:Label name="WorldNameLabel" text="US Dollar ($)" class="m16font ng-world-name"/>
+            <ui:ScrollView name="MoneySessionSettings" class="new-game-settings-scroll">
+                <!-- Stake selector -->
+                <ui:VisualElement name="StakeSelectorRow" class="ng-stake-row">
+                    <ui:Button text="&lt;" name="StakePrevButton" class="game-type-arrow-button m16font"/>
+                    <ui:Label name="StakeAmountLabel" text="$1" class="m16font ng-stake-label"/>
+                    <ui:Button text="&gt;" name="StakeNextButton" class="game-type-arrow-button m16font"/>
+                </ui:VisualElement>
+                <ui:Label name="StakeLockedLabel" text="" class="m16font ng-stake-locked-label" style="display: none;"/>
+                <!-- Rules -->
+                <ui:Label text="Rules" class="m16font new-game-settings-header"/>
+                <ui:VisualElement class="new-game-settings-row">
+                    <ui:Label text="Auto Doubles" class="m16font new-game-settings-label"/>
+                    <ui:Toggle name="AutoDoublesToggle" value="true"/>
+                </ui:VisualElement>
+                <ui:VisualElement class="new-game-settings-row">
+                    <ui:Label text="Beavers" class="m16font new-game-settings-label"/>
+                    <ui:Toggle name="BeaversToggle" value="true"/>
+                </ui:VisualElement>
+                <ui:VisualElement class="new-game-settings-row">
+                    <ui:Label text="Raccoons" class="m16font new-game-settings-label"/>
+                    <ui:Toggle name="RaccoonsToggle" value="false"/>
+                </ui:VisualElement>
+                <ui:VisualElement class="new-game-settings-row">
+                    <ui:Label text="Ardvarks" class="m16font new-game-settings-label"/>
+                    <ui:Toggle name="ArdvarksToggle" value="false"/>
+                </ui:VisualElement>
+                <ui:VisualElement class="new-game-settings-row">
+                    <ui:Label text="Jacoby Rule" class="m16font new-game-settings-label"/>
+                    <ui:Toggle name="JacobyToggle" value="true"/>
+                </ui:VisualElement>
+            </ui:ScrollView>
+            <ui:VisualElement name="SeedRow" class="new-game-settings-row seed-row">
+                <ui:Label text="Seed" class="m16font new-game-settings-label"/>
+                <ui:TextField name="SeedTextField" max-length="8" class="seed-text-field m16font"/>
+                <ui:Button text="&#x21BB;" name="RandomizeSeedButton" class="rounded-button-small m16font"/>
+            </ui:VisualElement>
+            <ui:Button text="Start Game" name="StartNewGameButton" class="rounded-button-large m16font button-rounded-large new-game-start-button"/>
+        </ui:VisualElement>
+    </ui:VisualElement>
+</ui:UXML>

@@ -90,19 +90,48 @@ namespace Runtime.RMC._MyProject_.Dice
                 }
             }
         }
-        
+
+        public void SetDiceTheme(Color bodyColor, Color pipColor, float luminosity)
+        {
+            diceBodyColor = bodyColor;
+            dicePipColor = pipColor;
+            diceLuminosity = luminosity;
+            UpdateAllDiceSettings();
+        }
+
         // --- PHYSICS & FEEL ---
         [Header("Physics Tuning")]
         [Tooltip("The base impulse force applied to the throw.")]
         [Range(12.5f, 45.0f)]
         public float initialForce = 35.0f;
 
+        [Header("Force Variation")]
         [Tooltip("Adds a random variance to the force so every throw feels unique.")]
         [SerializeField] private bool addRandomVariability = true;
 
-        [Tooltip("The maximum extra random force added if variability is enabled.")]
+        [Tooltip("The maximum extra random force added to the forward throw (Z-axis) if variability is enabled.")]
         [Range(0.0f, 5.0f)]
-        [SerializeField] private float variabilityRange = 2.5f;
+        [SerializeField] private float forceVariabilityRange = 2.5f;
+
+        [Tooltip("Random horizontal deviation (X-axis, left/right) applied to each throw.")]
+        [Range(0.0f, 1.0f)]
+        [SerializeField] private float lateralForceVariance = 0.1f;
+
+        [Tooltip("Random vertical deviation (Y-axis, up/down) applied to each throw.")]
+        [Range(0.0f, 1.0f)]
+        [SerializeField] private float verticalForceVariance = 0.1f;
+
+        [Header("Rotation Variation")]
+        [Tooltip("Randomize the starting rotation of dice before each throw.")]
+        [SerializeField] private bool randomizeStartRotation = true;
+
+        [Header("Torque Variation")]
+        [Tooltip("Randomize the spin/torque applied to dice during throw.")]
+        [SerializeField] private bool randomizeTorque = true;
+
+        [Tooltip("Maximum random torque per axis (X, Y, Z) if torque randomization is enabled.")]
+        [Range(0.0f, 50.0f)]
+        [SerializeField] private float maxTorquePerAxis = 25.0f;
 
         [Header("Simulation Playback")]
         [Tooltip("Total physics steps to record for pre-calculation (higher = longer roll).")]
@@ -166,6 +195,7 @@ namespace Runtime.RMC._MyProject_.Dice
 
         private void Start()
         {
+            Random.InitState((int)System.DateTime.Now.Ticks);
             SpawnDice();
         }
         
@@ -359,13 +389,21 @@ namespace Runtime.RMC._MyProject_.Dice
         /// <param name="dice">The transform of the dice.</param>
         private void SetInitialRotation(Transform dice)
         {
-            // Generate random values for rotation on each axis
-            var x = Random.Range(0f, 360f);
-            var y = Random.Range(0f, 360f);
-            var z = Random.Range(0f, 360f);
+            if (randomizeStartRotation)
+            {
+                // Generate random values for rotation on each axis
+                var x = Random.Range(0f, 360f);
+                var y = Random.Range(0f, 360f);
+                var z = Random.Range(0f, 360f);
 
-            // Create a Quaternion representing the rotation
-            rotation = Quaternion.Euler(x, y, z);
+                // Create a Quaternion representing the rotation
+                rotation = Quaternion.Euler(x, y, z);
+            }
+            else
+            {
+                // Use identity rotation for consistent starting pose
+                rotation = Quaternion.identity;
+            }
 
             // Apply the rotation to the dice's transform
             dice.rotation = rotation;
@@ -378,20 +416,23 @@ namespace Runtime.RMC._MyProject_.Dice
         /// <param name="dice">The transform of the dice.</param>
         private void SetInitialForce(Transform dice)
         {
-            // 1. Randomize the slight horizontal deviation
-            var x = Random.Range(0f, 0.1f);
-            var y = Random.Range(0f, 0.1f);
+            // 1. Calculate lateral variance (X and Y) from inspector settings
+            float x = addRandomVariability ? Random.Range(0f, lateralForceVariance) : 0f;
+            float y = addRandomVariability ? Random.Range(0f, verticalForceVariance) : 0f;
 
-            // 2. Calculate the magnitude based on your slider and variability
+            // 2. Calculate forward force magnitude with optional variability
             float z = initialForce;
             if (addRandomVariability)
             {
-                z += Random.Range(0f, variabilityRange);
+                z += Random.Range(0f, forceVariabilityRange);
             }
 
-            // 3. Apply the calculated finalForce to the Z axis
-            force = new Vector3(x, y, z);
-    
+            // 3. Calculate force relative to dice container's orientation
+            // Use transform.forward for the main throw direction instead of world Z-axis
+            Vector3 forwardForce = transform.forward * z;
+            Vector3 lateralVariance = transform.right * x + transform.up * y;
+            force = forwardForce + lateralVariance;
+
             // 4. Set the velocity
             dice.GetComponent<Rigidbody>().linearVelocity = force;
         }
@@ -402,11 +443,19 @@ namespace Runtime.RMC._MyProject_.Dice
         /// <param name="dice">The transform of the dice.</param>
         private void SetInitialTorque(Transform dice)
         {
-            var x = Random.Range(0f, 25f);
-            var y = Random.Range(0f, 25f);
-            var z = Random.Range(0f, 25f);
+            if (randomizeTorque)
+            {
+                var x = Random.Range(0f, maxTorquePerAxis);
+                var y = Random.Range(0f, maxTorquePerAxis);
+                var z = Random.Range(0f, maxTorquePerAxis);
+                torque = new Vector3(x, y, z);
+            }
+            else
+            {
+                // No torque for deterministic rolls
+                torque = Vector3.zero;
+            }
 
-            torque = new Vector3(x, y, z);
             dice.GetComponent<Rigidbody>().AddTorque(torque, ForceMode.VelocityChange);
         }
 

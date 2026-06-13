@@ -52,6 +52,9 @@ public class DiceFeedbackController : MonoBehaviour
             case DiceFeedbackEventType.OpeningRollTieDiceResetPickup:
                 PlayOnAllOpeningDice(data);
                 break;
+            case DiceFeedbackEventType.GeneralDiceResetPickup:
+                PlayOnAllOpeningDice(data);
+                break;
             default:
                 if (enableDebugLogs)
                     Debug.LogWarning($"[Backgammon][DiceFeedback] No routing for {data.EventType}");

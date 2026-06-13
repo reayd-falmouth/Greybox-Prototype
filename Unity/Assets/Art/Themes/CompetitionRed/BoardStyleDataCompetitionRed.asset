@@ -1,0 +1,35 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 8dd07e8bc2a04588972f6a78112fb439, type: 3}
+  m_Name: BoardStyleDataCompetitionRed
+  m_EditorClassIdentifier: 
+  id: competition_red_board
+  displayName: Crimson Ledger
+  description: Tournament-grade luxury leather with timers and scoresheets.
+  gameType: 0
+  sortByOrder: 3
+  locked: 1
+  uiThemeColor: {r: 1, g: 0.3372549, b: 0.15686275, a: 1}
+  transitionColour: {r: 0.77254903, g: 0.05490196, b: 0.047058824, a: 1}
+  iconColour: {r: 1, g: 1, b: 1, a: 1}
+  boardStyle: 3
+  tablePrefab: {fileID: 1441979423407648902, guid: 637efc72662025e4f9778d4e8f5065c4, type: 3}
+  boardSprite: {fileID: 21300000, guid: 832dc2a384bf8ce40a71b8cf5459610d, type: 3}
+  rightProfileChecker: {fileID: 0}
+  leftProfileChecker: {fileID: 0}
+  whiteCheckerSprite: {fileID: 21300000, guid: 2014ee347ffad2c42a769c968e153eb2, type: 3}
+  blackCheckerSprite: {fileID: 21300000, guid: 4d0d46e4b4bce6646abe012e94b8504b, type: 3}
+  lobbyCardIcon: {fileID: 21300000, guid: 5405da99ad411bd42a04e1b178d132be, type: 3}
+  fromLobby: {fileID: 21300000, guid: 5405da99ad411bd42a04e1b178d132be, type: 3}
+  toLobby: {fileID: 0}
+  anteListJson: {fileID: 4900000, guid: 7946dc39104f3d54e9c9806219d2abb0, type: 3}
+  trophyDef: {fileID: 0}

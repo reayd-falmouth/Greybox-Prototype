@@ -1,0 +1,56 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 47215b2cefb77e04ea44306b0d634513, type: 3}
+  m_Name: Currency_EUR
+  m_EditorClassIdentifier: RMC.MyProject.Runtime::Runtime.RMC.Backgammon.Core.GameModePresetSo
+  displayName: Euro
+  gameModeType: 0
+  description: Standard backgammon. Race your checkers home and bear them off.
+  gameVariantType: 0
+  startingPositionId: 4HPwATDgc/ABMA
+  previewImage: {fileID: 21300000, guid: 43d9e07ff5dd813459492f5eb7595aa5, type: 3}
+  defaultConfig:
+    BaseStake: 1
+    AutoDoublesEnabled: 1
+    BeaversAllowed: 1
+    RaccoonsAllowed: 0
+    ArdvarksAllowed: 0
+    JacobyRule: 1
+    CurrencyCode: USD
+    CurrencySymbol: $
+  currencyCode: EUR
+  currencySymbol: e
+  narrativeDescription: From Monte Carlo to Amsterdam, the stakes rise.
+  startingBalance: 100
+  chipSprite: {fileID: 0}
+  chipStakeSprites:
+  - {fileID: 1284070446, guid: 85793c540ca9cac48bdb5f71e5ecaecd, type: 3}
+  - {fileID: -873632916, guid: 85793c540ca9cac48bdb5f71e5ecaecd, type: 3}
+  - {fileID: -1310322017, guid: 85793c540ca9cac48bdb5f71e5ecaecd, type: 3}
+  - {fileID: -266392052, guid: 85793c540ca9cac48bdb5f71e5ecaecd, type: 3}
+  - {fileID: -300055872, guid: 85793c540ca9cac48bdb5f71e5ecaecd, type: 3}
+  - {fileID: 874392022, guid: 85793c540ca9cac48bdb5f71e5ecaecd, type: 3}
+  - {fileID: -1600948780, guid: 85793c540ca9cac48bdb5f71e5ecaecd, type: 3}
+  - {fileID: -1619604257, guid: 85793c540ca9cac48bdb5f71e5ecaecd, type: 3}
+  - {fileID: 547591462, guid: 85793c540ca9cac48bdb5f71e5ecaecd, type: 3}
+  wipeColor: {r: 0.039, g: 0.075, b: 0.098, a: 1}
+  wipeIcon: {fileID: 0}
+  stakes:
+  - {fileID: 11400000, guid: d8456d38fcf9432082b3d3e3802e7c93, type: 2}
+  - {fileID: 11400000, guid: 68bfadad7a5d431db734e7f5aa43859f, type: 2}
+  - {fileID: 11400000, guid: 6f38026a227b47fd89686c6481ae853b, type: 2}
+  - {fileID: 11400000, guid: 14ff69694fbc4e089c88c9035e30c844, type: 2}
+  - {fileID: 11400000, guid: c9e5821dc07d4f7ba83da19e06e4d7e2, type: 2}
+  - {fileID: 11400000, guid: 6cbe40df9e174f5584982655493a2070, type: 2}
+  - {fileID: 11400000, guid: 06e3deeb5bcf4d9398673c38afcdb839, type: 2}
+  - {fileID: 11400000, guid: d9a88644b85f4274af188208fa038bec, type: 2}
+  - {fileID: 11400000, guid: 9229e9915713457aa023a99093aea80b, type: 2}

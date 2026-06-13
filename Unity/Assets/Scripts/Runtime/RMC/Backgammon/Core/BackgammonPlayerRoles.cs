@@ -5,6 +5,10 @@ namespace Runtime.RMC.Backgammon.Core
     /// </summary>
     public static class BackgammonPlayerRoles
     {
+    public const int LocalPlayerIndex = 1;
+
         public static bool IsAiTurnInOpponentAiMode(int playerOnRoll) => playerOnRoll == 0;
+
+    public static bool IsLocalPlayer(int playerIndex) => playerIndex == LocalPlayerIndex;
     }
 }

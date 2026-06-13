@@ -62,3 +62,11 @@ publish: zip upload
 clean:
 	rm -f "$(ZIP_PATH)"
 	@rmdir build 2>/dev/null || true
+
+setup-git-lfs:
+	@if [ -z "$(GIT_LFS_USERNAME)" ] || [ -z "$(GIT_LFS_PASSWORD)" ] || [ -z "$(GIT_LFS_ENDPOINT)" ]; then \
+		echo "ERROR: GIT_LFS_USERNAME, GIT_LFS_PASSWORD, and GIT_LFS_ENDPOINT must all be set."; \
+		exit 1; \
+	fi
+	@echo "Setting up git lfs tracking..."
+	@git config lfs.url "https://$(GIT_LFS_USERNAME):$(GIT_LFS_PASSWORD)@$(GIT_LFS_ENDPOINT)/lfs"

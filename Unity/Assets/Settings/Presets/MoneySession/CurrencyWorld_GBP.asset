@@ -1,0 +1,24 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 9025a06a57c3ca24c93a84458daaa41e, type: 3}
+  m_Name: CurrencyWorld_GBP
+  m_EditorClassIdentifier: RMC.MyProject.Runtime::Runtime.RMC.Backgammon.Core.CurrencyWorldSo
+  currencyCode: GBP
+  currencySymbol: £
+  displayName: British Pound
+  narrativeDescription: The green felt of London's finest clubs awaits. Old money, new stakes.
+  primaryChipColor: {r: 0.19607843 0.70588235 0.19607843 1}
+  secondaryChipColor: {r: 1 0.84313725 0.19607843 1}
+  stakeLevels: {fileID: 11400000, guid: d1198e62851e4a1d816061eb40af4326, type: 2}
+  worldBadgeSprite: {fileID: 0}
+  chipSprite: {fileID: 0}
+  startingBalance: 100

@@ -1,0 +1,57 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 47215b2cefb77e04ea44306b0d634513, type: 3}
+  m_Name: Currency_JPY
+  m_EditorClassIdentifier: RMC.MyProject.Runtime::Runtime.RMC.Backgammon.Core.GameModePresetSo
+  displayName: Japanese Yen
+  gameModeType: 0
+  description: Standard backgammon. Race your checkers home and bear them off.
+  gameVariantType: 0
+  startingPositionId: 4HPwATDgc/ABMA
+  previewImage: {fileID: 21300000, guid: e0011365d12eb3741989f395d5ff4f23, type: 3}
+  defaultConfig:
+    BaseStake: 1
+    AutoDoublesEnabled: 1
+    BeaversAllowed: 1
+    RaccoonsAllowed: 0
+    ArdvarksAllowed: 0
+    JacobyRule: 1
+    CurrencyCode: USD
+    CurrencySymbol: $
+  currencyCode: JPY
+  currencySymbol: Y
+  narrativeDescription: The neon lights of Tokyo's backgammon dens beckon. Thousands
+    change hands in seconds.
+  startingBalance: 100
+  chipSprite: {fileID: 0}
+  chipStakeSprites:
+  - {fileID: -1855440900, guid: 8a1eb15f14db71a4c8f538f8f001b401, type: 3}
+  - {fileID: -1643768304, guid: 8a1eb15f14db71a4c8f538f8f001b401, type: 3}
+  - {fileID: -1862876958, guid: 8a1eb15f14db71a4c8f538f8f001b401, type: 3}
+  - {fileID: -1970617989, guid: 8a1eb15f14db71a4c8f538f8f001b401, type: 3}
+  - {fileID: -1121676639, guid: 8a1eb15f14db71a4c8f538f8f001b401, type: 3}
+  - {fileID: -1223240542, guid: 8a1eb15f14db71a4c8f538f8f001b401, type: 3}
+  - {fileID: 1570317481, guid: 8a1eb15f14db71a4c8f538f8f001b401, type: 3}
+  - {fileID: -1162070986, guid: 8a1eb15f14db71a4c8f538f8f001b401, type: 3}
+  - {fileID: 385406840, guid: 8a1eb15f14db71a4c8f538f8f001b401, type: 3}
+  wipeColor: {r: 0.039, g: 0.075, b: 0.098, a: 1}
+  wipeIcon: {fileID: 0}
+  stakes:
+  - {fileID: 11400000, guid: 2272f234d3d347d2862a55d2d3f3a40a, type: 2}
+  - {fileID: 11400000, guid: 132450d212e14b6583d70f9fc5bc9e3a, type: 2}
+  - {fileID: 11400000, guid: b30ca12fafa041169312c56e08c569a6, type: 2}
+  - {fileID: 11400000, guid: 0e1f9298c5b14d188ac34aa474cbd1d8, type: 2}
+  - {fileID: 11400000, guid: dd2367eb45864edb80440bdc2d53a02e, type: 2}
+  - {fileID: 11400000, guid: 6eb2a9ea8a614fbdace070fab08e4e0c, type: 2}
+  - {fileID: 11400000, guid: ef118f912bb54238831c529707c32939, type: 2}
+  - {fileID: 11400000, guid: 110da146104e41fcb319f803349ba6ce, type: 2}
+  - {fileID: 11400000, guid: fe107b57185342b7a43f31e57272f77a, type: 2}

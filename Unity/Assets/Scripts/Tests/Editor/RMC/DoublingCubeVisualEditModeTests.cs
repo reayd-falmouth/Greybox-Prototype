@@ -360,4 +360,52 @@ public class DoublingCubeVisualEditModeTests
             Object.DestroyImmediate(go);
         }
     }
+
+    [Test]
+    public void ResolveFallbackLocalPosition_WhenCentered_ReturnsCenteredPosition()
+    {
+        Vector3 centered = new Vector3(1f, 2f, 3f);
+        Vector3 owner0 = new Vector3(4f, 5f, 6f);
+        Vector3 owner1 = new Vector3(7f, 8f, 9f);
+
+        Vector3 resolved = DoublingCubeVisual.ResolveFallbackLocalPosition(
+            cubeOwner: 3,
+            centeredPosition: centered,
+            player0Position: owner0,
+            player1Position: owner1);
+
+        Assert.That(resolved, Is.EqualTo(centered));
+    }
+
+    [Test]
+    public void ResolveFallbackLocalPosition_WhenPlayer0Owns_ReturnsPlayer1Position()
+    {
+        Vector3 centered = new Vector3(1f, 2f, 3f);
+        Vector3 owner0 = new Vector3(4f, 5f, 6f);
+        Vector3 owner1 = new Vector3(7f, 8f, 9f);
+
+        Vector3 resolved = DoublingCubeVisual.ResolveFallbackLocalPosition(
+            cubeOwner: 0,
+            centeredPosition: centered,
+            player0Position: owner0,
+            player1Position: owner1);
+
+        Assert.That(resolved, Is.EqualTo(owner1));
+    }
+
+    [Test]
+    public void ResolveFallbackLocalPosition_WhenPlayer1Owns_ReturnsPlayer0Position()
+    {
+        Vector3 centered = new Vector3(1f, 2f, 3f);
+        Vector3 owner0 = new Vector3(4f, 5f, 6f);
+        Vector3 owner1 = new Vector3(7f, 8f, 9f);
+
+        Vector3 resolved = DoublingCubeVisual.ResolveFallbackLocalPosition(
+            cubeOwner: 1,
+            centeredPosition: centered,
+            player0Position: owner0,
+            player1Position: owner1);
+
+        Assert.That(resolved, Is.EqualTo(owner0));
+    }
 }

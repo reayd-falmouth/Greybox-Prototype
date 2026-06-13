@@ -1,0 +1,35 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 8dd07e8bc2a04588972f6a78112fb439, type: 3}
+  m_Name: BoardStyleDataJungle
+  m_EditorClassIdentifier: 
+  id: jungle_board
+  displayName: Temple of Fortune
+  description: Exploration, mystery, and risk-reward mechanics.
+  gameType: 1
+  sortByOrder: 4
+  locked: 1
+  uiThemeColor: {r: 0.93333334, g: 1, b: 0.4745098, a: 1}
+  transitionColour: {r: 0.7058824, g: 0.8039216, b: 0, a: 1}
+  iconColour: {r: 1, g: 1, b: 1, a: 1}
+  boardStyle: 5
+  tablePrefab: {fileID: 6438491438366478241, guid: 9c541dff317057049b2d8de29bb0b5d6, type: 3}
+  boardSprite: {fileID: 21300000, guid: 9c67de298055bb44887705b3d6f3dc5c, type: 3}
+  rightProfileChecker: {fileID: 0}
+  leftProfileChecker: {fileID: 0}
+  whiteCheckerSprite: {fileID: 21300000, guid: f53f0bf428ef17e4ebbe91ca0c787c24, type: 3}
+  blackCheckerSprite: {fileID: 21300000, guid: 43fc32d85114e3641a7d8003c1950209, type: 3}
+  lobbyCardIcon: {fileID: 21300000, guid: e1eb8c2184274e84a93e8d9f94842426, type: 3}
+  fromLobby: {fileID: 21300000, guid: e1eb8c2184274e84a93e8d9f94842426, type: 3}
+  toLobby: {fileID: 0}
+  anteListJson: {fileID: 4900000, guid: 203507baacfa62747bc226302e15e406, type: 3}
+  trophyDef: {fileID: 0}

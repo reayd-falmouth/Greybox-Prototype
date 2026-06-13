@@ -1,0 +1,35 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 8dd07e8bc2a04588972f6a78112fb439, type: 3}
+  m_Name: BoardStyleDataMatch
+  m_EditorClassIdentifier: 
+  id: match_play_board
+  displayName: Tavla Table
+  description: Wooden cafe boards of Turkey and Greece.
+  gameType: 0
+  sortByOrder: 2
+  locked: 1
+  uiThemeColor: {r: 1, g: 0.5568628, b: 0.40784314, a: 1}
+  transitionColour: {r: 0.99607843, g: 0.5921569, b: 0.15686275, a: 1}
+  iconColour: {r: 1, g: 1, b: 1, a: 1}
+  boardStyle: 1
+  tablePrefab: {fileID: 8085315877133606935, guid: 794dc118b1a9a0040bab6c4261b9b131, type: 3}
+  boardSprite: {fileID: 21300000, guid: 249e95937cb4005429034de38fce16c1, type: 3}
+  rightProfileChecker: {fileID: 0}
+  leftProfileChecker: {fileID: 0}
+  whiteCheckerSprite: {fileID: 21300000, guid: 7b954334122095e4990a2c84536415f4, type: 3}
+  blackCheckerSprite: {fileID: 21300000, guid: ff0f9bb36a4ac2441b6dfcd02b4cdf98, type: 3}
+  lobbyCardIcon: {fileID: 21300000, guid: 75fa47ed3ebf33540bc88567556ef9e0, type: 3}
+  fromLobby: {fileID: 21300000, guid: 75fa47ed3ebf33540bc88567556ef9e0, type: 3}
+  toLobby: {fileID: 0}
+  anteListJson: {fileID: 4900000, guid: 0db6e9cb1e2af3e4da763a6a5b3ee503, type: 3}
+  trophyDef: {fileID: 0}

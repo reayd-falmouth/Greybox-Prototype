@@ -1,0 +1,409 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements" xmlns:uie="UnityEditor.UIElements" editor-extension-mode="False">
+    <Style src="project://database/Assets/Settings/UIToolkit/Resources/Styles/TemplateStyles.uss?fileID=7433441132597879392&amp;guid=6ebbbe798c96bf344b8b9360316b9108&amp;type=3#TemplateStyles"/>
+    <ui:VisualElement name="ScreenRoot" class="screen-root panel-fill" style="width: 100%; height: 100%;">
+        <ui:VisualElement name="BoardLayer" style="flex-grow: 1; background-image: url(&quot;project://database/Assets/Art/Themes/MoneySession/MoneySesson_3d.png?fileID=2800000&amp;guid=e08c625be60511749af79b56a3ed31ee&amp;type=3#MoneySesson_3d&quot;); -unity-background-image-tint-color: rgba(255, 255, 255, 0); -unity-background-scale-mode: scale-to-fit;">
+            <ui:VisualElement name="LeftPanel" style="flex-grow: 1; align-self: flex-start; align-content: center; justify-content: flex-start; margin-top: 0; margin-bottom: 0; width: 332px; flex-basis: 100%; height: 100%; align-items: flex-start; padding-top: 0; position: absolute; left: 0;">
+                <ui:Button text="&#10;" name="ScoreButton" class="money-session-green cartoon-font money-session-button cartoon-button cartoon-button-wide-left cartoon-button-left cartoon-button-regular" style="height: 13%; width: 100%; -unity-font-definition: url(&quot;project://database/Assets/Art/Fonts/Carton_Six%20SDF%20Shadow/Carton_Six.ttf?fileID=12800000&amp;guid=90a4ecde2657d2844b67675403ac2376&amp;type=3#Carton_Six&quot;); font-size: 40px; flex-grow: initial; flex-direction: row; margin-left: 0; padding-left: 18px; -unity-text-align: middle-center; text-overflow: ellipsis; margin-top: 22%; border-left-width: 0; border-top-width: 0; border-right-width: 0; border-bottom-width: 0; background-position-x: left 0; justify-content: flex-start; align-self: center; align-items: center;">
+                    <ui:Image name="Coin" class="cartoon-icon" style="background-image: url(&quot;project://database/Assets/3rdParty/Ingsoft/Images/Common/Coin%20Icon.png?fileID=2800000&amp;guid=8e9bc37e3b8c1ed478cefe926ca8d3a7&amp;type=3#Coin Icon&quot;); background-position-x: left 0; height: 88%; width: 84px;"/>
+                    <ui:Image name="BetField" class="cartoon-icon" style="background-image: url(&quot;project://database/Assets/Art/Themes/MoneySession/Bet%20Field.png?fileID=2800000&amp;guid=458c84c72fd51d94895c85423e1e2109&amp;type=3#Bet Field&quot;); -unity-background-scale-mode: scale-to-fit; height: 100%; width: 100%; flex-direction: row; justify-content: center; align-items: center; align-content: flex-start; padding-left: 21px; margin-right: 39px;">
+                        <ui:Label text="$1,230,973" name="ScoreLabel" class="cartoon-font"/>
+                        <ui:VisualElement name="VisualElement" style="flex-grow: 1; width: 120px; height: 76%; justify-content: center; padding-bottom: 8px; padding-top: 8px; right: -42px;">
+                            <ui:Image name="Image" class="cartoon-icon" style="background-image: url(&quot;project://database/Assets/3rdParty/Ingsoft/Images/Common/Flat%20Icons%20White/Bet%20Arrow%20Up.png?fileID=2800000&amp;guid=1c5e0107d857e2341a13637322597828&amp;type=3#Bet Arrow Up&quot;); height: 100%; width: 45%; -unity-background-scale-mode: scale-to-fit; margin-bottom: 8px;"/>
+                            <ui:Image class="cartoon-icon" style="background-image: url(&quot;project://database/Assets/3rdParty/Ingsoft/Images/Common/Flat%20Icons%20White/Bet%20Arrow%20Down.png?fileID=2800000&amp;guid=3c4a2e5a9849a5544a428ee93f824145&amp;type=3#Bet Arrow Down&quot;); width: 37%; height: 100%; -unity-background-scale-mode: scale-to-fit; padding-bottom: 8px;"/>
+                        </ui:VisualElement>
+                    </ui:Image>
+                </ui:Button>
+                <ui:Button text="" name="LeftProfileButton" class="money-session-button cartoon-button cartoon-font cartoon-button-left money-session-green cartoon-button-left-profile" style="height: 390px; width: 100%; flex-direction: column; align-self: flex-start; align-content: center; margin-top: 11%; left: -3%; -unity-font-definition: url(&quot;project://database/Assets/Art/Fonts/Carton_Six%20SDF%20Shadow/Carton_Six.ttf?fileID=12800000&amp;guid=90a4ecde2657d2844b67675403ac2376&amp;type=3#Carton_Six&quot;); -unity-text-align: lower-center; border-top-width: 0; border-right-width: 0; border-bottom-width: 0; border-left-width: 0; padding-right: 76px; justify-content: center; align-items: center; padding-left: 56px;">
+                    <ui:Image scale-mode="ScaleToFit" name="Image" style="background-image: url(&quot;project://database/Assets/3rdParty/Ingsoft/Images/Common/Profile%20Picture%201.png?fileID=2800000&amp;guid=6ad16067291550b4c9cf8e440a2d8ca2&amp;type=3#Profile Picture 1&quot;); background-size: 100% 100%; width: 85%; height: 63%; aspect-ratio: 1; border-top-width: 0; border-bottom-width: 0; border-left-width: 0; border-right-width: 0; border-left-color: rgba(0, 0, 0, 0); border-right-color: rgba(0, 0, 0, 0); border-top-color: rgba(0, 0, 0, 0); border-bottom-color: rgba(0, 0, 0, 0); -unity-background-scale-mode: scale-to-fit;"/>
+                    <ui:Label text="PlayerName" class="cartoon-font"/>
+                    <ui:Label text="Level 22" name="Label" class="cartoon-font"/>
+                </ui:Button>
+                <ui:Button text="&#10;" name="RunInfoButtoon" class="money-session-green cartoon-button cartoon-font cartoon-button-left cartoon-button-left-regular cartoon-button-regular">
+                    <ui:Image name="Image" class="cartoon-icon"/>
+                    <ui:Label text="Run Info" name="RunInfoLabel" class="cartoon-font" style="display: flex;"/>
+                </ui:Button>
+                <ui:Button text="&#10;" name="MessageButton" class="money-session-green cartoon-button cartoon-font cartoon-button-left cartoon-button-left-regular cartoon-button-regular" style="height: 145px; width: 100%; margin-top: 20px; -unity-font-definition: url(&quot;project://database/Assets/Art/Fonts/Carton_Six%20SDF%20Shadow/Carton_Six.ttf?fileID=12800000&amp;guid=90a4ecde2657d2844b67675403ac2376&amp;type=3#Carton_Six&quot;); text-shadow: 5px 6.2px 2px rgb(67, 67, 67); justify-content: center; padding-top: 18px; padding-bottom: 15px;">
+                    <ui:Image name="Image" class="cartoon-icon" style="background-image: url(&quot;project://database/Assets/3rdParty/Ingsoft/Images/Common/Flat%20Icons%20White/Send%20Chat%20Icon.png?fileID=2800000&amp;guid=c937eea2c2ecc674f96b2aa2ce521df9&amp;type=3#Send Chat Icon&quot;); -unity-background-scale-mode: scale-to-fit; -unity-slice-type: tiled; height: 63%; left: 0; top: 0; justify-content: center;"/>
+                    <ui:Label text="Message" name="MessageLabel" class="cartoon-font" style="display: flex;"/>
+                </ui:Button>
+            </ui:VisualElement>
+            <ui:VisualElement name="RightPanel" style="flex-grow: 1; align-self: flex-start; align-content: center; justify-content: flex-start; margin-top: 0; margin-bottom: 0; width: 332px; flex-basis: 100%; height: 100%; align-items: flex-start; padding-top: 0; position: absolute; right: 0;">
+                <ui:Button text="&#10;" name="SettingsButton" class="money-session-green cartoon-font money-session-button cartoon-button cartoon-button-right cartoon-button-wide-right" style="height: 13%; width: 100%; -unity-font-definition: url(&quot;project://database/Assets/Art/Fonts/Carton_Six%20SDF%20Shadow/Carton_Six.ttf?fileID=12800000&amp;guid=90a4ecde2657d2844b67675403ac2376&amp;type=3#Carton_Six&quot;); font-size: 40px; flex-grow: initial; flex-direction: row; margin-left: 0; padding-left: 36px; -unity-text-align: middle-center; text-overflow: ellipsis; margin-top: 22%; border-left-width: 0; border-top-width: 0; border-right-width: 0; border-bottom-width: 0; background-position-x: left 0; padding-right: 4px; background-image: url(&quot;project://database/Assets/Art/Textures/GrayscaleTextures/Wide%20Button%20Right_gray.png?fileID=2800000&amp;guid=fd33f4f0de3272b469a98e94dc62e0e5&amp;type=3#Wide Button Right_gray&quot;);">
+                    <ui:Image class="cartoon-icon" style="width: 100%; height: 100%; background-image: url(&quot;project://database/Assets/Art/Themes/MoneySession/Settings%20Icon.png?fileID=2800000&amp;guid=d55a0f4a450cf9d49baa839b28007d3c&amp;type=3#Settings Icon&quot;);"/>
+                    <ui:Label text="Settings" class="cartoon-font" style="width: 209px;"/>
+                </ui:Button>
+                <ui:Button text="" name="RightProfileButton" class="money-session-button cartoon-button cartoon-font money-session-green cartoon-button-right cartoon-button-right-profile" style="height: 390px; width: 100%; flex-direction: column; align-self: flex-end; align-content: center; margin-top: 11%; left: -3%; -unity-font-definition: url(&quot;project://database/Assets/Art/Fonts/Carton_Six%20SDF%20Shadow/Carton_Six.ttf?fileID=12800000&amp;guid=90a4ecde2657d2844b67675403ac2376&amp;type=3#Carton_Six&quot;); -unity-text-align: lower-center; border-top-width: 0; border-right-width: 0; border-bottom-width: 0; border-left-width: 0; justify-content: center; padding-left: 76px;">
+                    <ui:Image scale-mode="ScaleToFit" style="background-image: url(&quot;project://database/Assets/3rdParty/Ingsoft/Images/Common/Profile%20Picture%201.png?fileID=2800000&amp;guid=6ad16067291550b4c9cf8e440a2d8ca2&amp;type=3#Profile Picture 1&quot;); background-size: 100% 100%; width: 85%; height: 63%; aspect-ratio: 1; border-top-width: 0; border-bottom-width: 0; border-left-width: 0; border-right-width: 0; border-left-color: rgba(0, 0, 0, 0); border-right-color: rgba(0, 0, 0, 0); border-top-color: rgba(0, 0, 0, 0); border-bottom-color: rgba(0, 0, 0, 0); -unity-background-scale-mode: scale-to-fit;"/>
+                    <ui:Label text="PlayerName" class="cartoon-font"/>
+                    <ui:Label text="Level 22" name="Label" class="cartoon-font"/>
+                </ui:Button>
+                <ui:Button text="&#10;" name="AutoRollButton" class="money-session-green cartoon-button cartoon-font cartoon-button-right cartoon-button-right-regular cartoon-button-regular" style="height: 145px; width: 100%; -unity-font-definition: url(&quot;project://database/Assets/Art/Fonts/Carton_Six%20SDF%20Shadow/Carton_Six.ttf?fileID=12800000&amp;guid=90a4ecde2657d2844b67675403ac2376&amp;type=3#Carton_Six&quot;); margin-top: 50px;">
+                    <ui:Image class="cartoon-icon" style="background-image: url(&quot;project://database/Assets/3rdParty/Ingsoft/Images/Common/Flat%20Icons%20White/Dice%20Icon.png?fileID=2800000&amp;guid=a044dd2e0b6075e4e8ea6937ea806a07&amp;type=3#Dice Icon&quot;);"/>
+                    <ui:Label text="AutoRoll" name="AutoRollLabel" class="cartoon-font"/>
+                </ui:Button>
+                <ui:Button text="&#10;" name="HintButton" class="money-session-green cartoon-button cartoon-font cartoon-button-right cartoon-button-right-regular cartoon-button-regular" style="height: 145px; width: 100%; margin-top: 20px; -unity-font-definition: url(&quot;project://database/Assets/Art/Fonts/Carton_Six%20SDF%20Shadow/Carton_Six.ttf?fileID=12800000&amp;guid=90a4ecde2657d2844b67675403ac2376&amp;type=3#Carton_Six&quot;); text-shadow: 5px 6.2px 2px rgb(67, 67, 67); background-position-x: center; right: -39px;">
+                    <ui:Image class="cartoon-icon" style="background-image: url(&quot;project://database/Assets/3rdParty/Ingsoft/Images/Common/Flat%20Icons%20White/Eye.png?fileID=2800000&amp;guid=0ad3bda9f6826234a8233dc6ea954b59&amp;type=3#Eye&quot;);"/>
+                    <ui:Label text="Hint $1" name="HintLabel" class="cartoon-font"/>
+                </ui:Button>
+            </ui:VisualElement>
+        </ui:VisualElement>
+        <ui:VisualElement name="LobbyLayer" class="lobby-layer" style="background-color: rgb(10, 19, 25); align-self: center; background-image: url(&quot;project://database/Assets/Art/Textures/I_want_animate_this_I_202605131141.jpeg?fileID=2800000&amp;guid=c2ec0117c3528f44d97ca7bcbf940cf3&amp;type=3#I_want_animate_this_I_202605131141&quot;); display: none;">
+            <ui:VisualElement name="LobbyIcon" class="lobby-icon" style="background-image: url(&quot;project://database/Assets/Art/Textures/Poker_chips_falling_like_rain_202605131156.jpeg?fileID=2800000&amp;guid=0d5b30c3dd09de9408dbb0623057975d&amp;type=3#Poker_chips_falling_like_rain_202605131156&quot;); align-self: center; justify-content: space-between; height: 100%; width: 100%; margin-bottom: 0; max-height: 100%; display: none;"/>
+            <ui:VisualElement name="LobbyCard" class="lobby-card" style="flex-direction: row; width: 100%; display: flex; position: absolute; height: 180px; bottom: 45px; background-color: rgba(10, 20, 26, 0.4); align-self: center; align-content: center;">
+                <ui:VisualElement name="LobbyButtonGroup" class="lobby-button-group" style="flex-direction: row; align-self: center; position: absolute; display: flex; width: 804px; justify-content: center; align-content: center;">
+                    <ui:Button name="LobbyPlayButton" text="PLAY" class="rounded-button-large lobby-button m16font button-primary" style="align-self: center; -unity-text-align: middle-center; font-size: 48px; margin-bottom: 2px; border-top-width: 0; border-left-width: 0; border-bottom-width: 0; border-right-width: 0; height: 120px;"/>
+                    <ui:Button name="LobbyOptionsButton" text="SETTINGS" class="rounded-button-large lobby-button m16font button-secondary" style="-unity-text-align: middle-center; font-size: 48px; margin-bottom: 2px; border-left-width: 0; border-top-width: 0; border-right-width: 0; border-bottom-width: 0; height: 120px;"/>
+                </ui:VisualElement>
+            </ui:VisualElement>
+        </ui:VisualElement>
+        <ui:VisualElement name="ModalLayer" class="modal-layer" style="display: none;">
+            <ui:VisualElement name="ModalBackdrop" class="modal-backdrop">
+                <ui:VisualElement name="ModalCard" class="modal-card" style="width: 1189px; max-width: 1233px; max-height: 1000px; height: 850px; display: flex;">
+                    <ui:ScrollView name="ModalBody" class="modal-body">
+                        <ui:VisualElement name="SettingsContent" class="modal-content" style="display: none;">
+                            <ui:VisualElement name="TabNavigation" class="modal-tab-navigation" style="justify-content: center; align-self: center; align-content: center; max-width: 100%; width: 100%; height: 92px;">
+                                <ui:Button text="Game" name="GameTabButton" class="modal-tab-button modal-tab-button-active"/>
+                                <ui:Button text="Audio" name="AudioTabButton" class="modal-tab-button"/>
+                                <ui:Button text="Debug" name="DebugTabButton" class="modal-tab-button"/>
+                                <ui:Button text="Stats" name="StatsTabButton" class="modal-tab-button"/>
+                                <ui:Button text="Trophies" name="TrophiesTabButton" class="modal-tab-button"/>
+                                <ui:Button text="Collection" name="CollectionTabButton" class="modal-tab-button"/>
+                                <ui:Button text="Graphics" name="GraphicsTabButton" class="modal-tab-button"/>
+                                <ui:Button text="Credits" name="CreditsTabButton" class="modal-tab-button"/>
+                            </ui:VisualElement>
+                            <ui:VisualElement name="GameTabContent" class="modal-tab-content">
+                                <ui:FloatField label="Move anim (s)" name="MoveAnimField" value="0.25"/>
+                                <ui:IntegerField label="AI depth" name="AiDepthField" value="2"/>
+                                <ui:DropdownField label="AI Engine" name="AiEngineDropdown"/>
+                                <ui:Toggle label="Opponent AI" name="OpponentAiToggle" value="true"/>
+                                <ui:Slider label="Game speed (s)" name="GameSpeedSlider" low-value="0.05" high-value="2" value="0.35"/>
+                            </ui:VisualElement>
+                            <ui:VisualElement name="AudioTabContent" class="modal-tab-content" style="display: none;">
+                                <ui:Slider label="Master volume" name="MasterVolSlider" low-value="0" high-value="1" value="1"/>
+                                <ui:Slider label="Music volume" name="MusicVolSlider" low-value="0" high-value="1" value="0.5"/>
+                                <ui:Slider label="SFX volume" name="SfxVolSlider" low-value="0" high-value="1" value="1"/>
+                            </ui:VisualElement>
+                            <ui:VisualElement name="DebugTabContent" class="modal-tab-content" style="display: none;">
+                                <ui:DropdownField label="Debug start position" name="DebugStartPositionDropdown"/>
+                                <ui:TextField label="PositionId" name="DebugStartPositionField"/>
+                                <ui:VisualElement style="flex-direction: row; justify-content: space-between; margin-top: 8px;">
+                                    <ui:Button text="Use Current PID" name="DebugStartPositionUseCurrentButton" class="rounded-button-small m16font button-modal-action" style="min-width: 180px; flex-grow: 1; margin-right: 8px;"/>
+                                    <ui:Button text="Start From PID" name="DebugStartPositionApplyButton" class="rounded-button-small m16font button-modal-action" style="min-width: 180px; flex-grow: 1;"/>
+                                </ui:VisualElement>
+                                <ui:Button text="Unlock All Currencies" name="UnlockAllCurrenciesButton" class="rounded-button-small m16font" style="margin-top: 16px; background-color: rgb(180, 40, 40); color: white;"/>
+                            </ui:VisualElement>
+                            <ui:VisualElement name="StatsTabContent" class="modal-tab-content" style="display: none;">
+                                <ui:VisualElement name="StatsSubTabNavigation" class="modal-subtab-navigation">
+                                    <ui:Button text="Session" name="StatsSubTabSessionBtn" class="modal-subtab-button modal-subtab-button-active"/>
+                                    <ui:Button text="Dice" name="StatsSubTabDiceBtn" class="modal-subtab-button"/>
+                                    <ui:Button text="Lifetime" name="StatsSubTabLifetimeBtn" class="modal-subtab-button"/>
+                                    <ui:Button text="Wallet" name="StatsSubTabWalletBtn" class="modal-subtab-button"/>
+                                    <ui:Button text="Game" name="StatsSubTabGameBtn" class="modal-subtab-button"/>
+                                </ui:VisualElement>
+                                <ui:VisualElement name="StatsSubTabContentSession" class="modal-subtab-content">
+                                    <ui:VisualElement class="stats-row">
+                                        <ui:Label text="Session Score" class="stats-row-label"/>
+                                        <ui:Label text="0" name="StatsSessionScoreValue" class="stats-row-value"/>
+                                    </ui:VisualElement>
+                                    <ui:VisualElement class="stats-row">
+                                        <ui:Label text="Games Played" class="stats-row-label"/>
+                                        <ui:Label text="0" name="StatsSessionGamesValue" class="stats-row-value"/>
+                                    </ui:VisualElement>
+                                    <ui:VisualElement class="stats-row">
+                                        <ui:Label text="Total Rolls" class="stats-row-label"/>
+                                        <ui:Label text="0" name="StatsSessionRollsValue" class="stats-row-value"/>
+                                    </ui:VisualElement>
+                                </ui:VisualElement>
+                                <ui:VisualElement name="StatsSubTabContentDice" class="modal-subtab-content" style="display: none;">
+                                    <ui:VisualElement class="stats-dice-grid">
+                                        <ui:VisualElement class="stats-dice-cell">
+                                            <ui:Label text="1" class="stats-dice-face"/>
+                                            <ui:Label text="0%" name="StatsDie1Value" class="stats-dice-pct"/>
+                                        </ui:VisualElement>
+                                        <ui:VisualElement class="stats-dice-cell">
+                                            <ui:Label text="2" class="stats-dice-face"/>
+                                            <ui:Label text="0%" name="StatsDie2Value" class="stats-dice-pct"/>
+                                        </ui:VisualElement>
+                                        <ui:VisualElement class="stats-dice-cell">
+                                            <ui:Label text="3" class="stats-dice-face"/>
+                                            <ui:Label text="0%" name="StatsDie3Value" class="stats-dice-pct"/>
+                                        </ui:VisualElement>
+                                        <ui:VisualElement class="stats-dice-cell">
+                                            <ui:Label text="4" class="stats-dice-face"/>
+                                            <ui:Label text="0%" name="StatsDie4Value" class="stats-dice-pct"/>
+                                        </ui:VisualElement>
+                                        <ui:VisualElement class="stats-dice-cell">
+                                            <ui:Label text="5" class="stats-dice-face"/>
+                                            <ui:Label text="0%" name="StatsDie5Value" class="stats-dice-pct"/>
+                                        </ui:VisualElement>
+                                        <ui:VisualElement class="stats-dice-cell">
+                                            <ui:Label text="6" class="stats-dice-face"/>
+                                            <ui:Label text="0%" name="StatsDie6Value" class="stats-dice-pct"/>
+                                        </ui:VisualElement>
+                                    </ui:VisualElement>
+                                </ui:VisualElement>
+                                <ui:VisualElement name="StatsSubTabContentLifetime" class="modal-subtab-content" style="display: none;">
+                                    <ui:VisualElement class="stats-row">
+                                        <ui:Label text="Rating" class="stats-row-label"/>
+                                        <ui:Label text="1500" name="StatsRatingValue" class="stats-row-value"/>
+                                    </ui:VisualElement>
+                                    <ui:VisualElement class="stats-row">
+                                        <ui:Label text="Highest Score" class="stats-row-label"/>
+                                        <ui:Label text="0" name="StatsHighestScoreValue" class="stats-row-value"/>
+                                    </ui:VisualElement>
+                                    <ui:VisualElement class="stats-row">
+                                        <ui:Label text="Total Games" class="stats-row-label"/>
+                                        <ui:Label text="0" name="StatsTotalGamesValue" class="stats-row-value"/>
+                                    </ui:VisualElement>
+                                    <ui:VisualElement class="stats-row">
+                                        <ui:Label text="Sessions Played" class="stats-row-label"/>
+                                        <ui:Label text="0" name="StatsSessionsPlayedValue" class="stats-row-value"/>
+                                    </ui:VisualElement>
+                                    <ui:VisualElement class="stats-row">
+                                        <ui:Label text="Highest Money" class="stats-row-label"/>
+                                        <ui:Label text="$0" name="StatsHighestMoneyValue" class="stats-row-value"/>
+                                    </ui:VisualElement>
+                                </ui:VisualElement>
+                                <ui:VisualElement name="StatsSubTabContentWallet" class="modal-subtab-content" style="display: none;">
+                                    <ui:VisualElement class="stats-row">
+                                        <ui:Label text="Balance" class="stats-row-label"/>
+                                        <ui:Label text="$100" name="StatsWalletBalanceValue" class="stats-row-value"/>
+                                    </ui:VisualElement>
+                                    <ui:VisualElement class="stats-row">
+                                        <ui:Label text="Total Earned" class="stats-row-label"/>
+                                        <ui:Label text="$0" name="StatsMoneyEarnedValue" class="stats-row-value"/>
+                                    </ui:VisualElement>
+                                </ui:VisualElement>
+                                <ui:VisualElement name="StatsSubTabContentGame" class="modal-subtab-content" style="display: none;">
+                                    <ui:Label text="Win Streak" class="stats-section-header"/>
+                                    <ui:VisualElement class="stats-row">
+                                        <ui:Label text="Current Streak" class="stats-row-label"/>
+                                        <ui:Label text="0" name="StatsCurrentStreakValue" class="stats-row-value"/>
+                                    </ui:VisualElement>
+                                    <ui:VisualElement class="stats-row">
+                                        <ui:Label text="Longest Streak" class="stats-row-label"/>
+                                        <ui:Label text="0" name="StatsLongestStreakValue" class="stats-row-value"/>
+                                    </ui:VisualElement>
+                                    <ui:Label text="Win Types" class="stats-section-header"/>
+                                    <ui:VisualElement class="stats-row">
+                                        <ui:Label text="Gammons" class="stats-row-label"/>
+                                        <ui:Label text="0" name="StatsTotalGammonsValue" class="stats-row-value"/>
+                                    </ui:VisualElement>
+                                    <ui:VisualElement class="stats-row">
+                                        <ui:Label text="Backgammons" class="stats-row-label"/>
+                                        <ui:Label text="0" name="StatsTotalBackgammonsValue" class="stats-row-value"/>
+                                    </ui:VisualElement>
+                                </ui:VisualElement>
+                            </ui:VisualElement>
+                            <ui:VisualElement name="TrophiesTabContent" class="modal-tab-content" style="display: none;">
+                                <ui:Label text="Trophies" class="stats-section-header"/>
+                                <ui:ScrollView name="TrophiesScrollView" class="trophies-scroll-view"/>
+                            </ui:VisualElement>
+                            <ui:VisualElement name="CollectionTabContent" class="modal-tab-content" style="display: none;">
+                                <ui:VisualElement name="CollectionSubTabNavigation" class="modal-subtab-navigation"/>
+                                <ui:VisualElement name="CollectionSubTabContentHost"/>
+                            </ui:VisualElement>
+                            <ui:VisualElement name="GraphicsTabContent" class="modal-tab-content" style="display: none;">
+                                <ui:VisualElement name="GraphicsSubTabNavigation" class="modal-subtab-navigation">
+                                    <ui:Button text="Camera" name="GraphicsSubTabCameraBtn" class="modal-subtab-button modal-subtab-button-active"/>
+                                    <ui:Button text="Post FX" name="GraphicsSubTabPostFxBtn" class="modal-subtab-button"/>
+                                    <ui:Button text="Animations" name="GraphicsSubTabAnimationsBtn" class="modal-subtab-button"/>
+                                    <ui:Button text="Theme" name="GraphicsSubTabThemeBtn" class="modal-subtab-button"/>
+                                </ui:VisualElement>
+                                <ui:VisualElement name="GraphicsSubTabContentCamera" class="modal-subtab-content">
+                                    <ui:DropdownField label="Camera Angle" name="CameraAngleDropdown"/>
+                                </ui:VisualElement>
+                                <ui:VisualElement name="GraphicsSubTabContentPostFx" class="modal-subtab-content" style="display: none;">
+                                    <ui:VisualElement class="stats-row">
+                                        <ui:Label text="Scan Lines" class="stats-row-label"/>
+                                        <ui:Toggle name="ScanLinesToggle"/>
+                                    </ui:VisualElement>
+                                    <ui:VisualElement class="stats-row">
+                                        <ui:Label text="CRT Bloom" class="stats-row-label"/>
+                                        <ui:Toggle name="CrtBloomToggle"/>
+                                    </ui:VisualElement>
+                                    <ui:Slider label="Brightness" name="BrightnessSlider" low-value="0.5" high-value="1.5" value="1"/>
+                                    <ui:Slider label="Contrast" name="ContrastSlider" low-value="0.5" high-value="1.5" value="1"/>
+                                </ui:VisualElement>
+                                <ui:VisualElement name="GraphicsSubTabContentAnimations" class="modal-subtab-content" style="display: none;">
+                                    <ui:DropdownField label="Popup Animation" name="PopupAnimationDropdown"/>
+                                    <ui:DropdownField label="Transition Shape" name="TransitionShapeDropdown"/>
+                                </ui:VisualElement>
+                                <ui:VisualElement name="GraphicsSubTabContentTheme" class="modal-subtab-content" style="display: none;">
+                                    <ui:Label text="Preset Themes" class="stats-section-header"/>
+                                    <ui:DropdownField label="Preset" name="ThemePresetDropdown"/>
+                                    <ui:Button text="Load Preset" name="ThemeLoadPresetButton" class="rounded-button-small m16font button-primary" style="margin-top: 6px;"/>
+                                    <ui:Label text="Custom Theme" class="stats-section-header" style="margin-top: 12px;"/>
+                                    <ui:VisualElement name="ThemeEditorContainer"/>
+                                    <ui:Button text="Save as Custom" name="ThemeSaveCustomButton" class="rounded-button-small m16font button-modal-action" style="margin-top: 8px;"/>
+                                    <ui:Button text="Apply Custom" name="ThemeApplyCustomButton" class="rounded-button-small m16font button-primary" style="margin-top: 4px;"/>
+                                </ui:VisualElement>
+                            </ui:VisualElement>
+                            <ui:VisualElement name="CreditsTabContent" class="modal-tab-content" style="display: none;">
+                                <ui:Label text="Third-Party Plugins" class="stats-section-header"/>
+                                <ui:VisualElement class="credits-entry">
+                                    <ui:Label text="GNU Backgammon (gnubg)" class="credits-name m16font"/>
+                                    <ui:Label text="AI engine — GPLv3" class="credits-detail m16font"/>
+                                </ui:VisualElement>
+                                <ui:VisualElement class="credits-entry">
+                                    <ui:Label text="Buildalon" class="credits-name m16font"/>
+                                    <ui:Label text="VirtualMaker — v1.0.4" class="credits-detail m16font"/>
+                                </ui:VisualElement>
+                                <ui:VisualElement class="credits-entry">
+                                    <ui:Label text="RMC ReadMe" class="credits-name m16font"/>
+                                    <ui:Label text="RMC — v1.2.2" class="credits-detail m16font"/>
+                                </ui:VisualElement>
+                                <ui:VisualElement class="credits-entry">
+                                    <ui:Label text="m6x11plus Font" class="credits-name m16font"/>
+                                    <ui:Label text="managore — CC0 / itch.io" class="credits-detail m16font"/>
+                                </ui:VisualElement>
+                            </ui:VisualElement>
+                        </ui:VisualElement>
+                        <ui:VisualElement name="HintsContent" class="modal-content" style="display: none;">
+                            <ui:Label text="Hints appear here." name="HintsLabel" class="m16font modal-hints-label"/>
+                        </ui:VisualElement>
+                        <ui:VisualElement name="LegalMovesContent" class="modal-content legal-moves-content" style="display: none;">
+                            <ui:Label text="Review legal turn sequences for the current roll." name="LegalMovesIntroLabel" class="m16font modal-hints-label"/>
+                            <ui:Label text="No legal moves available." name="LegalMovesEmptyLabel" class="m16font legal-moves-empty"/>
+                            <ui:ScrollView name="LegalMovesScroll" class="legal-moves-scroll"/>
+                        </ui:VisualElement>
+                    </ui:ScrollView>
+                    <ui:Button text="Close" name="ModalCloseButton" class="rounded-button-small m16font modal-close-button button-modal-action" style="width: 100%; -unity-text-align: middle-center; font-size: 36px;"/>
+                    <ui:Button text="Exit to Lobby" name="OptionsExitToLobbyButton" class="rounded-button-small m16font modal-close-button" style="width: 100%; -unity-text-align: middle-center; font-size: 36px; background-color: rgb(120, 50, 30); color: white; margin-top: 8px;"/>
+                </ui:VisualElement>
+            </ui:VisualElement>
+        </ui:VisualElement>
+        <ui:VisualElement name="GraduationOverlay" class="game-over-popup-layer" style="display: none;">
+            <ui:VisualElement name="GraduationCard" class="game-over-popup-card">
+                <ui:Label text="World Complete!" name="GraduationTitleLabel" class="m16font game-over-popup-title"/>
+                <ui:Label text="" name="GraduationBodyLabel" class="m16font game-over-popup-summary" style="white-space: normal;"/>
+                <ui:Button text="Continue" name="GraduationContinueButton" class="rounded-button-small m16font game-over-popup-button button-primary"/>
+            </ui:VisualElement>
+        </ui:VisualElement>
+        <ui:VisualElement name="GameOverPopupLayer" class="game-over-popup-layer" style="display: none;">
+            <ui:VisualElement name="GameOverPopupCard" class="game-over-popup-card">
+                <ui:Label text="Game Over" name="GameOverPopupTitleLabel" class="m16font game-over-popup-title"/>
+                <ui:Label text="Game finished." name="GameOverPopupSummaryLabel" class="m16font game-over-popup-summary"/>
+                <ui:Button text="Next Game" name="GameOverNextGameButton" class="rounded-button-small m16font game-over-popup-button button-primary"/>
+                <ui:Button text="Exit to Lobby" name="GameOverExitToLobbyButton" class="rounded-button-small m16font game-over-popup-button" style="margin-top: 8px; background-color: rgb(120, 50, 30); color: white;"/>
+            </ui:VisualElement>
+        </ui:VisualElement>
+        <ui:VisualElement name="RunCashoutPopupLayer" class="game-over-popup-layer" style="display: none;">
+            <ui:VisualElement name="RunCashoutPopupCard" class="game-over-popup-card">
+                <ui:Label text="Session Complete!" name="RunCashoutTitleLabel" class="m16font game-over-popup-title"/>
+                <ui:Label text="" name="RunCashoutBossLabel" class="m16font game-over-popup-summary"/>
+                <ui:Label text="Score: 0 / 50" name="RunCashoutScoreLabel" class="m16font game-over-popup-summary"/>
+                <ui:Label text="Reward: $20" name="RunCashoutRewardLabel" class="m16font game-over-popup-summary"/>
+                <ui:Button text="Collect" name="RunCashoutCollectButton" class="rounded-button-small m16font game-over-popup-button button-positive"/>
+            </ui:VisualElement>
+        </ui:VisualElement>
+        <ui:VisualElement name="RunOverPopupLayer" class="game-over-popup-layer" style="display: none;">
+            <ui:VisualElement name="RunOverPopupCard" class="game-over-popup-card">
+                <ui:Label text="Run Over" name="RunOverTitleLabel" class="m16font game-over-popup-title"/>
+                <ui:Label text="You ran out of games." name="RunOverSummaryLabel" class="m16font game-over-popup-summary"/>
+                <ui:Label text="Total: $0" name="RunOverCurrencyLabel" class="m16font game-over-popup-summary"/>
+                <ui:Button text="Try Again" name="RunOverRetryButton" class="rounded-button-small m16font game-over-popup-button button-secondary"/>
+            </ui:VisualElement>
+        </ui:VisualElement>
+        <ui:VisualElement name="CenterNotificationOverlay" class="center-notification-overlay" style="display: none;">
+            <ui:Label text="" name="CenterNotificationLabel" class="center-notification-label"/>
+        </ui:VisualElement>
+        <ui:VisualElement name="MessagePopupLayer" class="modal-layer" style="display: none;">
+            <ui:VisualElement name="MessagePopupBackdrop" class="modal-backdrop">
+                <ui:VisualElement name="MessagePopupCard" class="game-over-popup-card">
+                    <ui:Label text="Messages" name="MessagePopupTitleLabel" class="m16font game-over-popup-title"/>
+                    <ui:Label text="No new messages." name="MessagePopupBodyLabel" class="m16font game-over-popup-summary" style="white-space: normal;"/>
+                    <ui:Button text="Close" name="MessagePopupCloseButton" class="rounded-button-small m16font game-over-popup-button button-modal-action"/>
+                </ui:VisualElement>
+            </ui:VisualElement>
+        </ui:VisualElement>
+        <ui:VisualElement name="OpponentProfilePopupLayer" class="modal-layer" style="display: none;">
+            <ui:VisualElement name="OpponentProfileBackdrop" class="modal-backdrop">
+                <ui:VisualElement name="OpponentProfileCard" class="game-over-popup-card">
+                    <ui:Label text="Opponent" name="OpponentProfileTitleLabel" class="m16font game-over-popup-title"/>
+                    <ui:Image name="OpponentProfileAvatar" style="width: 160px; height: 160px; align-self: center; -unity-background-scale-mode: scale-to-fit; background-image: url(&quot;project://database/Assets/3rdParty/Ingsoft/Images/Common/Profile%20Picture%201.png?fileID=2800000&amp;guid=6ad16067291550b4c9cf8e440a2d8ca2&amp;type=3#Profile Picture 1&quot;);"/>
+                    <ui:Label text="OpponentName" name="OpponentProfileNameLabel" class="m16font game-over-popup-summary"/>
+                    <ui:Label text="Level 22" name="OpponentProfileLevelLabel" class="m16font game-over-popup-summary"/>
+                    <ui:Label text="Wins: 0   Losses: 0" name="OpponentProfileRecordLabel" class="m16font game-over-popup-summary"/>
+                    <ui:Button text="Close" name="OpponentProfileCloseButton" class="rounded-button-small m16font game-over-popup-button button-modal-action"/>
+                </ui:VisualElement>
+            </ui:VisualElement>
+        </ui:VisualElement>
+        <ui:VisualElement name="PlayerProfilePopupLayer" class="modal-layer" style="display: none;">
+            <ui:VisualElement name="PlayerProfileBackdrop" class="modal-backdrop">
+                <ui:VisualElement name="PlayerProfileCard" class="game-over-popup-card">
+                    <ui:Label text="Profile" name="PlayerProfileTitleLabel" class="m16font game-over-popup-title"/>
+                    <ui:Image name="PlayerProfileAvatar" style="width: 160px; height: 160px; align-self: center; -unity-background-scale-mode: scale-to-fit; background-image: url(&quot;project://database/Assets/3rdParty/Ingsoft/Images/Common/Profile%20Picture%201.png?fileID=2800000&amp;guid=6ad16067291550b4c9cf8e440a2d8ca2&amp;type=3#Profile Picture 1&quot;);"/>
+                    <ui:Label text="PlayerName" name="PlayerProfileNameLabel" class="m16font game-over-popup-summary"/>
+                    <ui:Label text="Level 22" name="PlayerProfileLevelLabel" class="m16font game-over-popup-summary"/>
+                    <ui:Label text="Wins: 0   Losses: 0" name="PlayerProfileRecordLabel" class="m16font game-over-popup-summary"/>
+                    <ui:Button text="Close" name="PlayerProfileCloseButton" class="rounded-button-small m16font game-over-popup-button button-modal-action"/>
+                </ui:VisualElement>
+            </ui:VisualElement>
+        </ui:VisualElement>
+        <ui:VisualElement name="NewGameModalLayer" class="modal-layer" style="display: none;">
+            <ui:VisualElement name="NewGameModalBackdrop" class="modal-backdrop">
+                <ui:VisualElement name="NewGameModalCard" class="modal-card new-game-modal-card" style="height: 890px; max-height: 1000px; max-width: 989px; width: 497px;">
+                    <ui:VisualElement name="NewGameModalHeader" class="modal-header" style="display: none;">
+                        <ui:Label text="New Game" name="NewGameModalTitleLabel" class="m16font modal-title"/>
+                        <ui:Button text="Close" name="NewGameModalCloseButton" class="rounded-button-small m16font modal-close-button button-modal-action"/>
+                    </ui:VisualElement>
+                    <ui:VisualElement name="NewGameModalBody" class="new-game-modal-body" style="justify-content: space-between;">
+                        <ui:Label name="WorldNameLabel" text="US Dollar ($)" class="m16font ng-world-name" style="font-size: 50px;"/>
+                        <ui:VisualElement name="GameTypeSelector" class="game-type-selector" style="width: 100%; max-width: 100%; justify-content: space-between;">
+                            <ui:Button text="&lt;" name="GameTypePrevButton" class="game-type-arrow-button m16font button-secondary" style="height: 200px;"/>
+                            <ui:VisualElement name="WorldChipContainer" class="ng-world-chip-container" style="height: 200px; width: 200px;">
+                                <ui:Image name="WorldChipImage" class="ng-world-chip-image" style="width: 200px; height: 200px; background-image: url(&quot;project://database/Assets/Art/Sprites/USD/4_USD_green.png?fileID=2800000&amp;guid=06f0634f754c354429e057b60d6370f9&amp;type=3#4_USD_green&quot;);"/>
+                            </ui:VisualElement>
+                            <ui:Button text="&gt;" name="GameTypeNextButton" class="game-type-arrow-button m16font button-secondary" style="height: 200px;"/>
+                        </ui:VisualElement>
+                        <ui:Label text="Stake" name="StakeTitleLabel" class="m16font new-game-settings-header" style="font-size: 38px; margin-top: 30px; margin-bottom: 2px; margin-right: 0; margin-left: 0; padding-top: 0; padding-bottom: 0; padding-right: 0; padding-left: 0;"/>
+                        <ui:VisualElement name="StakeSelectorRow" class="ng-stake-row" style="width: 100%; max-width: 100%; justify-content: space-between; margin-top: 4px;">
+                            <ui:Button text="&lt;" name="StakePrevButton" class="game-type-arrow-button m16font button-secondary"/>
+                            <ui:Label name="StakeAmountLabel" text="$1" class="m16font ng-stake-label"/>
+                            <ui:Button text="&gt;" name="StakeNextButton" class="game-type-arrow-button m16font button-secondary"/>
+                        </ui:VisualElement>
+                        <ui:Label name="StakeLockedLabel" text="" class="m16font ng-stake-locked-label" style="display: none;"/>
+                        <ui:VisualElement name="MoneySessionSettings" style="flex-grow: 1; width: 100%; margin-top: 20px; justify-content: center; align-self: auto; align-content: center; align-items: center;">
+                            <ui:Label text="Rules" class="m16font new-game-settings-header" style="font-size: 39px;"/>
+                            <ui:VisualElement style="flex-grow: 1; width: 310px;">
+                                <ui:VisualElement class="new-game-settings-row">
+                                    <ui:Label text="Auto Doubles" class="m16font new-game-settings-label"/>
+                                    <ui:Toggle name="AutoDoublesToggle" value="true"/>
+                                </ui:VisualElement>
+                                <ui:VisualElement class="new-game-settings-row">
+                                    <ui:Label text="Beavers" class="m16font new-game-settings-label"/>
+                                    <ui:Toggle name="BeaversToggle" value="true"/>
+                                </ui:VisualElement>
+                                <ui:VisualElement class="new-game-settings-row">
+                                    <ui:Label text="Raccoons" class="m16font new-game-settings-label"/>
+                                    <ui:Toggle name="RaccoonsToggle" value="false"/>
+                                </ui:VisualElement>
+                                <ui:VisualElement class="new-game-settings-row">
+                                    <ui:Label text="Ardvarks" class="m16font new-game-settings-label"/>
+                                    <ui:Toggle name="ArdvarksToggle" value="false"/>
+                                </ui:VisualElement>
+                                <ui:VisualElement class="new-game-settings-row">
+                                    <ui:Label text="Jacoby Rule" class="m16font new-game-settings-label"/>
+                                    <ui:Toggle name="JacobyToggle" value="true"/>
+                                </ui:VisualElement>
+                            </ui:VisualElement>
+                        </ui:VisualElement>
+                        <ui:VisualElement name="SeedRow" class="new-game-settings-row seed-row" style="display: none;">
+                            <ui:Label text="Seed" class="m16font new-game-settings-label"/>
+                            <ui:TextField name="SeedTextField" max-length="8" class="seed-text-field m16font"/>
+                            <ui:Button text="↻" name="RandomizeSeedButton" class="rounded-button-small m16font button-modal-action"/>
+                        </ui:VisualElement>
+                        <ui:Button text="Start Game" name="StartNewGameButton" class="rounded-button-large m16font button-rounded-large new-game-start-button button-primary" style="height: 64px; width: 100%; max-width: 100%; margin-right: 2px; margin-left: 2px;"/>
+                    </ui:VisualElement>
+                </ui:VisualElement>
+            </ui:VisualElement>
+        </ui:VisualElement>
+        <ui:VisualElement name="WipeLayer" class="wipe-layer" style="display: none;">
+            <ui:VisualElement name="WipeShape" class="wipe-shape">
+                <ui:VisualElement name="WipeIcon" class="wipe-icon"/>
+            </ui:VisualElement>
+        </ui:VisualElement>
+        <ui:Label text="" name="VersionDebugLabel" picking-mode="Ignore" style="position: absolute; right: 8px; bottom: 6px; font-size: 18px; color: rgba(255, 255, 255, 0.5); -unity-text-align: middle-right;"/>
+    </ui:VisualElement>
+</ui:UXML>

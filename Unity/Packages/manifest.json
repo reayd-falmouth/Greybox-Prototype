@@ -1,6 +1,7 @@
 {
   "dependencies": {
     "com.rmc.rmc-readme": "1.2.2",
+    "com.unity.2d.sprite": "1.0.0",
     "com.unity.ai.navigation": "2.0.10",
     "com.unity.cinemachine": "2.10.5",
     "com.unity.ide.rider": "3.0.39",
@@ -19,6 +20,7 @@
     "com.unity.timeline": "1.8.10",
     "com.unity.ugui": "2.0.0",
     "com.virtualmaker.buildalon": "1.0.4",
+    "gnubg.unity.installer": "https://github.com/StonesAndDice/gnubg-unity-installer.git",
     "com.unity.modules.accessibility": "1.0.0",
     "com.unity.modules.adaptiveperformance": "1.0.0",
     "com.unity.modules.ai": "1.0.0",

@@ -1,0 +1,35 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 8dd07e8bc2a04588972f6a78112fb439, type: 3}
+  m_Name: BoardStyleDataMoneySession
+  m_EditorClassIdentifier: 
+  id: money_session_board
+  displayName: Emerald Felt
+  description: Casino tables and high-stakes doubling cube play.
+  gameType: 0
+  sortByOrder: 1
+  locked: 0
+  uiThemeColor: {r: 0.93333334, g: 1, b: 0.4745098, a: 1}
+  transitionColour: {r: 0.14117648, g: 0.42352942, b: 0.13725491, a: 1}
+  iconColour: {r: 0.9960785, g: 0.8862746, b: 0.5882353, a: 1}
+  boardStyle: 0
+  tablePrefab: {fileID: 3790684261275798117, guid: 30c80e60314eb0c49bfe42940d86bc2d, type: 3}
+  boardSprite: {fileID: 21300000, guid: d728484e503643748883cb17412857c5, type: 3}
+  rightProfileChecker: {fileID: 21300000, guid: bc0c5b7ab602ebf4594849eebf32223f, type: 3}
+  leftProfileChecker: {fileID: 21300000, guid: f25a18ac287ab7e4f874b80833b1df41, type: 3}
+  whiteCheckerSprite: {fileID: 21300000, guid: 1e06537ed32de5f4fbb9d275202b097c, type: 3}
+  blackCheckerSprite: {fileID: 21300000, guid: e304b30543936f64584974238fe125d9, type: 3}
+  lobbyCardIcon: {fileID: 21300000, guid: cd236ee2a1d821848b413580c44129a2, type: 3}
+  fromLobby: {fileID: 21300000, guid: cd236ee2a1d821848b413580c44129a2, type: 3}
+  toLobby: {fileID: 0}
+  anteListJson: {fileID: 4900000, guid: f4b0ff74a370a9448a81ca016aeb046c, type: 3}
+  trophyDef: {fileID: 11400000, guid: 60dbe0895abe892438f5a31e4a923aee, type: 2}

@@ -1,6 +1,7 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Linq;
 using System.Reflection;
 using UnityEngine;
 using UnityEngine.UIElements;
@@ -22,6 +23,8 @@ public class ScreenNotificationController : MonoBehaviour
         public int fontSize;
         [Tooltip("Offset from center in pixels. (0,0) uses Default Label Offset.")]
         public Vector2 labelOffsetPixels;
+        [Tooltip("Optional audio clip override. If null, uses Default Notification Sound.")]
+        public AudioClip audioClipOverride;
     }
 
     public readonly struct NotificationPresetResolved
@@ -30,17 +33,20 @@ public class ScreenNotificationController : MonoBehaviour
         public readonly float DisplayDurationSeconds;
         public readonly int ResolvedFontSize;
         public readonly Vector2 ResolvedLabelOffsetPixels;
+        public readonly AudioClip ResolvedAudioClip;
 
         public NotificationPresetResolved(
             string message,
             float displayDurationSeconds,
             int resolvedFontSize,
-            Vector2 resolvedLabelOffsetPixels)
+            Vector2 resolvedLabelOffsetPixels,
+            AudioClip resolvedAudioClip)
         {
             Message = message;
             DisplayDurationSeconds = displayDurationSeconds;
             ResolvedFontSize = resolvedFontSize;
             ResolvedLabelOffsetPixels = resolvedLabelOffsetPixels;
+            ResolvedAudioClip = resolvedAudioClip;
         }
     }
 
@@ -71,8 +77,15 @@ public class ScreenNotificationController : MonoBehaviour
     [SerializeField] private float fadeInSeconds = 0.2f;
     [SerializeField] private float fadeOutSeconds = 0.35f;
 
+    /// <summary>Total duration for event queue blocking (fadeIn + visible + fadeOut)</summary>
+    public float TotalNotificationDuration => fadeInSeconds + visibleDuration + fadeOutSeconds;
+
+    [Header("Sound Effects")]
+    [Tooltip("Default sound effect played when a preset has no audioClipOverride.")]
+    [SerializeField] private AudioClip defaultNotificationSound;
+
     [Header("Optional Feel")]
-    [Tooltip("Optional MMF_Player; invoked on show via reflection.")]
+    [Tooltip("Optional MMF_Player; invoked on show via reflection. Should contain an MMF_AudioSource feedback for sound playback.")]
     [SerializeField] private Component notificationFeedbackPlayer;
 
     [Header("Debug")]
@@ -85,10 +98,15 @@ public class ScreenNotificationController : MonoBehaviour
     [Tooltip("0 uses Default Font Size.")]
     [SerializeField] private int debugFontSize;
     [SerializeField] private Vector2 debugLabelOffsetPixels;
+    [Tooltip("Optional audio clip override for preset authoring.")]
+    [SerializeField] private AudioClip debugAudioClip;
 
     [Header("Opening roll winner messages")]
     [SerializeField] private string openingRollPlayerWinsMessage = "Your go";
     [SerializeField] private string openingRollAiWinsMessage = "AI goes first";
+    [Header("Game end messages")]
+    [SerializeField] private string gameEndWinMessage = "You win!";
+    [SerializeField] private string gameEndLoseMessage = "Game over";
 
     private VisualElement _overlay;
     private Label _label;
@@ -115,13 +133,18 @@ public class ScreenNotificationController : MonoBehaviour
         {
             gameController.OnDiceFeedbackEvent -= HandleDiceFeedback;
             gameController.OnDiceFeedbackEvent += HandleDiceFeedback;
+            gameController.OnScreenNotificationEvent -= HandleQueuedScreenNotification;
+            gameController.OnScreenNotificationEvent += HandleQueuedScreenNotification;
         }
     }
 
     private void OnDisable()
     {
         if (gameController != null)
+        {
             gameController.OnDiceFeedbackEvent -= HandleDiceFeedback;
+            gameController.OnScreenNotificationEvent -= HandleQueuedScreenNotification;
+        }
         if (_activeRoutine != null)
         {
             StopCoroutine(_activeRoutine);
@@ -161,6 +184,9 @@ public class ScreenNotificationController : MonoBehaviour
 
     private void HandleDiceFeedback(DiceFeedbackEventData data)
     {
+        if (IsQueueOwnedNotificationEvent(data.EventType))
+            return;
+
         if (data.EventType == DiceFeedbackEventType.OpeningRollWinnerResolved)
         {
             string winnerMessage = ResolveOpeningRollWinnerMessage(
@@ -171,7 +197,8 @@ public class ScreenNotificationController : MonoBehaviour
                 winnerMessage,
                 visibleDuration,
                 defaultFontSize,
-                defaultLabelOffsetPixels);
+                defaultLabelOffsetPixels,
+                defaultNotificationSound);
             if (enableVerboseLogs)
                 Debug.Log(
                     $"[Backgammon][Notify] opening-winner winnerIndex={data.OpeningRollWinnerPlayerIndex} message=\"{winnerMessage}\"");
@@ -184,11 +211,24 @@ public class ScreenNotificationController : MonoBehaviour
                 data.EventType,
                 defaultFontSize,
                 defaultLabelOffsetPixels,
+                defaultNotificationSound,
                 out NotificationPresetResolved resolved))
         {
-            if (enableVerboseLogs)
-                Debug.LogWarning($"[Backgammon][Notify] No preset for event={data.EventType}");
-            return;
+            if (data.EventType == DiceFeedbackEventType.CubeOffered)
+            {
+                resolved = new NotificationPresetResolved(
+                    "Double!",
+                    visibleDuration,
+                    defaultFontSize,
+                    defaultLabelOffsetPixels,
+                    defaultNotificationSound);
+            }
+            else
+            {
+                if (enableVerboseLogs)
+                    Debug.LogWarning($"[Backgammon][Notify] No preset for event={data.EventType}");
+                return;
+            }
         }
 
         float hold = resolved.DisplayDurationSeconds > 0f ? resolved.DisplayDurationSeconds : visibleDuration;
@@ -196,6 +236,90 @@ public class ScreenNotificationController : MonoBehaviour
             Debug.Log(
                 $"[Backgammon][Notify] event={data.EventType} cubeAfter={data.CubeValueAfter} message=\"{resolved.Message}\" hold={hold:F2}s font={resolved.ResolvedFontSize} offset={resolved.ResolvedLabelOffsetPixels}");
         ShowNotificationInternal(resolved, hold);
+    }
+
+    private void HandleQueuedScreenNotification(DiceFeedbackEventData data)
+    {
+        if (!TryResolvePreset(
+                presets,
+                data.EventType,
+                defaultFontSize,
+                defaultLabelOffsetPixels,
+                defaultNotificationSound,
+                out NotificationPresetResolved resolved))
+        {
+            if (data.EventType == DiceFeedbackEventType.GameEnded)
+            {
+                bool localWon = data.GameWinnerPlayerIndex == Runtime.RMC.Backgammon.Core.BackgammonPlayerRoles.LocalPlayerIndex;
+                string defaultMessage = localWon ? gameEndWinMessage : gameEndLoseMessage;
+                resolved = new NotificationPresetResolved(
+                    defaultMessage,
+                    visibleDuration,
+                    defaultFontSize,
+                    defaultLabelOffsetPixels,
+                    defaultNotificationSound);
+            }
+            else
+            if (data.EventType == DiceFeedbackEventType.CubeValueChanged)
+            {
+                resolved = new NotificationPresetResolved(
+                    $"Double to {Mathf.Max(2, data.CubeValueAfter)}x",
+                    visibleDuration,
+                    defaultFontSize,
+                    defaultLabelOffsetPixels,
+                    defaultNotificationSound);
+            }
+            else
+            if (data.EventType == DiceFeedbackEventType.NoLegalMoves)
+            {
+                resolved = new NotificationPresetResolved(
+                    "No legal moves available",
+                    visibleDuration,
+                    defaultFontSize,
+                    defaultLabelOffsetPixels,
+                    defaultNotificationSound);
+            }
+            else
+            if (data.EventType == DiceFeedbackEventType.BeaverOffered)
+            {
+                resolved = new NotificationPresetResolved(
+                    $"Beaver! Double to {Mathf.Max(2, data.CubeValueAfter)}x",
+                    visibleDuration,
+                    defaultFontSize,
+                    defaultLabelOffsetPixels,
+                    defaultNotificationSound);
+            }
+            else
+            {
+                if (enableVerboseLogs)
+                    Debug.LogWarning($"[Backgammon][Notify] No preset for queued event={data.EventType}");
+                return;
+            }
+        }
+
+        float hold = resolved.DisplayDurationSeconds > 0f ? resolved.DisplayDurationSeconds : visibleDuration;
+        if (enableVerboseLogs)
+        {
+            Debug.Log(
+                $"[Backgammon][Notify] queued event={data.EventType} cubeAfter={data.CubeValueAfter} message=\"{resolved.Message}\" hold={hold:F2}s");
+        }
+        ShowNotificationInternal(resolved, hold);
+    }
+
+    public static bool IsQueueOwnedNotificationEvent(DiceFeedbackEventType eventType)
+    {
+        return eventType == DiceFeedbackEventType.OpeningRollTieAutodouble
+               || eventType == DiceFeedbackEventType.CubeValueChanged
+               || eventType == DiceFeedbackEventType.GameEnded
+               || eventType == DiceFeedbackEventType.NoLegalMoves
+               || eventType == DiceFeedbackEventType.BeaverOffered;
+    }
+
+    /// <summary>Show a custom text toast (used by trophy / stake-unlock observers).</summary>
+    public void ShowCustomNotification(string message, float holdDuration = 1.5f)
+    {
+        var resolved = new NotificationPresetResolved(message, holdDuration, defaultFontSize, Vector2.zero, defaultNotificationSound);
+        ShowNotificationInternal(resolved, holdDuration);
     }
 
     /// <summary>Inspector / editor: same path as live events (fades + optional MMF).</summary>
@@ -206,7 +330,7 @@ public class ScreenNotificationController : MonoBehaviour
         string msg = string.IsNullOrEmpty(debugPreviewText) ? "Preview" : debugPreviewText;
         int font = debugFontSize > 0 ? debugFontSize : defaultFontSize;
         Vector2 offset = debugLabelOffsetPixels;
-        var resolved = new NotificationPresetResolved(msg, visibleDuration, font, offset);
+        var resolved = new NotificationPresetResolved(msg, visibleDuration, font, offset, defaultNotificationSound);
         ShowNotificationInternal(resolved, visibleDuration);
     }
 
@@ -230,6 +354,7 @@ public class ScreenNotificationController : MonoBehaviour
         ApplyLabelPresentation(style.ResolvedFontSize, style.ResolvedLabelOffsetPixels);
         Debug.Log(
             $"[Backgammon][Notify] Show message=\"{style.Message}\" hold={holdDuration:F2}s fadeIn={fadeInSeconds:F2}s fadeOut={fadeOutSeconds:F2}s font={style.ResolvedFontSize} offset={style.ResolvedLabelOffsetPixels}");
+        TryPlayNotificationSound(style.ResolvedAudioClip);
         TryPlayNotificationMmf();
         _activeRoutine = StartCoroutine(NotificationRoutine(holdDuration));
     }
@@ -274,6 +399,35 @@ public class ScreenNotificationController : MonoBehaviour
         _overlay.style.display = DisplayStyle.None;
         ResetLabelPresentation();
         _activeRoutine = null;
+    }
+
+    private void TryPlayNotificationSound(AudioClip clip)
+    {
+        Component playable = ResolvePlayableTarget(notificationFeedbackPlayer);
+        if (playable == null)
+        {
+            if (enableVerboseLogs && notificationFeedbackPlayer != null)
+                Debug.LogWarning("[Backgammon][Notify] Cannot play notification sound: MMF_Player not found.");
+            return;
+        }
+
+        if (clip == null)
+        {
+            if (enableVerboseLogs)
+                Debug.Log("[Backgammon][Notify] No audio clip resolved for notification.");
+            return;
+        }
+
+        if (TryConfigureAudioSourceFeedback(playable, clip))
+        {
+            if (enableVerboseLogs)
+                Debug.Log($"[Backgammon][Notify] Configured MMF_AudioSource with clip: {clip.name}");
+        }
+        else
+        {
+            if (enableVerboseLogs)
+                Debug.LogWarning("[Backgammon][Notify] Failed to configure MMF_AudioSource feedback.");
+        }
     }
 
     private void TryPlayNotificationMmf()
@@ -370,6 +524,214 @@ public class ScreenNotificationController : MonoBehaviour
         return false;
     }
 
+    private static bool TryConfigureAudioSourceFeedback(Component mmfPlayer, AudioClip clip)
+    {
+        Debug.Log($"[Backgammon][Notify] TryConfigureAudioSourceFeedback called. mmfPlayer={mmfPlayer?.GetType().Name}, clip={clip?.name}");
+
+        if (mmfPlayer == null || clip == null)
+        {
+            Debug.LogWarning($"[Backgammon][Notify] Null check failed. mmfPlayer={mmfPlayer}, clip={clip}");
+            return false;
+        }
+
+        Type playerType = mmfPlayer.GetType();
+
+        // Try to get FeedbacksList as a field first (MMF_Player uses a field)
+        FieldInfo feedbacksField = playerType.GetField("FeedbacksList", BindingFlags.Instance | BindingFlags.Public);
+        object feedbacksList = null;
+
+        if (feedbacksField != null)
+        {
+            feedbacksList = feedbacksField.GetValue(mmfPlayer);
+        }
+        else
+        {
+            // Fall back to property-based approach (old MMFeedbacks system)
+            PropertyInfo feedbacksProp = playerType.GetProperty("FeedbacksList", BindingFlags.Instance | BindingFlags.Public);
+            if (feedbacksProp == null)
+            {
+                feedbacksProp = playerType.GetProperty("Feedbacks", BindingFlags.Instance | BindingFlags.Public);
+            }
+
+            if (feedbacksProp == null)
+            {
+                Debug.LogWarning("[Backgammon][Notify] Could not find FeedbacksList field or property");
+                return false;
+            }
+
+            feedbacksList = feedbacksProp.GetValue(mmfPlayer);
+        }
+        if (feedbacksList == null)
+        {
+            Debug.LogWarning("[Backgammon][Notify] FeedbacksList is null");
+            return false;
+        }
+
+        Type listType = feedbacksList.GetType();
+        if (!listType.IsGenericType)
+        {
+            Debug.LogWarning($"[Backgammon][Notify] FeedbacksList is not generic. Type: {listType}");
+            return false;
+        }
+
+        PropertyInfo countProp = listType.GetProperty("Count");
+        MethodInfo getItem = listType.GetMethod("get_Item");
+        if (countProp == null || getItem == null)
+        {
+            Debug.LogWarning("[Backgammon][Notify] Could not get Count or get_Item from list");
+            return false;
+        }
+
+        int count = (int)countProp.GetValue(feedbacksList);
+        Debug.Log($"[Backgammon][Notify] Found {count} feedbacks in list");
+
+        for (int i = 0; i < count; i++)
+        {
+            object feedback = getItem.Invoke(feedbacksList, new object[] { i });
+            if (feedback == null)
+            {
+                Debug.LogWarning($"[Backgammon][Notify] Feedback at index {i} is null");
+                continue;
+            }
+
+            Type feedbackType = feedback.GetType();
+            Debug.Log($"[Backgammon][Notify] Checking feedback {i}: Type={feedbackType.Name}");
+
+            // Try MMF_AudioSource first (newer type)
+            if (feedbackType.Name == "MMF_AudioSource")
+            {
+                FieldInfo randomSfxField = feedbackType.GetField("RandomSfx", BindingFlags.Instance | BindingFlags.Public);
+                if (randomSfxField != null && randomSfxField.FieldType == typeof(AudioClip[]))
+                {
+                    randomSfxField.SetValue(feedback, new AudioClip[] { clip });
+                    Debug.Log($"[Backgammon][Notify] Configured MMF_AudioSource RandomSfx with clip: {clip.name}");
+                    return true;
+                }
+            }
+
+            // Try MMF_Sound (legacy type)
+            if (feedbackType.Name == "MMF_Sound")
+            {
+                Debug.Log($"[Backgammon][Notify] Found MMF_Sound feedback, attempting to configure...");
+
+                FieldInfo randomSfxField = feedbackType.GetField("RandomSfx", BindingFlags.Instance | BindingFlags.Public);
+
+                if (randomSfxField == null)
+                {
+                    Debug.LogWarning("[Backgammon][Notify] RandomSfx field not found on MMF_Sound");
+                    continue;
+                }
+
+                Debug.Log($"[Backgammon][Notify] RandomSfx field found. Type: {randomSfxField.FieldType}, Expected: {typeof(AudioClip[])}");
+
+                if (randomSfxField.FieldType != typeof(AudioClip[]))
+                {
+                    Debug.LogWarning($"[Backgammon][Notify] RandomSfx field type mismatch. Expected AudioClip[], got {randomSfxField.FieldType}");
+                    continue;
+                }
+
+                randomSfxField.SetValue(feedback, new AudioClip[] { clip });
+                Debug.Log($"[Backgammon][Notify] Configured MMF_Sound RandomSfx with clip: {clip.name}");
+                return true;
+            }
+        }
+
+        // No audio feedback found - attempt to create one
+        return TryCreateAndAddAudioSourceFeedback(mmfPlayer, feedbacksList, listType, clip);
+    }
+
+    private static bool TryCreateAndAddAudioSourceFeedback(Component mmfPlayer, object feedbacksList, Type listType, AudioClip clip)
+    {
+        // Find the MMF_AudioSource type in the Feel assembly
+        Type audioSourceFeedbackType = FindTypeByName("MMF_AudioSource");
+        if (audioSourceFeedbackType == null)
+        {
+            Debug.LogWarning("[Backgammon][Notify] MMF_AudioSource type not found. Feel plugin may not be installed.");
+            return false;
+        }
+
+        // Create a new MMF_AudioSource feedback instance
+        object newFeedback;
+        try
+        {
+            newFeedback = Activator.CreateInstance(audioSourceFeedbackType);
+        }
+        catch (Exception e)
+        {
+            Debug.LogWarning($"[Backgammon][Notify] Failed to create MMF_AudioSource feedback: {e.Message}");
+            return false;
+        }
+
+        // Configure the feedback fields
+        if (!ConfigureAudioSourceFeedbackFields(newFeedback, audioSourceFeedbackType, clip))
+        {
+            return false;
+        }
+
+        // Add the feedback to the list
+        MethodInfo addMethod = listType.GetMethod("Add");
+        if (addMethod == null)
+        {
+            Debug.LogWarning("[Backgammon][Notify] Could not find Add method on Feedbacks list.");
+            return false;
+        }
+
+        try
+        {
+            addMethod.Invoke(feedbacksList, new object[] { newFeedback });
+            Debug.Log($"[Backgammon][Notify] Auto-created MMF_AudioSource feedback with clip: {clip.name}");
+            return true;
+        }
+        catch (Exception e)
+        {
+            Debug.LogWarning($"[Backgammon][Notify] Failed to add MMF_AudioSource to Feedbacks list: {e.Message}");
+            return false;
+        }
+    }
+
+    private static bool ConfigureAudioSourceFeedbackFields(object feedback, Type feedbackType, AudioClip clip)
+    {
+        // Set Active = true
+        FieldInfo activeField = feedbackType.GetField("Active", BindingFlags.Instance | BindingFlags.Public);
+        if (activeField != null && activeField.FieldType == typeof(bool))
+        {
+            activeField.SetValue(feedback, true);
+        }
+
+        // Set RandomSfx array with the audio clip
+        FieldInfo randomSfxField = feedbackType.GetField("RandomSfx", BindingFlags.Instance | BindingFlags.Public);
+        if (randomSfxField != null && randomSfxField.FieldType == typeof(AudioClip[]))
+        {
+            randomSfxField.SetValue(feedback, new AudioClip[] { clip });
+        }
+        else
+        {
+            Debug.LogWarning("[Backgammon][Notify] Could not set RandomSfx field on MMF_AudioSource.");
+            return false;
+        }
+
+        // Set Label for debugging
+        FieldInfo labelField = feedbackType.GetField("Label", BindingFlags.Instance | BindingFlags.Public);
+        if (labelField != null && labelField.FieldType == typeof(string))
+        {
+            labelField.SetValue(feedback, "Auto-created Notification Audio");
+        }
+
+        return true;
+    }
+
+    private static Type FindTypeByName(string typeName)
+    {
+        // Search all loaded assemblies for the type
+        foreach (var assembly in AppDomain.CurrentDomain.GetAssemblies())
+        {
+            Type type = assembly.GetTypes().FirstOrDefault(t => t.Name == typeName);
+            if (type != null)
+                return type;
+        }
+        return null;
+    }
+
     public static string ResolveOpeningRollWinnerMessage(int winnerPlayerIndex, string playerWinsMessage, string aiWinsMessage)
     {
         // In this project, player index 1 is the local player and index 0 is the AI/opponent.
@@ -378,12 +740,13 @@ public class ScreenNotificationController : MonoBehaviour
             : (string.IsNullOrEmpty(aiWinsMessage) ? "AI goes first" : aiWinsMessage);
     }
 
-    /// <summary>Resolves preset including font and offset (uses defaults when row uses 0 / zero vector).</summary>
+    /// <summary>Resolves preset including font, offset, and audio clip (uses defaults when row uses 0 / zero vector / null).</summary>
     public static bool TryResolvePreset(
         IReadOnlyList<DiceFeedbackNotificationEntry> entries,
         DiceFeedbackEventType eventType,
         int defaultFontSize,
         Vector2 defaultLabelOffsetPixels,
+        AudioClip defaultAudioClip,
         out NotificationPresetResolved resolved)
     {
         resolved = default;
@@ -396,14 +759,15 @@ public class ScreenNotificationController : MonoBehaviour
 
             int font = e.fontSize > 0 ? e.fontSize : defaultFontSize;
             Vector2 offset = e.labelOffsetPixels.sqrMagnitude > 1e-6f ? e.labelOffsetPixels : defaultLabelOffsetPixels;
-            resolved = new NotificationPresetResolved(e.message, e.displayDurationSeconds, font, offset);
+            AudioClip audio = e.audioClipOverride != null ? e.audioClipOverride : defaultAudioClip;
+            resolved = new NotificationPresetResolved(e.message, e.displayDurationSeconds, font, offset, audio);
             return true;
         }
 
         return false;
     }
 
-    /// <summary>Resolves preset message and per-row duration (0 = caller should use global). Uses 72 / zero for default font/offset in resolution.</summary>
+    /// <summary>Resolves preset message and per-row duration (0 = caller should use global). Uses 72 / zero / null for default font/offset/audio in resolution.</summary>
     public static bool TryResolveMessage(
         IReadOnlyList<DiceFeedbackNotificationEntry> entries,
         DiceFeedbackEventType eventType,
@@ -412,7 +776,7 @@ public class ScreenNotificationController : MonoBehaviour
     {
         message = null;
         displayDurationSeconds = 0f;
-        if (!TryResolvePreset(entries, eventType, 72, Vector2.zero, out NotificationPresetResolved r))
+        if (!TryResolvePreset(entries, eventType, 72, Vector2.zero, null, out NotificationPresetResolved r))
             return false;
         message = r.Message;
         displayDurationSeconds = r.DisplayDurationSeconds;

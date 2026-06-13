@@ -6,7 +6,11 @@
         "GUID:0da6d172d18a54e4389d0dce1e1ffdf2",
         "GUID:1491147abca9d7d4bb7105af628b223e",
         "GUID:0995c5820bac1f44ea38c7c7fcaff4b0",
-        "Unity.TextMeshPro"
+        "GUID:4a1cb1490dc4df8409b2580d6b44e75e",
+        "Unity.TextMeshPro",
+        "GUID:df380645f10b7bc4b97d4f5eb6303d95",
+        "GUID:15fc0a57446b3144c949da3e2b9737a9",
+        "Cinemachine"
     ],
     "includePlatforms": [],
     "excludePlatforms": [],

@@ -39,6 +39,14 @@ public class DoublingCubeVisualEditor : UnityEditor.Editor
             }
         }
 
+        EditorGUILayout.Space();
+        EditorGUILayout.LabelField("Slam Animation Preview", EditorStyles.boldLabel);
+        using (new EditorGUI.DisabledScope(!Application.isPlaying))
+        {
+            if (GUILayout.Button("▶  Preview Slam Animation"))
+                visual.DebugPreviewSlamAnimation();
+        }
+
         if (!Application.isPlaying)
             EditorGUILayout.HelpBox("Enter Play Mode to use debug apply buttons.", MessageType.None);
     }

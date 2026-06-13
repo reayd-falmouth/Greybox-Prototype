@@ -1,3 +1,4 @@
+using System.Collections;
 using System.Collections.Generic;
 using System.Reflection;
 using TMPro;
@@ -49,6 +50,15 @@ public class DoublingCubeVisual : MonoBehaviour
     [Header("References")]
     [SerializeField] private BackgammonGameController controller;
     [SerializeField] private Transform visualRoot;
+    [SerializeField] private Transform centeredAnchor;
+    [SerializeField] private Transform player0OwnerAnchor;
+    [SerializeField] private Transform player1OwnerAnchor;
+    [Tooltip("Used when owner anchors are not assigned in scene/prefab.")]
+    [SerializeField] private Vector3 centeredLocalPosition;
+    [Tooltip("Used when player 0 owner anchor is not assigned.")]
+    [SerializeField] private Vector3 player0OwnerLocalPosition = new(0f, 0f, -0.75f);
+    [Tooltip("Used when player 1 owner anchor is not assigned.")]
+    [SerializeField] private Vector3 player1OwnerLocalPosition = new(0f, 0f, 0.75f);
     [SerializeField] private bool useAuthoredFaceObjects = true;
     [Tooltip("When a value face is rotated to top, this sets the world-forward direction of that face text.")]
     [SerializeField] private Vector3 topFaceForward = new(0f, 0f, 1f);
@@ -67,6 +77,18 @@ public class DoublingCubeVisual : MonoBehaviour
     [SerializeField] private float autoFitMaxScale = 0.22f;
     [SerializeField] private int labelFontSize = 64;
     [SerializeField] private TMP_FontAsset labelFontAsset;
+
+    [Header("Slam Animation")]
+    [Tooltip("Local position the cube starts from when slamming onto the board (e.g. above the scene).")]
+    [SerializeField] private Vector3 offScreenLocalPosition = new(0f, 5f, 0f);
+    [SerializeField] private float slamEntryDurationSeconds = 0.35f;
+    [SerializeField] private AnimationCurve slamEntryCurve = AnimationCurve.EaseInOut(0f, 0f, 1f, 1f);
+    [Tooltip("MMF_Player used for slam impact (screen-shake, sound, haptics). Wire in Inspector.")]
+    [SerializeField] private Component slamFeedbackPlayer;
+
+    [Header("Ownership Move Animation")]
+    [SerializeField] private float ownershipMoveDurationSeconds = 0.4f;
+    [SerializeField] private AnimationCurve ownershipMoveCurve = AnimationCurve.EaseInOut(0f, 0f, 1f, 1f);
 
     [Header("Rotation Animation")]
     [SerializeField] private bool animateCubeValueChanges = true;
@@ -88,10 +110,15 @@ public class DoublingCubeVisual : MonoBehaviour
     private readonly Dictionary<int, Transform> _authoredFaceByValue = new();
     private readonly HashSet<int> _missingFaceWarnings = new();
     private Coroutine _rotationRoutine;
+    private Coroutine _positionRoutine;
     private bool _hasAppliedCubeValue;
     private int _lastAppliedCubeValue;
+    private bool _hasCapturedCenteredLocalPosition;
+    private int _lastKnownOwner = 3;
+    private bool _slamInProgress;
     private Component _mmfPlayer;
     private MethodInfo _mmfPlayFeedbacks;
+    private MethodInfo _slamMmfPlayFeedbacks;
 
     public enum CubeOneDisplayMode { Show64OnTop, Show2OnTop }
 
@@ -107,11 +134,16 @@ public class DoublingCubeVisual : MonoBehaviour
     private void Start()
     {
         if (controller == null) controller = FindFirstObjectByType<BackgammonGameController>();
+        CaptureCenteredLocalPositionIfNeeded();
         CacheAuthoredFaces();
         CacheFeedbackPlayer();
+        CacheSlamFeedbackPlayer();
         if (autoCreateFaceLabels && !HasAuthoredFaces()) EnsureLabels();
         Subscribe();
         int initialValue = controller != null && controller.State != null ? controller.State.CubeValue : 1;
+        int initialOwner = controller != null && controller.State != null ? controller.State.CubeOwner : 3;
+        _lastKnownOwner = initialOwner;
+        ApplyOwnershipPosition(initialOwner);
         ApplyForCubeValue(initialValue);
     }
 
@@ -122,7 +154,39 @@ public class DoublingCubeVisual : MonoBehaviour
     private void HandleStateChanged()
     {
         if (controller == null || controller.State == null) return;
-        ApplyForCubeValue(controller.State.CubeValue, animateCubeValueChanges);
+        int newOwner = controller.State.CubeOwner;
+        bool ownerChanged = newOwner != _lastKnownOwner;
+        _lastKnownOwner = newOwner;
+
+        // Don't reposition while the slam-in animation is running — it owns the position.
+        if (!_slamInProgress)
+        {
+            if (ownerChanged)
+                AnimateToOwnerPosition(newOwner);
+            else
+                ApplyOwnershipPosition(newOwner);
+        }
+
+        if (!controller.OpeningRollAwaitingReroll)
+        {
+            ApplyForCubeValue(controller.State.CubeValue, animateCubeValueChanges);
+        }
+    }
+
+    private void HandleDiceFeedback(DiceFeedbackEventData data)
+    {
+        if (data.EventType == DiceFeedbackEventType.CubeOffered || data.EventType == DiceFeedbackEventType.BeaverOffered)
+        {
+            Vector3 targetPos = ResolveSlamTargetPosition();
+            if (_positionRoutine != null) StopCoroutine(_positionRoutine);
+            _positionRoutine = StartCoroutine(AnimateSlamIn(targetPos));
+        }
+    }
+
+    private void HandleCubeRotatedMarker(int cubeValue)
+    {
+        if (controller == null) return;
+        ApplyForCubeValue(cubeValue, animateCubeValueChanges);
     }
 
     private void Subscribe()
@@ -130,12 +194,18 @@ public class DoublingCubeVisual : MonoBehaviour
         if (controller == null) return;
         controller.OnStateChanged -= HandleStateChanged;
         controller.OnStateChanged += HandleStateChanged;
+        controller.OnCubeRotatedMarker -= HandleCubeRotatedMarker;
+        controller.OnCubeRotatedMarker += HandleCubeRotatedMarker;
+        controller.OnDiceFeedbackEvent -= HandleDiceFeedback;
+        controller.OnDiceFeedbackEvent += HandleDiceFeedback;
     }
 
     private void Unsubscribe()
     {
         if (controller == null) return;
         controller.OnStateChanged -= HandleStateChanged;
+        controller.OnCubeRotatedMarker -= HandleCubeRotatedMarker;
+        controller.OnDiceFeedbackEvent -= HandleDiceFeedback;
     }
 
     private void ApplyForCubeValue(int cubeValue, bool preferAnimation = false)
@@ -162,6 +232,134 @@ public class DoublingCubeVisual : MonoBehaviour
 
         _lastAppliedCubeValue = cubeValue;
         _hasAppliedCubeValue = true;
+    }
+
+    private void CaptureCenteredLocalPositionIfNeeded()
+    {
+        if (_hasCapturedCenteredLocalPosition)
+            return;
+
+        centeredLocalPosition = transform.localPosition;
+        _hasCapturedCenteredLocalPosition = true;
+    }
+
+    private void ApplyOwnershipPosition(int cubeOwner)
+    {
+        CaptureCenteredLocalPositionIfNeeded();
+        if (TryApplyAnchorPosition(cubeOwner))
+            return;
+
+        transform.localPosition = ResolveFallbackLocalPosition(cubeOwner, centeredLocalPosition, player0OwnerLocalPosition, player1OwnerLocalPosition);
+        if (logLifecycle)
+        {
+            Debug.Log($"[Backgammon][CubeVisual] Applied fallback owner position owner={cubeOwner} local={transform.localPosition}");
+        }
+    }
+
+    private void AnimateToOwnerPosition(int cubeOwner)
+    {
+        CaptureCenteredLocalPositionIfNeeded();
+        _slamInProgress = false;
+        Vector3 target = ResolveWorldPositionForOwner(cubeOwner);
+        if (_positionRoutine != null) StopCoroutine(_positionRoutine);
+        _positionRoutine = StartCoroutine(AnimateToPosition(target, ownershipMoveDurationSeconds, ownershipMoveCurve));
+    }
+
+    private Vector3 ResolveWorldPositionForOwner(int cubeOwner)
+    {
+        Transform anchor = ResolveAnchorForOwner(cubeOwner);
+        if (anchor != null) return anchor.position;
+        // Fallback: convert local position to world
+        Vector3 local = ResolveFallbackLocalPosition(cubeOwner, centeredLocalPosition, player0OwnerLocalPosition, player1OwnerLocalPosition);
+        return transform.parent != null ? transform.parent.TransformPoint(local) : local;
+    }
+
+    private Vector3 ResolveSlamTargetPosition()
+    {
+        // Target is the current ownership position (centered if no take has happened)
+        int owner = controller != null && controller.State != null ? controller.State.CubeOwner : 3;
+        return ResolveWorldPositionForOwner(owner);
+    }
+
+    private IEnumerator AnimateSlamIn(Vector3 targetWorldPos)
+    {
+        _slamInProgress = true;
+
+        // Start from off-screen (convert offScreenLocalPosition to world)
+        Vector3 startWorld = transform.parent != null
+            ? transform.parent.TransformPoint(offScreenLocalPosition)
+            : offScreenLocalPosition;
+
+        transform.position = startWorld;
+        float elapsed = 0f;
+        while (elapsed < slamEntryDurationSeconds)
+        {
+            elapsed += Time.deltaTime;
+            float t = Mathf.Clamp01(elapsed / slamEntryDurationSeconds);
+            transform.position = Vector3.Lerp(startWorld, targetWorldPos, slamEntryCurve.Evaluate(t));
+            yield return null;
+        }
+        transform.position = targetWorldPos;
+        PlaySlamFeedbackIfAvailable();
+        _slamInProgress = false;
+        _positionRoutine = null;
+    }
+
+    private IEnumerator AnimateToPosition(Vector3 targetWorldPos, float duration, AnimationCurve curve)
+    {
+        Vector3 startPos = transform.position;
+        float elapsed = 0f;
+        while (elapsed < duration)
+        {
+            elapsed += Time.deltaTime;
+            float t = Mathf.Clamp01(elapsed / duration);
+            transform.position = Vector3.Lerp(startPos, targetWorldPos, curve.Evaluate(t));
+            yield return null;
+        }
+        transform.position = targetWorldPos;
+        _positionRoutine = null;
+    }
+
+    private bool TryApplyAnchorPosition(int cubeOwner)
+    {
+        Transform targetAnchor = ResolveAnchorForOwner(cubeOwner);
+        if (targetAnchor == null)
+            return false;
+
+        transform.position = targetAnchor.position;
+        if (logLifecycle)
+        {
+            Debug.Log($"[Backgammon][CubeVisual] Applied owner anchor position owner={cubeOwner} anchor={targetAnchor.name} world={targetAnchor.position}");
+        }
+        return true;
+    }
+
+    private Transform ResolveAnchorForOwner(int cubeOwner)
+    {
+        bool cubeIsCentered = cubeOwner == 3 || cubeOwner < 0;
+        if (cubeIsCentered)
+            return centeredAnchor;
+        if (cubeOwner == 0)
+            return player1OwnerAnchor;
+        if (cubeOwner == 1)
+            return player0OwnerAnchor;
+        return centeredAnchor;
+    }
+
+    public static Vector3 ResolveFallbackLocalPosition(
+        int cubeOwner,
+        Vector3 centeredPosition,
+        Vector3 player0Position,
+        Vector3 player1Position)
+    {
+        bool cubeIsCentered = cubeOwner == 3 || cubeOwner < 0;
+        if (cubeIsCentered)
+            return centeredPosition;
+        if (cubeOwner == 0)
+            return player1Position;
+        if (cubeOwner == 1)
+            return player0Position;
+        return centeredPosition;
     }
 
     public static bool ShouldAnimateCubeValueTransition(int previousCubeValue, int nextCubeValue)
@@ -338,7 +536,19 @@ public class DoublingCubeVisual : MonoBehaviour
         }
     }
 
+    private void CacheSlamFeedbackPlayer()
+    {
+        if (slamFeedbackPlayer == null) return;
+        _slamMmfPlayFeedbacks = slamFeedbackPlayer.GetType().GetMethod(
+            "PlayFeedbacks",
+            BindingFlags.Instance | BindingFlags.Public,
+            binder: null,
+            types: System.Type.EmptyTypes,
+            modifiers: null);
+    }
+
     private void PlayRotationFeedbackIfAvailable() { if (_mmfPlayer != null) _mmfPlayFeedbacks?.Invoke(_mmfPlayer, null); }
+    private void PlaySlamFeedbackIfAvailable() { if (slamFeedbackPlayer != null) _slamMmfPlayFeedbacks?.Invoke(slamFeedbackPlayer, null); }
 
     private System.Collections.IEnumerator AnimateToRotation(Quaternion targetRotation)
     {
@@ -378,6 +588,38 @@ public class DoublingCubeVisual : MonoBehaviour
         ApplyForCubeValue(cubeValue, animated);
     }
 
+    /// <summary>Preview the slam-in animation from the Inspector gear menu or via a custom editor button.</summary>
+    [ContextMenu("Preview Slam Animation")]
+    public void DebugPreviewSlamAnimation()
+    {
+        if (!Application.isPlaying)
+        {
+            Debug.LogWarning("[Backgammon][CubeVisual] Slam preview requires Play Mode.");
+            return;
+        }
+        CaptureCenteredLocalPositionIfNeeded();
+        Vector3 target = ResolveSlamTargetPosition();
+        if (_positionRoutine != null) StopCoroutine(_positionRoutine);
+        _positionRoutine = StartCoroutine(AnimateSlamIn(target));
+    }
+
     private void EnsureLabels() { /* Implementation skipped for brevity, same as previous */ }
     private void CleanupLabels() { /* Implementation skipped for brevity, same as previous */ }
+
+    public void SetBodyColor(Color color, Color emission, float emissionIntensity)
+    {
+        Transform root = visualRoot != null ? visualRoot : transform;
+        MeshRenderer[] renderers = root.GetComponentsInChildren<MeshRenderer>(true);
+        Color emissionHdr = emission * Mathf.Pow(2f, emissionIntensity);
+
+        foreach (MeshRenderer mr in renderers)
+        {
+            MaterialPropertyBlock props = new MaterialPropertyBlock();
+            mr.GetPropertyBlock(props);
+            props.SetColor("_BaseColor", color);
+            if (emissionIntensity > 0f)
+                props.SetColor("_EmissionColor", emissionHdr);
+            mr.SetPropertyBlock(props);
+        }
+    }
 }

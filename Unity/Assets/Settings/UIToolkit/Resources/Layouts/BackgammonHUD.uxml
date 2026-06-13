@@ -2,134 +2,482 @@
     <Style src="project://database/Assets/Settings/UIToolkit/Resources/Styles/TemplateStyles.uss?fileID=7433441132597879392&amp;guid=6ebbbe798c96bf344b8b9360316b9108&amp;type=3#TemplateStyles"/>
     <ui:VisualElement name="ScreenRoot" class="screen-root panel-fill" style="width: 100%; height: 100%;">
         <ui:VisualElement name="SidePanel" class="side-panel" style="flex-grow: 1; width: 22.5%; height: 100%; max-height: 100%; min-height: 100%; left: 68px; background-color: rgb(46, 56, 59); border-left-width: 2px; border-right-width: 2px; border-left-color: rgb(3, 102, 167); border-right-color: rgb(3, 102, 167); justify-content: flex-start; opacity: 1; padding-top: 0; padding-left: 9px; padding-right: 9px;">
-            <ui:VisualElement name="MatchInfo" class="sub-panel" style="margin-bottom: 12px; justify-content: flex-start; padding-left: 9px; padding-right: 9px; padding-top: 9px; max-height: 30%; padding-bottom: 9px;">
+            <ui:VisualElement name="MatchInfo" class="sub-panel" style="margin-bottom: 6px; justify-content: flex-start; padding-left: 9px; padding-right: 9px; padding-top: 9px; max-height: 30%; padding-bottom: 9px; height: 100%;">
                 <ui:VisualElement name="HeadingPanel" class="sub-panel heading-panel">
-                    <ui:Label text="Small Match" name="HeadingLabel" class="m16font"/>
+                    <ui:Label text="Money Session" name="HeadingLabel" class="m16font"/>
                 </ui:VisualElement>
-                <ui:VisualElement name="MatchDetailsPanel" class="sub-panel" style="margin-bottom: 0; max-height: 222px; flex-direction: column; padding-left: 8px; padding-right: 8px; padding-top: 8px;">
-                    <ui:Label text="Turn: —" name="StatusLabel" class="m16font" style="font-size: 22px; -unity-text-align: middle-left;"/>
-                    <ui:Label text="Dice: —" name="DiceLabel" class="m16font" style="font-size: 22px; -unity-text-align: middle-left;"/>
-                    <ui:Label text="PID: —" name="PositionIdLabel" class="m16font" style="font-size: 14px; white-space: normal; -unity-text-align: middle-left;"/>
-                </ui:VisualElement>
-            </ui:VisualElement>
-            <ui:VisualElement name="GameScorePanel" class="sub-panel" style="margin-bottom: 12px; justify-content: flex-start; padding-left: 9px; padding-right: 9px; padding-top: 9px; max-height: 96px; padding-bottom: 9px; flex-grow: 1; flex-shrink: 1;">
-                <ui:VisualElement name="GameScoreHeaderPanel" class="sub-panel heading-panel" style="align-content: flex-start; align-self: auto; padding-left: 17px; height: 81px; max-height: 78px; flex-direction: row; justify-content: space-evenly; padding-right: 12px; background-color: rgb(0, 0, 0); padding-top: 12px; margin-bottom: 0;">
-                    <ui:Label text="Game&#10;score" name="GameScoreTitleLabel" class="m16font" style="-unity-text-align: middle-center; font-size: 32px; padding-right: 1px; margin-right: 16px;"/>
-                    <ui:VisualElement name="GameScoreValueBox" class="rounded" style="flex-grow: 1; margin-top: 0; margin-left: 0; margin-right: 0; margin-bottom: 0; padding-top: 0; background-color: rgb(87, 87, 87); align-content: center; justify-content: center; align-self: center; flex-direction: row; align-items: center; color: rgb(45, 56, 58);">
-                        <ui:Label text="0-0" name="GameScoreValue" class="m16font" style="color: rgb(255, 255, 255); font-size: 48px; -unity-text-align: middle-center; padding-top: 0; padding-bottom: 0; margin-top: 0; padding-left: 0; padding-right: 0; margin-left: 0; margin-right: 0; margin-bottom: 0;"/>
+                <ui:VisualElement name="MatchDetailsPanel" class="sub-panel" style="margin-bottom: 0; max-height: 222px; flex-direction: row; padding-left: 12px; padding-right: 12px; padding-top: 12px; background-color: rgb(15, 66, 95);">
+                    <ui:VisualElement style="flex-grow: 1; flex-direction: row; height: 175px; justify-content: center; align-items: center; align-content: center; align-self: center;">
+                        <ui:Image source="project://database/Assets/Art/Sprites/USD/4_USD_green.png?fileID=2800000&amp;guid=06f0634f754c354429e057b60d6370f9&amp;type=3#4_USD_green" name="GameIcon" class="shadow-box" style="width: 119px; margin-right: 24px; padding-right: 0; background-color: rgba(0, 0, 0, 0.06);"/>
+                        <ui:VisualElement name="VisualElement" style="flex-grow: 1; justify-content: center; background-color: rgb(0, 0, 0); border-top-left-radius: 14px; border-bottom-left-radius: 14px; border-top-right-radius: 14px; border-bottom-right-radius: 14px; padding-left: 9px; padding-top: 9px; padding-right: 9px; padding-bottom: 9px; height: 126px; align-self: center; align-items: center;">
+                            <ui:Label text="100" name="StakeLabel" class="m16font" style="font-size: 82px; -unity-text-align: middle-left;"/>
+                        </ui:VisualElement>
                     </ui:VisualElement>
                 </ui:VisualElement>
             </ui:VisualElement>
-            <ui:VisualElement name="MultiplierPanel" class="sub-panel" style="margin-bottom: 12px; justify-content: flex-start; padding-left: 9px; padding-right: 9px; padding-top: 9px; max-height: 19%; padding-bottom: 9px; flex-grow: 1; flex-shrink: 1;">
-                <ui:VisualElement name="MultiplierHeaderPanel" class="sub-panel heading-panel" style="align-content: stretch; align-self: flex-end; padding-left: 17px; height: 81px; max-height: 182px; flex-direction: row; justify-content: space-evenly; padding-right: 12px; background-color: rgb(0, 0, 0); padding-top: 12px; align-items: center; margin-bottom: 0;">
-                    <ui:VisualElement name="ChipsDisplay" class="rounded" style="flex-grow: 1; margin-top: 0; margin-left: 0; margin-right: 7px; margin-bottom: 0; padding-top: 0; background-color: rgb(87, 87, 87); align-content: center; justify-content: flex-end; align-self: center; flex-direction: row; align-items: center; color: rgb(45, 56, 58); padding-right: 20px; max-height: 150px; height: 101px; max-width: 175px; width: 6px;">
-                        <ui:Label text="1" name="ChipsValue" class="m16font" style="color: rgb(255, 255, 255); font-size: 69px; -unity-text-align: middle-center; padding-top: 0; padding-bottom: 0; margin-top: 0; padding-left: 0; padding-right: 0; margin-left: 0; margin-right: 0; margin-bottom: 0;"/>
-                    </ui:VisualElement>
-                    <ui:Label text="X" name="MultiplierTimesLabel" class="m16font"/>
-                    <ui:VisualElement name="MultDisplay" class="rounded" style="flex-grow: 1; margin-top: 0; margin-left: 0; margin-right: 0; margin-bottom: 0; padding-top: 0; background-color: rgb(87, 87, 87); align-content: center; justify-content: flex-start; align-self: center; flex-direction: row; align-items: center; color: rgb(45, 56, 58); padding-right: 0; max-height: 150px; height: 101px; max-width: 175px; width: 6px; padding-left: 20px;">
-                        <ui:Label text="1" name="MultiplierValue" class="m16font" style="color: rgb(255, 255, 255); font-size: 69px; -unity-text-align: middle-center; padding-top: 0; padding-bottom: 0; margin-top: 0; padding-left: 0; padding-right: 0; margin-left: 0; margin-right: 0; margin-bottom: 0;"/>
+            <ui:VisualElement name="MatchScorePanel" class="sub-panel" style="margin-bottom: 6px; justify-content: flex-start; padding-left: 9px; padding-right: 9px; padding-top: 9px; max-height: 9%; padding-bottom: 9px; flex-grow: 1; flex-shrink: 1; height: 100%;">
+                <ui:VisualElement name="MatchScoreHeaderPanel" class="sub-panel heading-panel" style="align-content: flex-start; align-self: auto; padding-left: 17px; height: 81px; max-height: 78px; flex-direction: row; justify-content: space-evenly; padding-right: 12px; background-color: rgb(0, 0, 0); padding-top: 12px; margin-bottom: 0;">
+                    <ui:Label text="Score" name="MatchScoreTitleLabel" class="m16font" style="-unity-text-align: middle-center; font-size: 32px; padding-right: 1px; margin-right: 16px;"/>
+                    <ui:VisualElement name="MatchScoreValueBox" class="rounded" style="flex-grow: 1; margin-top: 0; margin-left: 0; margin-right: 0; margin-bottom: 0; padding-top: 0; background-color: rgb(87, 87, 87); align-content: center; justify-content: center; align-self: center; flex-direction: row; align-items: center; color: rgb(45, 56, 58);">
+                        <ui:Label text="350,460" name="MatchScoreValue" class="m16font" style="color: rgb(255, 255, 255); font-size: 48px; -unity-text-align: middle-center; padding-top: 0; padding-bottom: 0; margin-top: 0; padding-left: 0; padding-right: 0; margin-left: 0; margin-right: 0; margin-bottom: 0;"/>
                     </ui:VisualElement>
                 </ui:VisualElement>
             </ui:VisualElement>
-            <ui:VisualElement name="GameInfoPanel" class="sub-panel" style="margin-bottom: 12px; justify-content: flex-start; padding-left: 9px; padding-right: 9px; padding-top: 9px; max-height: none; padding-bottom: 9px; height: 0%; background-color: rgba(31, 41, 43, 0); flex-direction: row;">
-                <ui:VisualElement name="ButtonPanel" style="flex-grow: 1; width: 26%;">
-                    <ui:Button text="New Game" name="NewGameButton" class="rounded-button-large m16font button-rounded-large" style="width: 129px; height: 72px; margin-bottom: 10px; align-self: flex-start; -unity-text-align: middle-center; font-size: 28px; white-space: normal;"/>
-                    <ui:Button text="Run Info" name="RunInfoButton" class="rounded-button-large m16font button-rounded-large" style="width: 129px; height: 120px; margin-bottom: 15px; align-self: flex-start; align-content: center; justify-content: center; -unity-text-align: middle-center; font-size: 42px; white-space: normal;"/>
-                    <ui:Button text="Options" name="OptionsButton" class="rounded-button-large m16font button-rounded-large" style="width: 129px; height: 120px; margin-bottom: 15px; -unity-text-align: middle-center; white-space: normal; font-size: 34px;"/>
-                    <ui:Button text="Hints" name="HintsButton" class="rounded-button-large m16font button-rounded-large" style="width: 129px; height: 72px; margin-bottom: 10px; align-self: flex-start; -unity-text-align: middle-center; font-size: 28px; white-space: normal;"/>
+            <ui:VisualElement name="MultiplierPanel" class="sub-panel" style="margin-bottom: 2px; justify-content: flex-end; padding-left: 9px; padding-right: 9px; padding-top: 9px; max-height: 21%; padding-bottom: 9px; flex-grow: 1; flex-shrink: 1; height: 312px; align-content: flex-end;">
+                <ui:VisualElement name="MultiplierHeaderPanel" class="sub-panel heading-panel" style="align-content: stretch; align-self: flex-end; padding-left: 17px; height: 100%; max-height: 100%; flex-direction: row; justify-content: space-evenly; padding-right: 12px; background-color: rgb(0, 0, 0); padding-top: 12px; align-items: center; margin-bottom: 0;">
+                    <ui:VisualElement name="ChipsDisplay" class="rounded" style="flex-grow: 1; margin-top: 0; margin-left: 0; margin-right: 7px; margin-bottom: 0; padding-top: 0; background-color: rgb(87, 87, 87); align-content: center; justify-content: flex-end; align-self: flex-end; flex-direction: row; align-items: center; color: rgb(45, 56, 58); padding-right: 20px; max-height: 150px; height: 101px; max-width: 175px; width: 6px;">
+                        <ui:Label text="200" name="ChipsValue" class="m16font" style="color: rgb(255, 255, 255); font-size: 69px; -unity-text-align: middle-center; padding-top: 0; padding-bottom: 0; margin-top: 0; padding-left: 0; padding-right: 0; margin-left: 0; margin-right: 0; margin-bottom: 0;"/>
+                    </ui:VisualElement>
+                    <ui:VisualElement name="MultDisplay" class="rounded" style="flex-grow: 1; margin-top: 0; margin-left: 0; margin-right: 0; margin-bottom: 0; padding-top: 0; background-color: rgba(87, 87, 87, 0); align-content: center; justify-content: center; align-self: flex-end; flex-direction: row; align-items: center; color: rgb(45, 56, 58); padding-right: 0; max-height: 150px; height: 101px; max-width: 40px; width: 0; padding-left: 0;">
+                        <ui:Label text="X" name="MultiplierTimesLabel" class="m16font" style="align-content: flex-end; align-self: center; justify-content: flex-end;"/>
+                    </ui:VisualElement>
+                    <ui:VisualElement name="MultDisplay" class="rounded" style="flex-grow: 1; margin-top: 0; margin-left: 0; margin-right: 0; margin-bottom: 0; padding-top: 0; background-color: rgb(87, 87, 87); align-content: center; justify-content: flex-start; align-self: flex-end; flex-direction: row; align-items: center; color: rgb(45, 56, 58); padding-right: 0; max-height: 150px; height: 101px; max-width: 175px; width: 6px; padding-left: 20px;">
+                        <ui:Label text="4" name="MultiplierValue" class="m16font" style="color: rgb(255, 255, 255); font-size: 69px; -unity-text-align: middle-center; padding-top: 0; padding-bottom: 0; margin-top: 0; padding-left: 0; padding-right: 0; margin-left: 0; margin-right: 0; margin-bottom: 0;"/>
+                    </ui:VisualElement>
                 </ui:VisualElement>
-                <ui:VisualElement name="GameStatsPanel" style="flex-grow: 1; width: 50%; -unity-text-align: middle-center; align-content: center; justify-content: space-around;">
-                    <ui:VisualElement style="flex-direction: row; padding-bottom: 15px;">
+            </ui:VisualElement>
+            <ui:VisualElement name="GameInfoPanel" class="sub-panel" style="margin-bottom: 6px; justify-content: flex-start; padding-left: 9px; padding-right: 9px; padding-top: 9px; max-height: none; padding-bottom: 9px; height: auto; background-color: rgba(31, 41, 43, 0); flex-direction: row;">
+                <ui:VisualElement name="ButtonPanel" style="flex-grow: 1; width: 26%; justify-content: space-between;">
+                    <ui:Button text="New Game" name="NewGameButton" class="rounded-button-large m16font button-rounded-large button-secondary" style="width: 129px; height: 115px; margin-bottom: 0; align-self: flex-start; -unity-text-align: middle-center; font-size: 36px; white-space: normal;"/>
+                    <ui:Button text="Options" name="RunInfoButton" class="rounded-button-large m16font button-rounded-large button-secondary" style="width: 129px; height: 120px; margin-bottom: 0; align-self: flex-start; align-content: center; justify-content: center; -unity-text-align: middle-center; font-size: 34px; white-space: normal;"/>
+                    <ui:Button text="Moves" name="LegalMovesButton" class="rounded-button-large m16font button-rounded-large button-secondary" style="width: 129px; height: 120px; margin-bottom: 0; align-self: flex-start; align-content: center; justify-content: center; -unity-text-align: middle-center; font-size: 34px; white-space: normal;"/>
+                </ui:VisualElement>
+                <ui:VisualElement name="GameStatsPanel" style="flex-grow: 1; width: 50%; -unity-text-align: middle-center; align-content: center; justify-content: space-between;">
+                    <ui:VisualElement style="flex-direction: row; padding-bottom: 0; margin-bottom: 0;">
                         <ui:VisualElement name="GamesColumnPanel" class="sub-panel heading-panel" style="align-content: flex-start; align-self: center; padding-left: 12px; flex-direction: column; justify-content: flex-start; padding-right: 12px; background-color: rgb(0, 0, 0); padding-top: 12px; margin-bottom: 0; height: auto; max-height: none; margin-right: 12px; align-items: center;">
-                            <ui:Label text="Games" name="GamesTitleLabel" class="m16font" style="font-size: 29px;"/>
+                            <ui:Label text="Game" name="GamesTitleLabel" class="m16font" style="font-size: 29px;"/>
                             <ui:VisualElement name="GamesValueBox" class="rounded" style="flex-grow: 1; margin-top: 0; margin-left: 0; margin-right: 0; margin-bottom: 0; padding-top: 0; background-color: rgb(87, 87, 87); align-content: center; justify-content: center; align-self: center; flex-direction: row; align-items: center; color: rgb(45, 56, 58); width: 100%; height: 100%;">
-                                <ui:Label text="—" name="GamesValue" class="m16font" style="color: rgb(255, 255, 255); font-size: 48px; -unity-text-align: middle-center; padding-top: 0; padding-bottom: 0; margin-top: 0; padding-left: 0; padding-right: 0; margin-left: 0; margin-right: 0; margin-bottom: 0;"/>
+                                <ui:Label text="25" name="GamesValue" class="m16font" style="color: rgb(255, 255, 255); font-size: 48px; -unity-text-align: middle-center; padding-top: 0; padding-bottom: 0; margin-top: 0; padding-left: 0; padding-right: 0; margin-left: 0; margin-right: 0; margin-bottom: 0;"/>
                             </ui:VisualElement>
                         </ui:VisualElement>
-                        <ui:VisualElement name="RollsColumnPanel" class="sub-panel heading-panel" style="align-content: flex-start; align-self: center; padding-left: 12px; flex-direction: column; justify-content: flex-start; padding-right: 12px; background-color: rgb(0, 0, 0); padding-top: 12px; margin-bottom: 0; height: auto; max-height: none; margin-right: 12px; align-items: center;">
+                        <ui:VisualElement name="RollsColumnPanel" class="sub-panel heading-panel" style="align-content: flex-start; align-self: center; padding-left: 12px; flex-direction: column; justify-content: flex-start; padding-right: 12px; background-color: rgb(0, 0, 0); padding-top: 12px; margin-bottom: 0; height: auto; max-height: none; margin-right: 0; align-items: center;">
                             <ui:Label text="Rolls" name="RollsTitleLabel" class="m16font" style="font-size: 29px;"/>
                             <ui:VisualElement name="RollsValueBox" class="rounded" style="flex-grow: 1; margin-top: 0; margin-left: 0; margin-right: 0; margin-bottom: 0; padding-top: 0; background-color: rgb(87, 87, 87); align-content: center; justify-content: center; align-self: center; flex-direction: row; align-items: center; color: rgb(45, 56, 58); width: 100%; height: 100%;">
-                                <ui:Label text="0" name="RollsValue" class="m16font" style="color: rgb(255, 255, 255); font-size: 48px; -unity-text-align: middle-center; padding-top: 0; padding-bottom: 0; margin-top: 0; padding-left: 0; padding-right: 0; margin-left: 0; margin-right: 0; margin-bottom: 0;"/>
+                                <ui:Label text="86" name="RollsValue" class="m16font" style="color: rgb(255, 255, 255); font-size: 48px; -unity-text-align: middle-center; padding-top: 0; padding-bottom: 0; margin-top: 0; padding-left: 0; padding-right: 0; margin-left: 0; margin-right: 0; margin-bottom: 0;"/>
                             </ui:VisualElement>
                         </ui:VisualElement>
                     </ui:VisualElement>
-                    <ui:VisualElement style="flex-direction: row; padding-bottom: 15px;">
-                        <ui:VisualElement name="StakeColumnPanel" class="sub-panel heading-panel" style="align-content: flex-start; align-self: center; padding-left: 12px; flex-direction: column; justify-content: flex-start; padding-right: 12px; background-color: rgb(0, 0, 0); padding-top: 12px; margin-bottom: 0; height: 100px; max-height: 302px; margin-right: 12px; align-items: center;">
-                            <ui:Label text="Stake" name="StakeTitleLabel" class="m16font" style="font-size: 29px;"/>
-                            <ui:VisualElement name="StakeValueBox" class="rounded" style="flex-grow: 1; margin-top: 0; margin-left: 0; margin-right: 0; margin-bottom: 0; padding-top: 0; background-color: rgb(87, 87, 87); align-content: center; justify-content: center; align-self: center; flex-direction: row; align-items: center; color: rgb(45, 56, 58); width: 100%; height: 100%;">
-                                <ui:Label text="—" name="StakeValue" class="m16font" style="color: rgb(255, 255, 255); font-size: 48px; -unity-text-align: middle-center; padding-top: 0; padding-bottom: 0; margin-top: 0; padding-left: 0; padding-right: 0; margin-left: 0; margin-right: 0; margin-bottom: 0;"/>
+                    <ui:VisualElement style="flex-direction: row; padding-bottom: 0; margin-bottom: 0;">
+                        <ui:VisualElement name="StakeColumnPanel" class="sub-panel heading-panel" style="align-content: flex-start; align-self: center; padding-left: 12px; flex-direction: column; justify-content: flex-start; padding-right: 12px; background-color: rgb(0, 0, 0); padding-top: 12px; margin-bottom: 0; height: auto; max-height: none; margin-right: 0; align-items: center;">
+                            <ui:VisualElement name="StakeValueBox" class="rounded" style="flex-grow: 1; margin-top: 0; margin-left: 0; margin-right: 0; margin-bottom: 0; padding-top: 8px; background-color: rgb(87, 87, 87); align-content: center; justify-content: center; align-self: center; flex-direction: row; align-items: center; color: rgb(45, 56, 58); width: 100%; height: 100%; padding-bottom: 8px;">
+                                <ui:Label text="$10" name="StakeValue" class="m16font" style="color: rgb(255, 255, 255); font-size: 62px; -unity-text-align: middle-center; padding-top: 0; padding-bottom: 0; margin-top: 0; padding-left: 0; padding-right: 0; margin-left: 0; margin-right: 0; margin-bottom: 0;"/>
                             </ui:VisualElement>
                         </ui:VisualElement>
                     </ui:VisualElement>
-                    <ui:VisualElement name="AnteRoundRow" style="flex-direction: row;">
+                    <ui:VisualElement style="flex-direction: row; padding-bottom: 0; height: 150px; display: none;">
+                        <ui:VisualElement name="PipCountColumnPanel" class="sub-panel heading-panel" style="align-content: flex-start; align-self: center; padding-left: 12px; flex-direction: column; justify-content: flex-start; padding-right: 12px; background-color: rgb(0, 0, 0); padding-top: 12px; margin-bottom: 0; height: 100%; max-height: none; margin-right: 0; align-items: center; padding-bottom: 12px;">
+                            <ui:Label text="Pip Counts" name="PipCountValue" class="m16font" style="color: rgb(255, 255, 255); font-size: 39px; -unity-text-align: middle-center; padding-top: 0; padding-bottom: 0; margin-top: 0; padding-left: 0; padding-right: 0; margin-left: 0; margin-right: 0; margin-bottom: 13px;"/>
+                            <ui:VisualElement name="PipCountColumnPanel" class="sub-panel heading-panel" style="align-content: flex-start; align-self: center; padding-left: 0; flex-direction: row; justify-content: flex-start; padding-right: 0; background-color: rgb(0, 0, 0); padding-top: 0; margin-bottom: 0; height: 169%; max-height: none; margin-right: 0; align-items: center; padding-bottom: 0;">
+                                <ui:VisualElement name="PipCountValueBox" class="rounded" style="flex-grow: 1; margin-top: 0; margin-left: 0; margin-right: 12px; margin-bottom: 0; padding-top: 0; background-color: rgb(87, 87, 87); align-content: center; justify-content: center; align-self: center; flex-direction: row; align-items: center; color: rgb(45, 56, 58); width: 50%; height: 100%;">
+                                    <ui:Label text="167" name="PipCountPlayerValue" class="m16font" style="color: rgb(255, 255, 255); font-size: 46px; -unity-text-align: middle-center; margin: 0; padding: 4px 6px;"/>
+                                </ui:VisualElement>
+                                <ui:VisualElement name="PipCountValueBox" class="rounded" style="flex-grow: 1; margin-top: 0; margin-left: 0; margin-right: 0; margin-bottom: 0; padding-top: 0; background-color: rgb(87, 87, 87); align-content: center; justify-content: center; align-self: center; flex-direction: row; align-items: center; color: rgb(45, 56, 58); width: 50%; height: 100%;">
+                                    <ui:Label text="167" name="PipCountAiValue" class="m16font" style="color: rgb(180, 220, 255); font-size: 46px; -unity-text-align: middle-center; margin: 0; padding: 4px 6px;"/>
+                                </ui:VisualElement>
+                            </ui:VisualElement>
+                        </ui:VisualElement>
+                    </ui:VisualElement>
+                    <ui:VisualElement style="flex-direction: row; padding-bottom: 0; margin-bottom: 0;">
                         <ui:VisualElement name="AnteColumnPanel" class="sub-panel heading-panel" style="align-content: flex-start; align-self: center; padding-left: 12px; flex-direction: column; justify-content: flex-start; padding-right: 12px; background-color: rgb(0, 0, 0); padding-top: 12px; margin-bottom: 0; height: auto; max-height: none; margin-right: 12px; align-items: center;">
                             <ui:Label text="Ante" name="AnteTitleLabel" class="m16font" style="font-size: 29px;"/>
                             <ui:VisualElement name="AnteValueBox" class="rounded" style="flex-grow: 1; margin-top: 0; margin-left: 0; margin-right: 0; margin-bottom: 0; padding-top: 0; background-color: rgb(87, 87, 87); align-content: center; justify-content: center; align-self: center; flex-direction: row; align-items: center; color: rgb(45, 56, 58); width: 100%; height: 100%;">
-                                <ui:Label text="—" name="AnteValue" class="m16font" style="color: rgb(255, 255, 255); font-size: 48px; -unity-text-align: middle-center; padding-top: 0; padding-bottom: 0; margin-top: 0; padding-left: 0; padding-right: 0; margin-left: 0; margin-right: 0; margin-bottom: 0;"/>
+                                <ui:Label text="1/3" name="GamesValue" class="m16font" style="color: rgb(255, 255, 255); font-size: 48px; -unity-text-align: middle-center; padding-top: 0; padding-bottom: 0; margin-top: 0; padding-left: 0; padding-right: 0; margin-left: 0; margin-right: 0; margin-bottom: 0;"/>
                             </ui:VisualElement>
                         </ui:VisualElement>
-                        <ui:VisualElement name="RoundColumnPanel" class="sub-panel heading-panel" style="align-content: flex-start; align-self: center; padding-left: 12px; flex-direction: column; justify-content: flex-start; padding-right: 12px; background-color: rgb(0, 0, 0); padding-top: 12px; margin-bottom: 0; height: auto; max-height: none; margin-right: 12px; align-items: center;">
-                            <ui:Label text="Round" name="RoundTitleLabel" class="m16font" style="font-size: 29px;"/>
-                            <ui:VisualElement name="RoundValueBox" class="rounded" style="flex-grow: 1; margin-top: 0; margin-left: 0; margin-right: 0; margin-bottom: 0; padding-top: 0; background-color: rgb(87, 87, 87); align-content: center; justify-content: center; align-self: center; flex-direction: row; align-items: center; color: rgb(45, 56, 58); width: 100%; height: 100%;">
-                                <ui:Label text="1" name="RoundValue" class="m16font" style="color: rgb(255, 255, 255); font-size: 48px; -unity-text-align: middle-center; padding-top: 0; padding-bottom: 0; margin-top: 0; padding-left: 0; padding-right: 0; margin-left: 0; margin-right: 0; margin-bottom: 0;"/>
+                        <ui:VisualElement name="SessionColumnPanel" class="sub-panel heading-panel" style="align-content: flex-start; align-self: center; padding-left: 12px; flex-direction: column; justify-content: flex-start; padding-right: 12px; background-color: rgb(0, 0, 0); padding-top: 12px; margin-bottom: 0; height: auto; max-height: none; margin-right: 0; align-items: center;">
+                            <ui:Label text="Round" name="SessionTitleLabel" class="m16font" style="font-size: 29px;"/>
+                            <ui:VisualElement name="SessionValueBox" class="rounded" style="flex-grow: 1; margin-top: 0; margin-left: 0; margin-right: 0; margin-bottom: 0; padding-top: 0; background-color: rgb(87, 87, 87); align-content: center; justify-content: center; align-self: center; flex-direction: row; align-items: center; color: rgb(45, 56, 58); width: 100%; height: 100%;">
+                                <ui:Label text="86" name="RollsValue" class="m16font" style="color: rgb(255, 255, 255); font-size: 48px; -unity-text-align: middle-center; padding-top: 0; padding-bottom: 0; margin-top: 0; padding-left: 0; padding-right: 0; margin-left: 0; margin-right: 0; margin-bottom: 0;"/>
                             </ui:VisualElement>
                         </ui:VisualElement>
                     </ui:VisualElement>
                 </ui:VisualElement>
-                <ui:ScrollView name="LegalMovesScroll" style="display: none;"/>
             </ui:VisualElement>
             <ui:VisualElement name="SettingsPanel" style="display: none;"/>
         </ui:VisualElement>
         <ui:VisualElement name="BottomPanel" style="flex-grow: 1; height: auto; position: absolute; bottom: 3%; width: auto; flex-direction: row; align-content: flex-start; align-self: center; justify-content: flex-start; align-items: stretch; left: 37.5%;">
-            <ui:Button text="Play Move" name="PlayMoveButton" selectable="true" class="rounded-button-large m16font button-rounded-large"/>
+            <ui:Button text="Play Move" name="PlayMoveButton" selectable="true" class="rounded-button-large m16font button-rounded-large button-primary"/>
             <ui:VisualElement name="BoardViewPanel" class="rounded-button-large rounded-view-panel" style="padding-top: -4px;">
                 <ui:Label text="Change View" class="m16font rounded-large-button-label"/>
                 <ui:VisualElement style="flex-grow: 1; flex-direction: row;">
-                    <ui:Button text="Horiz" name="ViewHorizButton" class="rounded-button-small m16font"/>
-                    <ui:Button text="Vert" name="ViewVertButton" class="rounded-button-small m16font"/>
+                    <ui:Button text="Horiz" name="ViewHorizButton" class="rounded-button-small m16font button-secondary"/>
+                    <ui:Button text="Vert" name="ViewVertButton" class="rounded-button-small m16font button-secondary"/>
                 </ui:VisualElement>
             </ui:VisualElement>
-            <ui:Button text="Undo&#10;" name="UndoButton" class="rounded-button-large m16font button-rounded-large"/>
+            <ui:Button text="Undo&#10;" name="UndoButton" class="rounded-button-large m16font button-rounded-large button-secondary"/>
         </ui:VisualElement>
         <ui:VisualElement name="TakeDropPanel" style="flex-grow: 1; align-self: flex-end; height: 100%; max-height: 100%; width: 419px; min-height: 100px; position: absolute; left: auto; right: 12%; bottom: 18%; align-content: center; justify-content: center; align-items: center; display: none;">
             <ui:VisualElement name="TakeDropInnerPanel" class="rounded-button-large rounded-view-panel" style="padding-top: -4px; max-height: 139px;">
                 <ui:Label text="Double?" class="m16font rounded-large-button-label"/>
                 <ui:VisualElement style="flex-grow: 1; flex-direction: row;">
-                    <ui:Button text="Take" name="TakeDoubleButton" class="rounded-button-small m16font"/>
-                    <ui:Button text="Drop" name="DropDoubleButton" class="rounded-button-small m16font"/>
+                    <ui:Button text="Take" name="TakeDoubleButton" class="rounded-button-small m16font button-primary"/>
+                    <ui:Button text="Drop" name="DropDoubleButton" class="rounded-button-small m16font button-secondary"/>
+                    <ui:Button text="Beaver" name="BeaverDoubleButton" class="rounded-button-small m16font button-secondary" style="display: none;"/>
                 </ui:VisualElement>
             </ui:VisualElement>
         </ui:VisualElement>
         <ui:VisualElement name="RollDoublePanel" style="flex-grow: 1; height: auto; position: absolute; bottom: 3%; width: auto; flex-direction: column; align-content: flex-start; align-self: center; justify-content: flex-start; align-items: stretch; left: auto; right: 2%;">
-            <ui:VisualElement name="DoublePanel" style="flex-direction: column;">
-                <ui:Button text="Double" name="DoubleButton" class="rounded-button-large m16font button-rounded-large" style="width: 130px; -unity-text-align: middle-center; font-size: 37px; margin-bottom: 14px;"/>
+            <ui:VisualElement name="DoublePanel" style="flex-direction: column; margin-bottom: 286px;">
+                <ui:Button text="Double" name="DoubleButton" class="rounded-button-large m16font button-rounded-large button-secondary" style="width: 130px; -unity-text-align: middle-center; font-size: 37px; margin-bottom: 14px; bottom: 0;"/>
             </ui:VisualElement>
-            <ui:Button text="Roll" name="RollButton" selectable="true" class="rounded-button-large m16font button-rounded-large" style="width: 130px; -unity-text-align: middle-center; font-size: 48px; margin-bottom: 14px;"/>
+            <ui:Button text="Roll" name="RollButton" selectable="true" class="rounded-button-large m16font button-rounded-large button-primary" style="width: 130px; -unity-text-align: middle-center; font-size: 48px; margin-bottom: 14px;"/>
+        </ui:VisualElement>
+        <ui:VisualElement name="LobbyLayer" class="lobby-layer" style="background-color: rgb(10, 19, 25); align-self: center; background-image: url(&quot;project://database/Assets/Art/Textures/I_want_animate_this_I_202605131141.jpeg?fileID=2800000&amp;guid=c2ec0117c3528f44d97ca7bcbf940cf3&amp;type=3#I_want_animate_this_I_202605131141&quot;); display: flex;">
+            <ui:VisualElement name="LobbyIcon" class="lobby-icon" style="background-image: url(&quot;project://database/Assets/Art/Textures/Poker_chips_falling_like_rain_202605131156.jpeg?fileID=2800000&amp;guid=0d5b30c3dd09de9408dbb0623057975d&amp;type=3#Poker_chips_falling_like_rain_202605131156&quot;); align-self: center; justify-content: space-between; height: 100%; width: 100%; margin-bottom: 0; max-height: 100%; display: none;"/>
+            <ui:VisualElement name="LobbyCard" class="lobby-card" style="flex-direction: row; width: 100%; display: flex; position: absolute; height: 180px; bottom: 45px; background-color: rgba(10, 20, 26, 0.4); align-self: center; align-content: center;">
+                <ui:VisualElement name="LobbyButtonGroup" class="lobby-button-group" style="flex-direction: row; align-self: center; position: absolute; display: flex; width: 804px; justify-content: center; align-content: center;">
+                    <ui:Button name="LobbyPlayButton" text="PLAY" class="rounded-button-large lobby-button m16font button-primary" style="align-self: center; -unity-text-align: middle-center; font-size: 48px; margin-bottom: 2px; border-top-width: 0; border-left-width: 0; border-bottom-width: 0; border-right-width: 0; height: 120px;"/>
+                    <ui:Button name="LobbyOptionsButton" text="SETTINGS" class="rounded-button-large lobby-button m16font button-secondary" style="-unity-text-align: middle-center; font-size: 48px; margin-bottom: 2px; border-left-width: 0; border-top-width: 0; border-right-width: 0; border-bottom-width: 0; height: 120px;"/>
+                </ui:VisualElement>
+            </ui:VisualElement>
         </ui:VisualElement>
         <ui:VisualElement name="ModalLayer" class="modal-layer" style="display: none;">
             <ui:VisualElement name="ModalBackdrop" class="modal-backdrop">
-                <ui:VisualElement name="ModalCard" class="modal-card">
-                    <ui:VisualElement name="ModalHeader" class="modal-header">
-                        <ui:Label text="Options" name="ModalTitleLabel" class="m16font modal-title"/>
-                        <ui:Button text="Close" name="ModalCloseButton" class="rounded-button-small m16font modal-close-button"/>
-                    </ui:VisualElement>
+                <ui:VisualElement name="ModalCard" class="modal-card" style="width: 1189px; max-width: 1233px; max-height: 1000px; height: 850px; display: flex;">
                     <ui:ScrollView name="ModalBody" class="modal-body">
-                        <ui:VisualElement name="SettingsContent" class="modal-content">
-                            <ui:FloatField label="Move anim (s)" name="MoveAnimField" value="0.25"/>
-                            <ui:IntegerField label="AI depth" name="AiDepthField" value="2"/>
-                            <ui:Toggle label="Opponent AI" name="OpponentAiToggle" value="true"/>
-                            <ui:Slider label="Master volume" name="MasterVolSlider" low-value="0" high-value="1" value="1"/>
-                            <ui:Slider label="SFX volume" name="SfxVolSlider" low-value="0" high-value="1" value="1"/>
+                        <ui:VisualElement name="SettingsContent" class="modal-content" style="display: none;">
+                            <ui:VisualElement name="TabNavigation" class="modal-tab-navigation" style="justify-content: center; align-self: center; align-content: center; max-width: 100%; width: 100%; height: 92px;">
+                                <ui:Button text="Game" name="GameTabButton" class="modal-tab-button modal-tab-button-active"/>
+                                <ui:Button text="Audio" name="AudioTabButton" class="modal-tab-button"/>
+                                <ui:Button text="Debug" name="DebugTabButton" class="modal-tab-button"/>
+                                <ui:Button text="Stats" name="StatsTabButton" class="modal-tab-button"/>
+                                <ui:Button text="Trophies" name="TrophiesTabButton" class="modal-tab-button"/>
+                                <ui:Button text="Collection" name="CollectionTabButton" class="modal-tab-button"/>
+                                <ui:Button text="Graphics" name="GraphicsTabButton" class="modal-tab-button"/>
+                                <ui:Button text="Credits" name="CreditsTabButton" class="modal-tab-button"/>
+                            </ui:VisualElement>
+                            <ui:VisualElement name="GameTabContent" class="modal-tab-content">
+                                <ui:FloatField label="Move anim (s)" name="MoveAnimField" value="0.25"/>
+                                <ui:IntegerField label="AI depth" name="AiDepthField" value="2"/>
+                                <ui:DropdownField label="AI Engine" name="AiEngineDropdown"/>
+                                <ui:Toggle label="Opponent AI" name="OpponentAiToggle" value="true"/>
+                                <ui:Slider label="Game speed (s)" name="GameSpeedSlider" low-value="0.05" high-value="2" value="0.35"/>
+                            </ui:VisualElement>
+                            <ui:VisualElement name="AudioTabContent" class="modal-tab-content" style="display: none;">
+                                <ui:Slider label="Master volume" name="MasterVolSlider" low-value="0" high-value="1" value="1"/>
+                                <ui:Slider label="Music volume" name="MusicVolSlider" low-value="0" high-value="1" value="0.5"/>
+                                <ui:Slider label="SFX volume" name="SfxVolSlider" low-value="0" high-value="1" value="1"/>
+                            </ui:VisualElement>
+                            <ui:VisualElement name="DebugTabContent" class="modal-tab-content" style="display: none;">
+                                <ui:DropdownField label="Debug start position" name="DebugStartPositionDropdown"/>
+                                <ui:TextField label="PositionId" name="DebugStartPositionField"/>
+                                <ui:VisualElement style="flex-direction: row; justify-content: space-between; margin-top: 8px;">
+                                    <ui:Button text="Use Current PID" name="DebugStartPositionUseCurrentButton" class="rounded-button-small m16font button-modal-action" style="min-width: 180px; flex-grow: 1; margin-right: 8px;"/>
+                                    <ui:Button text="Start From PID" name="DebugStartPositionApplyButton" class="rounded-button-small m16font button-modal-action" style="min-width: 180px; flex-grow: 1;"/>
+                                </ui:VisualElement>
+                                <ui:Button text="Unlock All Currencies" name="UnlockAllCurrenciesButton" class="rounded-button-small m16font" style="margin-top: 16px; background-color: rgb(180, 40, 40); color: white;"/>
+                            </ui:VisualElement>
+                            <ui:VisualElement name="StatsTabContent" class="modal-tab-content" style="display: none;">
+                                <ui:VisualElement name="StatsSubTabNavigation" class="modal-subtab-navigation">
+                                    <ui:Button text="Session" name="StatsSubTabSessionBtn" class="modal-subtab-button modal-subtab-button-active"/>
+                                    <ui:Button text="Dice" name="StatsSubTabDiceBtn" class="modal-subtab-button"/>
+                                    <ui:Button text="Lifetime" name="StatsSubTabLifetimeBtn" class="modal-subtab-button"/>
+                                    <ui:Button text="Wallet" name="StatsSubTabWalletBtn" class="modal-subtab-button"/>
+                                    <ui:Button text="Game" name="StatsSubTabGameBtn" class="modal-subtab-button"/>
+                                </ui:VisualElement>
+                                <ui:VisualElement name="StatsSubTabContentSession" class="modal-subtab-content">
+                                    <ui:VisualElement class="stats-row">
+                                        <ui:Label text="Session Score" class="stats-row-label"/>
+                                        <ui:Label text="0" name="StatsSessionScoreValue" class="stats-row-value"/>
+                                    </ui:VisualElement>
+                                    <ui:VisualElement class="stats-row">
+                                        <ui:Label text="Games Played" class="stats-row-label"/>
+                                        <ui:Label text="0" name="StatsSessionGamesValue" class="stats-row-value"/>
+                                    </ui:VisualElement>
+                                    <ui:VisualElement class="stats-row">
+                                        <ui:Label text="Total Rolls" class="stats-row-label"/>
+                                        <ui:Label text="0" name="StatsSessionRollsValue" class="stats-row-value"/>
+                                    </ui:VisualElement>
+                                </ui:VisualElement>
+                                <ui:VisualElement name="StatsSubTabContentDice" class="modal-subtab-content" style="display: none;">
+                                    <ui:VisualElement class="stats-dice-grid">
+                                        <ui:VisualElement class="stats-dice-cell">
+                                            <ui:Label text="1" class="stats-dice-face"/>
+                                            <ui:Label text="0%" name="StatsDie1Value" class="stats-dice-pct"/>
+                                        </ui:VisualElement>
+                                        <ui:VisualElement class="stats-dice-cell">
+                                            <ui:Label text="2" class="stats-dice-face"/>
+                                            <ui:Label text="0%" name="StatsDie2Value" class="stats-dice-pct"/>
+                                        </ui:VisualElement>
+                                        <ui:VisualElement class="stats-dice-cell">
+                                            <ui:Label text="3" class="stats-dice-face"/>
+                                            <ui:Label text="0%" name="StatsDie3Value" class="stats-dice-pct"/>
+                                        </ui:VisualElement>
+                                        <ui:VisualElement class="stats-dice-cell">
+                                            <ui:Label text="4" class="stats-dice-face"/>
+                                            <ui:Label text="0%" name="StatsDie4Value" class="stats-dice-pct"/>
+                                        </ui:VisualElement>
+                                        <ui:VisualElement class="stats-dice-cell">
+                                            <ui:Label text="5" class="stats-dice-face"/>
+                                            <ui:Label text="0%" name="StatsDie5Value" class="stats-dice-pct"/>
+                                        </ui:VisualElement>
+                                        <ui:VisualElement class="stats-dice-cell">
+                                            <ui:Label text="6" class="stats-dice-face"/>
+                                            <ui:Label text="0%" name="StatsDie6Value" class="stats-dice-pct"/>
+                                        </ui:VisualElement>
+                                    </ui:VisualElement>
+                                </ui:VisualElement>
+                                <ui:VisualElement name="StatsSubTabContentLifetime" class="modal-subtab-content" style="display: none;">
+                                    <ui:VisualElement class="stats-row">
+                                        <ui:Label text="Rating" class="stats-row-label"/>
+                                        <ui:Label text="1500" name="StatsRatingValue" class="stats-row-value"/>
+                                    </ui:VisualElement>
+                                    <ui:VisualElement class="stats-row">
+                                        <ui:Label text="Highest Score" class="stats-row-label"/>
+                                        <ui:Label text="0" name="StatsHighestScoreValue" class="stats-row-value"/>
+                                    </ui:VisualElement>
+                                    <ui:VisualElement class="stats-row">
+                                        <ui:Label text="Total Games" class="stats-row-label"/>
+                                        <ui:Label text="0" name="StatsTotalGamesValue" class="stats-row-value"/>
+                                    </ui:VisualElement>
+                                    <ui:VisualElement class="stats-row">
+                                        <ui:Label text="Sessions Played" class="stats-row-label"/>
+                                        <ui:Label text="0" name="StatsSessionsPlayedValue" class="stats-row-value"/>
+                                    </ui:VisualElement>
+                                    <ui:VisualElement class="stats-row">
+                                        <ui:Label text="Highest Money" class="stats-row-label"/>
+                                        <ui:Label text="$0" name="StatsHighestMoneyValue" class="stats-row-value"/>
+                                    </ui:VisualElement>
+                                </ui:VisualElement>
+                                <ui:VisualElement name="StatsSubTabContentWallet" class="modal-subtab-content" style="display: none;">
+                                    <ui:VisualElement class="stats-row">
+                                        <ui:Label text="Balance" class="stats-row-label"/>
+                                        <ui:Label text="$100" name="StatsWalletBalanceValue" class="stats-row-value"/>
+                                    </ui:VisualElement>
+                                    <ui:VisualElement class="stats-row">
+                                        <ui:Label text="Total Earned" class="stats-row-label"/>
+                                        <ui:Label text="$0" name="StatsMoneyEarnedValue" class="stats-row-value"/>
+                                    </ui:VisualElement>
+                                </ui:VisualElement>
+                                <ui:VisualElement name="StatsSubTabContentGame" class="modal-subtab-content" style="display: none;">
+                                    <ui:Label text="Win Streak" class="stats-section-header"/>
+                                    <ui:VisualElement class="stats-row">
+                                        <ui:Label text="Current Streak" class="stats-row-label"/>
+                                        <ui:Label text="0" name="StatsCurrentStreakValue" class="stats-row-value"/>
+                                    </ui:VisualElement>
+                                    <ui:VisualElement class="stats-row">
+                                        <ui:Label text="Longest Streak" class="stats-row-label"/>
+                                        <ui:Label text="0" name="StatsLongestStreakValue" class="stats-row-value"/>
+                                    </ui:VisualElement>
+                                    <ui:Label text="Win Types" class="stats-section-header"/>
+                                    <ui:VisualElement class="stats-row">
+                                        <ui:Label text="Gammons" class="stats-row-label"/>
+                                        <ui:Label text="0" name="StatsTotalGammonsValue" class="stats-row-value"/>
+                                    </ui:VisualElement>
+                                    <ui:VisualElement class="stats-row">
+                                        <ui:Label text="Backgammons" class="stats-row-label"/>
+                                        <ui:Label text="0" name="StatsTotalBackgammonsValue" class="stats-row-value"/>
+                                    </ui:VisualElement>
+                                </ui:VisualElement>
+                            </ui:VisualElement>
+                            <ui:VisualElement name="TrophiesTabContent" class="modal-tab-content" style="display: none;">
+                                <ui:Label text="Trophies" class="stats-section-header"/>
+                                <ui:ScrollView name="TrophiesScrollView" class="trophies-scroll-view"/>
+                            </ui:VisualElement>
+                            <ui:VisualElement name="CollectionTabContent" class="modal-tab-content" style="display: none;">
+                                <ui:VisualElement name="CollectionSubTabNavigation" class="modal-subtab-navigation"/>
+                                <ui:VisualElement name="CollectionSubTabContentHost"/>
+                            </ui:VisualElement>
+                            <ui:VisualElement name="GraphicsTabContent" class="modal-tab-content" style="display: none;">
+                                <ui:VisualElement name="GraphicsSubTabNavigation" class="modal-subtab-navigation">
+                                    <ui:Button text="Camera" name="GraphicsSubTabCameraBtn" class="modal-subtab-button modal-subtab-button-active"/>
+                                    <ui:Button text="Post FX" name="GraphicsSubTabPostFxBtn" class="modal-subtab-button"/>
+                                    <ui:Button text="Animations" name="GraphicsSubTabAnimationsBtn" class="modal-subtab-button"/>
+                                    <ui:Button text="Theme" name="GraphicsSubTabThemeBtn" class="modal-subtab-button"/>
+                                </ui:VisualElement>
+                                <ui:VisualElement name="GraphicsSubTabContentCamera" class="modal-subtab-content">
+                                    <ui:DropdownField label="Camera Angle" name="CameraAngleDropdown"/>
+                                </ui:VisualElement>
+                                <ui:VisualElement name="GraphicsSubTabContentPostFx" class="modal-subtab-content" style="display: none;">
+                                    <ui:VisualElement class="stats-row">
+                                        <ui:Label text="Scan Lines" class="stats-row-label"/>
+                                        <ui:Toggle name="ScanLinesToggle"/>
+                                    </ui:VisualElement>
+                                    <ui:VisualElement class="stats-row">
+                                        <ui:Label text="CRT Bloom" class="stats-row-label"/>
+                                        <ui:Toggle name="CrtBloomToggle"/>
+                                    </ui:VisualElement>
+                                    <ui:Slider label="Brightness" name="BrightnessSlider" low-value="0.5" high-value="1.5" value="1"/>
+                                    <ui:Slider label="Contrast" name="ContrastSlider" low-value="0.5" high-value="1.5" value="1"/>
+                                </ui:VisualElement>
+                                <ui:VisualElement name="GraphicsSubTabContentAnimations" class="modal-subtab-content" style="display: none;">
+                                    <ui:DropdownField label="Popup Animation" name="PopupAnimationDropdown"/>
+                                    <ui:DropdownField label="Transition Shape" name="TransitionShapeDropdown"/>
+                                </ui:VisualElement>
+                                <ui:VisualElement name="GraphicsSubTabContentTheme" class="modal-subtab-content" style="display: none;">
+                                    <ui:Label text="Preset Themes" class="stats-section-header"/>
+                                    <ui:DropdownField label="Preset" name="ThemePresetDropdown"/>
+                                    <ui:Button text="Load Preset" name="ThemeLoadPresetButton" class="rounded-button-small m16font button-primary" style="margin-top: 6px;"/>
+                                    <ui:Label text="Custom Theme" class="stats-section-header" style="margin-top: 12px;"/>
+                                    <ui:VisualElement name="ThemeEditorContainer"/>
+                                    <ui:Button text="Save as Custom" name="ThemeSaveCustomButton" class="rounded-button-small m16font button-modal-action" style="margin-top: 8px;"/>
+                                    <ui:Button text="Apply Custom" name="ThemeApplyCustomButton" class="rounded-button-small m16font button-primary" style="margin-top: 4px;"/>
+                                </ui:VisualElement>
+                            </ui:VisualElement>
+                            <ui:VisualElement name="CreditsTabContent" class="modal-tab-content" style="display: none;">
+                                <ui:Label text="Third-Party Plugins" class="stats-section-header"/>
+                                <ui:VisualElement class="credits-entry">
+                                    <ui:Label text="GNU Backgammon (gnubg)" class="credits-name m16font"/>
+                                    <ui:Label text="AI engine — GPLv3" class="credits-detail m16font"/>
+                                </ui:VisualElement>
+                                <ui:VisualElement class="credits-entry">
+                                    <ui:Label text="Buildalon" class="credits-name m16font"/>
+                                    <ui:Label text="VirtualMaker — v1.0.4" class="credits-detail m16font"/>
+                                </ui:VisualElement>
+                                <ui:VisualElement class="credits-entry">
+                                    <ui:Label text="RMC ReadMe" class="credits-name m16font"/>
+                                    <ui:Label text="RMC — v1.2.2" class="credits-detail m16font"/>
+                                </ui:VisualElement>
+                                <ui:VisualElement class="credits-entry">
+                                    <ui:Label text="m6x11plus Font" class="credits-name m16font"/>
+                                    <ui:Label text="managore — CC0 / itch.io" class="credits-detail m16font"/>
+                                </ui:VisualElement>
+                            </ui:VisualElement>
                         </ui:VisualElement>
                         <ui:VisualElement name="HintsContent" class="modal-content" style="display: none;">
                             <ui:Label text="Hints appear here." name="HintsLabel" class="m16font modal-hints-label"/>
                         </ui:VisualElement>
+                        <ui:VisualElement name="LegalMovesContent" class="modal-content legal-moves-content" style="display: none;">
+                            <ui:Label text="Review legal turn sequences for the current roll." name="LegalMovesIntroLabel" class="m16font modal-hints-label"/>
+                            <ui:Label text="No legal moves available." name="LegalMovesEmptyLabel" class="m16font legal-moves-empty"/>
+                            <ui:ScrollView name="LegalMovesScroll" class="legal-moves-scroll"/>
+                        </ui:VisualElement>
                     </ui:ScrollView>
+                    <ui:Button text="Close" name="ModalCloseButton" class="rounded-button-small m16font modal-close-button button-modal-action" style="width: 100%; -unity-text-align: middle-center; font-size: 36px;"/>
+                    <ui:Button text="Exit to Lobby" name="OptionsExitToLobbyButton" class="rounded-button-small m16font modal-close-button" style="width: 100%; -unity-text-align: middle-center; font-size: 36px; background-color: rgb(120, 50, 30); color: white; margin-top: 8px;"/>
                 </ui:VisualElement>
+            </ui:VisualElement>
+        </ui:VisualElement>
+        <ui:VisualElement name="GraduationOverlay" class="game-over-popup-layer" style="display: none;">
+            <ui:VisualElement name="GraduationCard" class="game-over-popup-card">
+                <ui:Label text="World Complete!" name="GraduationTitleLabel" class="m16font game-over-popup-title"/>
+                <ui:Label text="" name="GraduationBodyLabel" class="m16font game-over-popup-summary" style="white-space: normal;"/>
+                <ui:Button text="Continue" name="GraduationContinueButton" class="rounded-button-small m16font game-over-popup-button button-primary"/>
+            </ui:VisualElement>
+        </ui:VisualElement>
+        <ui:VisualElement name="GameOverPopupLayer" class="game-over-popup-layer" style="display: none;">
+            <ui:VisualElement name="GameOverPopupCard" class="game-over-popup-card">
+                <ui:Label text="Game Over" name="GameOverPopupTitleLabel" class="m16font game-over-popup-title"/>
+                <ui:Label text="Game finished." name="GameOverPopupSummaryLabel" class="m16font game-over-popup-summary"/>
+                <ui:Button text="Next Game" name="GameOverNextGameButton" class="rounded-button-small m16font game-over-popup-button button-primary"/>
+                <ui:Button text="Exit to Lobby" name="GameOverExitToLobbyButton" class="rounded-button-small m16font game-over-popup-button" style="margin-top: 8px; background-color: rgb(120, 50, 30); color: white;"/>
+            </ui:VisualElement>
+        </ui:VisualElement>
+        <ui:VisualElement name="RunCashoutPopupLayer" class="game-over-popup-layer" style="display: none;">
+            <ui:VisualElement name="RunCashoutPopupCard" class="game-over-popup-card">
+                <ui:Label text="Session Complete!" name="RunCashoutTitleLabel" class="m16font game-over-popup-title"/>
+                <ui:Label text="" name="RunCashoutBossLabel" class="m16font game-over-popup-summary"/>
+                <ui:Label text="Score: 0 / 50" name="RunCashoutScoreLabel" class="m16font game-over-popup-summary"/>
+                <ui:Label text="Reward: $20" name="RunCashoutRewardLabel" class="m16font game-over-popup-summary"/>
+                <ui:Button text="Collect" name="RunCashoutCollectButton" class="rounded-button-small m16font game-over-popup-button button-positive"/>
+            </ui:VisualElement>
+        </ui:VisualElement>
+        <ui:VisualElement name="RunOverPopupLayer" class="game-over-popup-layer" style="display: none;">
+            <ui:VisualElement name="RunOverPopupCard" class="game-over-popup-card">
+                <ui:Label text="Run Over" name="RunOverTitleLabel" class="m16font game-over-popup-title"/>
+                <ui:Label text="You ran out of games." name="RunOverSummaryLabel" class="m16font game-over-popup-summary"/>
+                <ui:Label text="Total: $0" name="RunOverCurrencyLabel" class="m16font game-over-popup-summary"/>
+                <ui:Button text="Try Again" name="RunOverRetryButton" class="rounded-button-small m16font game-over-popup-button button-secondary"/>
             </ui:VisualElement>
         </ui:VisualElement>
         <ui:VisualElement name="CenterNotificationOverlay" class="center-notification-overlay" style="display: none;">
             <ui:Label text="" name="CenterNotificationLabel" class="center-notification-label"/>
+        </ui:VisualElement>
+        <ui:VisualElement name="MessagePopupLayer" class="modal-layer" style="display: none;">
+            <ui:VisualElement name="MessagePopupBackdrop" class="modal-backdrop">
+                <ui:VisualElement name="MessagePopupCard" class="game-over-popup-card">
+                    <ui:Label text="Messages" name="MessagePopupTitleLabel" class="m16font game-over-popup-title"/>
+                    <ui:Label text="No new messages." name="MessagePopupBodyLabel" class="m16font game-over-popup-summary" style="white-space: normal;"/>
+                    <ui:Button text="Close" name="MessagePopupCloseButton" class="rounded-button-small m16font game-over-popup-button button-modal-action"/>
+                </ui:VisualElement>
+            </ui:VisualElement>
+        </ui:VisualElement>
+        <ui:VisualElement name="OpponentProfilePopupLayer" class="modal-layer" style="display: none;">
+            <ui:VisualElement name="OpponentProfileBackdrop" class="modal-backdrop">
+                <ui:VisualElement name="OpponentProfileCard" class="game-over-popup-card">
+                    <ui:Label text="Opponent" name="OpponentProfileTitleLabel" class="m16font game-over-popup-title"/>
+                    <ui:Image name="OpponentProfileAvatar" style="width: 160px; height: 160px; align-self: center; -unity-background-scale-mode: scale-to-fit; background-image: url(&quot;project://database/Assets/3rdParty/Ingsoft/Images/Common/Profile%20Picture%201.png?fileID=2800000&amp;guid=6ad16067291550b4c9cf8e440a2d8ca2&amp;type=3#Profile Picture 1&quot;);"/>
+                    <ui:Label text="OpponentName" name="OpponentProfileNameLabel" class="m16font game-over-popup-summary"/>
+                    <ui:Label text="Level 22" name="OpponentProfileLevelLabel" class="m16font game-over-popup-summary"/>
+                    <ui:Label text="Wins: 0   Losses: 0" name="OpponentProfileRecordLabel" class="m16font game-over-popup-summary"/>
+                    <ui:Button text="Close" name="OpponentProfileCloseButton" class="rounded-button-small m16font game-over-popup-button button-modal-action"/>
+                </ui:VisualElement>
+            </ui:VisualElement>
+        </ui:VisualElement>
+        <ui:VisualElement name="PlayerProfilePopupLayer" class="modal-layer" style="display: none;">
+            <ui:VisualElement name="PlayerProfileBackdrop" class="modal-backdrop">
+                <ui:VisualElement name="PlayerProfileCard" class="game-over-popup-card">
+                    <ui:Label text="Profile" name="PlayerProfileTitleLabel" class="m16font game-over-popup-title"/>
+                    <ui:Image name="PlayerProfileAvatar" style="width: 160px; height: 160px; align-self: center; -unity-background-scale-mode: scale-to-fit; background-image: url(&quot;project://database/Assets/3rdParty/Ingsoft/Images/Common/Profile%20Picture%201.png?fileID=2800000&amp;guid=6ad16067291550b4c9cf8e440a2d8ca2&amp;type=3#Profile Picture 1&quot;);"/>
+                    <ui:Label text="PlayerName" name="PlayerProfileNameLabel" class="m16font game-over-popup-summary"/>
+                    <ui:Label text="Level 22" name="PlayerProfileLevelLabel" class="m16font game-over-popup-summary"/>
+                    <ui:Label text="Wins: 0   Losses: 0" name="PlayerProfileRecordLabel" class="m16font game-over-popup-summary"/>
+                    <ui:Button text="Close" name="PlayerProfileCloseButton" class="rounded-button-small m16font game-over-popup-button button-modal-action"/>
+                </ui:VisualElement>
+            </ui:VisualElement>
+        </ui:VisualElement>
+        <ui:VisualElement name="NewGameModalLayer" class="modal-layer" style="display: none;">
+            <ui:VisualElement name="NewGameModalBackdrop" class="modal-backdrop">
+                <ui:VisualElement name="NewGameModalCard" class="modal-card new-game-modal-card" style="height: 890px; max-height: 1000px; max-width: 989px; width: 497px;">
+                    <ui:VisualElement name="NewGameModalHeader" class="modal-header" style="display: none;">
+                        <ui:Label text="New Game" name="NewGameModalTitleLabel" class="m16font modal-title"/>
+                        <ui:Button text="Close" name="NewGameModalCloseButton" class="rounded-button-small m16font modal-close-button button-modal-action"/>
+                    </ui:VisualElement>
+                    <ui:VisualElement name="NewGameModalBody" class="new-game-modal-body" style="justify-content: space-between;">
+                        <ui:Label name="WorldNameLabel" text="US Dollar ($)" class="m16font ng-world-name" style="font-size: 50px;"/>
+                        <ui:VisualElement name="GameTypeSelector" class="game-type-selector" style="width: 100%; max-width: 100%; justify-content: space-between;">
+                            <ui:Button text="&lt;" name="GameTypePrevButton" class="game-type-arrow-button m16font button-secondary" style="height: 200px;"/>
+                            <ui:VisualElement name="WorldChipContainer" class="ng-world-chip-container" style="height: 200px; width: 200px;">
+                                <ui:Image name="WorldChipImage" class="ng-world-chip-image" style="width: 200px; height: 200px; background-image: url(&quot;project://database/Assets/Art/Sprites/USD/4_USD_green.png?fileID=2800000&amp;guid=06f0634f754c354429e057b60d6370f9&amp;type=3#4_USD_green&quot;);"/>
+                            </ui:VisualElement>
+                            <ui:Button text="&gt;" name="GameTypeNextButton" class="game-type-arrow-button m16font button-secondary" style="height: 200px;"/>
+                        </ui:VisualElement>
+                        <ui:Label text="Stake" name="StakeTitleLabel" class="m16font new-game-settings-header" style="font-size: 38px; margin-top: 30px; margin-bottom: 2px; margin-right: 0; margin-left: 0; padding-top: 0; padding-bottom: 0; padding-right: 0; padding-left: 0;"/>
+                        <ui:VisualElement name="StakeSelectorRow" class="ng-stake-row" style="width: 100%; max-width: 100%; justify-content: space-between; margin-top: 4px;">
+                            <ui:Button text="&lt;" name="StakePrevButton" class="game-type-arrow-button m16font button-secondary"/>
+                            <ui:Label name="StakeAmountLabel" text="$1" class="m16font ng-stake-label"/>
+                            <ui:Button text="&gt;" name="StakeNextButton" class="game-type-arrow-button m16font button-secondary"/>
+                        </ui:VisualElement>
+                        <ui:Label name="StakeLockedLabel" text="" class="m16font ng-stake-locked-label" style="display: none;"/>
+                        <ui:VisualElement name="MoneySessionSettings" style="flex-grow: 1; width: 100%; margin-top: 20px; justify-content: center; align-self: auto; align-content: center; align-items: center;">
+                            <ui:Label text="Rules" class="m16font new-game-settings-header" style="font-size: 39px;"/>
+                            <ui:VisualElement style="flex-grow: 1; width: 310px;">
+                                <ui:VisualElement class="new-game-settings-row">
+                                    <ui:Label text="Auto Doubles" class="m16font new-game-settings-label"/>
+                                    <ui:Toggle name="AutoDoublesToggle" value="true"/>
+                                </ui:VisualElement>
+                                <ui:VisualElement class="new-game-settings-row">
+                                    <ui:Label text="Beavers" class="m16font new-game-settings-label"/>
+                                    <ui:Toggle name="BeaversToggle" value="true"/>
+                                </ui:VisualElement>
+                                <ui:VisualElement class="new-game-settings-row">
+                                    <ui:Label text="Raccoons" class="m16font new-game-settings-label"/>
+                                    <ui:Toggle name="RaccoonsToggle" value="false"/>
+                                </ui:VisualElement>
+                                <ui:VisualElement class="new-game-settings-row">
+                                    <ui:Label text="Ardvarks" class="m16font new-game-settings-label"/>
+                                    <ui:Toggle name="ArdvarksToggle" value="false"/>
+                                </ui:VisualElement>
+                                <ui:VisualElement class="new-game-settings-row">
+                                    <ui:Label text="Jacoby Rule" class="m16font new-game-settings-label"/>
+                                    <ui:Toggle name="JacobyToggle" value="true"/>
+                                </ui:VisualElement>
+                            </ui:VisualElement>
+                        </ui:VisualElement>
+                        <ui:VisualElement name="SeedRow" class="new-game-settings-row seed-row" style="display: none;">
+                            <ui:Label text="Seed" class="m16font new-game-settings-label"/>
+                            <ui:TextField name="SeedTextField" max-length="8" class="seed-text-field m16font"/>
+                            <ui:Button text="↻" name="RandomizeSeedButton" class="rounded-button-small m16font button-modal-action"/>
+                        </ui:VisualElement>
+                        <ui:Button text="Start Game" name="StartNewGameButton" class="rounded-button-large m16font button-rounded-large new-game-start-button button-primary" style="height: 64px; width: 100%; max-width: 100%; margin-right: 2px; margin-left: 2px;"/>
+                    </ui:VisualElement>
+                </ui:VisualElement>
+            </ui:VisualElement>
+        </ui:VisualElement>
+        <ui:VisualElement name="WipeLayer" class="wipe-layer" style="display: none;">
+            <ui:VisualElement name="WipeShape" class="wipe-shape">
+                <ui:VisualElement name="WipeIcon" class="wipe-icon"/>
+            </ui:VisualElement>
         </ui:VisualElement>
     </ui:VisualElement>
 </ui:UXML>

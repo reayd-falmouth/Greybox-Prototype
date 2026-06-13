@@ -3,10 +3,15 @@ using System.Collections.Generic;
 using System.Reflection;
 using System.Text;
 using EngineCore;
+using Runtime.RMC._MyProject_.Core;
+using Runtime.RMC.Backgammon;
 using Runtime.RMC.Backgammon.Core;
 using Runtime.RMC.Backgammon.Settings;
+using Runtime.RMC.Backgammon.Stats;
+using Runtime.RMC.Backgammon.UI;
 using UnityEngine;
 using Unity.Profiling;
+using TMPro;
 using UnityEngine.UIElements;
 
 public enum UiFeedbackEventType
@@ -24,18 +29,23 @@ public class UiFeedbackSlot
 }
 
 /// <summary>Binds <see cref="BackgammonHUD.uxml"/> to <see cref="BackgammonGameController"/>.</summary>
-public class BackgammonHudController : MonoBehaviour
+public partial class BackgammonHudController : MonoBehaviour
 {
-    private enum ModalMode
-    {
-        Settings,
-        Hints,
-        LegalMoves
-    }
-
     [SerializeField] private UIDocument uiDocument;
     [SerializeField] private BackgammonGameController gameController;
     [SerializeField] private BackgammonDebugPositionLibrary debugPositionLibrary;
+
+    [Header("Mode Providers")]
+    [SerializeField] private List<HudModeProviderBase> _modeProviders = new();
+
+    /// <summary>Exposes the game controller reference for HudModeProviderBase subclasses.</summary>
+    public BackgammonGameController GameControllerRef => gameController;
+
+    private IHudModeProvider _activeProvider;
+
+    [Header("World-Space Pip Count")]
+    [SerializeField] private TMP_Text pipCountPlayerWorldLabel;
+    [SerializeField] private TMP_Text pipCountAiWorldLabel;
 
     private Label _statusLabel;
     private Label _diceLabel;
@@ -48,29 +58,18 @@ public class BackgammonHudController : MonoBehaviour
     private Label _rollsValue;
     private Label _stakeValue;
     private Label _headingLabel;
-    private Label _gameOverPopupTitleLabel;
-    private Label _gameOverPopupSummaryLabel;
     private Label _pipCountPlayerValue;
     private Label _pipCountAiValue;
 
-    private ScrollView _legalScroll;
     private VisualElement _settingsPanel;
-    private VisualElement _modalLayer;
-    private VisualElement _modalBackdrop;
-    private VisualElement _settingsContent;
-    private VisualElement _hintsContent;
-    private VisualElement _legalMovesContent;
-    private Label _modalTitleLabel;
-    private Label _hintsLabel;
-    private Label _legalMovesEmptyLabel;
     private VisualElement _takeDropPanel;
     private VisualElement _doublePanel;
-    private VisualElement _gameOverPopupLayer;
     private FloatField _moveAnimField;
     private IntegerField _aiDepthField;
     private DropdownField _aiEngineDropdown;
     private Toggle _opponentAiToggle;
     private Slider _masterVolSlider;
+    private Slider _musicVolSlider;
     private Slider _sfxVolSlider;
     private Slider _gameSpeedSlider;
     private DropdownField _debugPositionDropdown;
@@ -80,8 +79,6 @@ public class BackgammonHudController : MonoBehaviour
     private Button _undoButton;
     private Button _playMoveButton;
     private Button _legalMovesButton;
-    private Button _modalCloseButton;
-    private Button _gameOverNextGameButton;
     private Button _debugPositionApplyButton;
     private Button _debugPositionUseCurrentButton;
     private Button _gameTabButton;
@@ -90,27 +87,25 @@ public class BackgammonHudController : MonoBehaviour
     private VisualElement _gameTabContent;
     private VisualElement _audioTabContent;
     private VisualElement _debugTabContent;
-    private VisualElement _newGameModalLayer;
-    private VisualElement _newGameModalBackdrop;
-    private Button _newGameModalCloseButton;
-    private Button _gameTypePrevButton;
-    private Button _gameTypeNextButton;
-    private Button _startNewGameButton;
-    private Label _gameTypeLabel;
-    private int _selectedGameTypeIndex = 0;
-
-    // Money Session Settings
-    private VisualElement _moneySessionSettings;
-    private Label _gameModeDescription;
-    private IntegerField _baseStakeField;
-    private Toggle _autoDoublesToggle;
-    private Toggle _beaversToggle;
-    private Toggle _raccoonsToggle;
-    private Toggle _ardvarksToggle;
-    private Toggle _jacobyToggle;
 
     [Header("Game Mode Presets")]
     [SerializeField] private GameModePresetLibrarySo gameModePresets;
+
+    private GameModePresetSo _activePreset =>
+        gameModePresets?.presets?.Count > 0 ? gameModePresets.presets[0] : null;
+
+    [Header("Sub-Controllers")]
+    [SerializeField] private NewGameModalController newGameModalController;
+    [SerializeField] private GameOverModalController gameOverModalController;
+    [SerializeField] private OptionsModalController optionsModalController;
+    [SerializeField] private ScreenWipeController screenWipeController;
+
+    // Lobby overlay
+    private VisualElement _lobbyLayer;
+    private VisualElement _lobbyCard;
+    private Button _lobbyPlayButton;
+    private Button _lobbyOptionsButton;
+    private Button _lobbyQuitButton;
 
     [Header("UI Feedback")]
     [SerializeField] private List<UiFeedbackSlot> uiFeedbackSlots = new List<UiFeedbackSlot>();
@@ -120,14 +115,7 @@ public class BackgammonHudController : MonoBehaviour
     [SerializeField] private bool enableBoardViewDebugLogs;
     [SerializeField] private bool enableUndoPerformanceLogs;
 
-    private int _selectedLegalIndex;
-    private ModalMode _activeModalMode = ModalMode.Settings;
-    private bool _gameOverPopupShown;
-    private string _lastLegalSignature;
-    private int _legalListRebuildCount;
     private static readonly ProfilerMarker HudRefreshMarker = new("Backgammon.HUD.RefreshAll");
-    private static readonly ProfilerMarker HudRebuildLegalsMarker = new("Backgammon.HUD.RebuildLegalList");
-    public int LegalListRebuildCount => _legalListRebuildCount;
     private readonly List<string> _debugPositionChoices = new();
 
     private void OnEnable()
@@ -149,30 +137,19 @@ public class BackgammonHudController : MonoBehaviour
         _rollsValue = root.Q<Label>("RollsValue");
         _stakeValue = root.Q<Label>("StakeValue");
         _headingLabel = root.Q<Label>("HeadingLabel");
-        _gameOverPopupTitleLabel = root.Q<Label>("GameOverPopupTitleLabel");
-        _gameOverPopupSummaryLabel = root.Q<Label>("GameOverPopupSummaryLabel");
         _pipCountPlayerValue = root.Q<Label>("PipCountPlayerValue");
         _pipCountAiValue = root.Q<Label>("PipCountAiValue");
 
-        _legalScroll = root.Q<ScrollView>("LegalMovesScroll");
         _settingsPanel = root.Q<VisualElement>("SettingsPanel");
-        _modalLayer = root.Q<VisualElement>("ModalLayer");
-        _modalBackdrop = root.Q<VisualElement>("ModalBackdrop");
-        _settingsContent = root.Q<VisualElement>("SettingsContent");
-        _hintsContent = root.Q<VisualElement>("HintsContent");
-        _legalMovesContent = root.Q<VisualElement>("LegalMovesContent");
-        _modalTitleLabel = root.Q<Label>("ModalTitleLabel");
-        _hintsLabel = root.Q<Label>("HintsLabel");
-        _legalMovesEmptyLabel = root.Q<Label>("LegalMovesEmptyLabel");
         _takeDropPanel = root.Q<VisualElement>("TakeDropPanel");
         _doublePanel = root.Q<VisualElement>("DoublePanel");
-        _gameOverPopupLayer = root.Q<VisualElement>("GameOverPopupLayer");
 
         _moveAnimField = root.Q<FloatField>("MoveAnimField");
         _aiDepthField = root.Q<IntegerField>("AiDepthField");
         _aiEngineDropdown = root.Q<DropdownField>("AiEngineDropdown");
         _opponentAiToggle = root.Q<Toggle>("OpponentAiToggle");
         _masterVolSlider = root.Q<Slider>("MasterVolSlider");
+        _musicVolSlider = root.Q<Slider>("MusicVolSlider");
         _sfxVolSlider = root.Q<Slider>("SfxVolSlider");
         _gameSpeedSlider = root.Q<Slider>("GameSpeedSlider");
         _debugPositionDropdown = root.Q<DropdownField>("DebugStartPositionDropdown");
@@ -193,10 +170,33 @@ public class BackgammonHudController : MonoBehaviour
         var runInfoBtn = root.Q<Button>("RunInfoButton");
         if (runInfoBtn != null) runInfoBtn.clicked += ToggleSettings;
 
-        _modalCloseButton = root.Q<Button>("ModalCloseButton");
-        if (_modalCloseButton != null) _modalCloseButton.clicked += HideModal;
-        _gameOverNextGameButton = root.Q<Button>("GameOverNextGameButton");
-        if (_gameOverNextGameButton != null) _gameOverNextGameButton.clicked += OnGameOverNextGameClicked;
+        // ── Mobile layout triggers ────────────────────────────────────────────
+        // The mobile HUD uses differently named buttons; bind them to the same
+        // modal handlers as desktop. All null-safe, so desktop is unaffected.
+        var mobileSettingsBtn = root.Q<Button>("SettingsButton");
+        if (mobileSettingsBtn != null) mobileSettingsBtn.clicked += ToggleSettings;
+
+        var mobileHintBtn = root.Q<Button>("HintButton");
+        if (mobileHintBtn != null) mobileHintBtn.clicked += OnHintsClicked;
+
+        var mobileRunInfoBtn = root.Q<Button>("RunInfoButtoon");
+        if (mobileRunInfoBtn != null) mobileRunInfoBtn.clicked += OnNewGameClicked;
+
+        var mobileMessageBtn = root.Q<Button>("MessageButton");
+        if (mobileMessageBtn != null) mobileMessageBtn.clicked += OnMessageClicked;
+
+        var mobileLeftProfileBtn = root.Q<Button>("LeftProfileButton");
+        if (mobileLeftProfileBtn != null) mobileLeftProfileBtn.clicked += OnOpponentProfileClicked;
+
+        var mobileRightProfileBtn = root.Q<Button>("RightProfileButton");
+        if (mobileRightProfileBtn != null) mobileRightProfileBtn.clicked += OnPlayerProfileClicked;
+
+        foreach (var p in _modeProviders)
+            p.BindToHud(root, this);
+
+        if (gameController != null)
+            _activeProvider = ProviderFor(gameController.CurrentGameMode);
+
         _debugPositionApplyButton = root.Q<Button>("DebugStartPositionApplyButton");
         if (_debugPositionApplyButton != null) _debugPositionApplyButton.clicked += OnDebugStartPositionApplyClicked;
         _debugPositionUseCurrentButton = root.Q<Button>("DebugStartPositionUseCurrentButton");
@@ -214,35 +214,6 @@ public class BackgammonHudController : MonoBehaviour
         if (_audioTabButton != null) _audioTabButton.clicked += () => SwitchTab("Audio");
         if (_debugTabButton != null) _debugTabButton.clicked += () => SwitchTab("Debug");
 
-        _newGameModalLayer = root.Q<VisualElement>("NewGameModalLayer");
-        _newGameModalBackdrop = root.Q<VisualElement>("NewGameModalBackdrop");
-        _newGameModalCloseButton = root.Q<Button>("NewGameModalCloseButton");
-        _gameTypePrevButton = root.Q<Button>("GameTypePrevButton");
-        _gameTypeNextButton = root.Q<Button>("GameTypeNextButton");
-        _startNewGameButton = root.Q<Button>("StartNewGameButton");
-        _gameTypeLabel = root.Q<Label>("GameTypeLabel");
-
-        // Money Session Settings
-        _moneySessionSettings = root.Q<VisualElement>("MoneySessionSettings");
-        _gameModeDescription = root.Q<Label>("GameModeDescription");
-        _baseStakeField = root.Q<IntegerField>("BaseStakeField");
-        _autoDoublesToggle = root.Q<Toggle>("AutoDoublesToggle");
-        _beaversToggle = root.Q<Toggle>("BeaversToggle");
-        _raccoonsToggle = root.Q<Toggle>("RaccoonsToggle");
-        _ardvarksToggle = root.Q<Toggle>("ArdvarksToggle");
-        _jacobyToggle = root.Q<Toggle>("JacobyToggle");
-
-        if (_newGameModalCloseButton != null) _newGameModalCloseButton.clicked += HideNewGameModal;
-        if (_gameTypePrevButton != null) _gameTypePrevButton.clicked += OnGameTypePrev;
-        if (_gameTypeNextButton != null) _gameTypeNextButton.clicked += OnGameTypeNext;
-        if (_startNewGameButton != null) _startNewGameButton.clicked += OnStartNewGame;
-
-        if (_newGameModalBackdrop != null)
-            _newGameModalBackdrop.RegisterCallback<ClickEvent>(OnNewGameModalBackdropClicked);
-
-        if (_modalBackdrop != null)
-            _modalBackdrop.RegisterCallback<ClickEvent>(OnModalBackdropClicked);
-
         _playMoveButton = root.Q<Button>("PlayMoveButton");
         if (_playMoveButton != null) _playMoveButton.clicked += OnPlayMoveClicked;
 
@@ -253,7 +224,7 @@ public class BackgammonHudController : MonoBehaviour
         if (viewHoriz != null) viewHoriz.clicked += OnBoardViewToggleClicked;
 
         var viewVert = root.Q<Button>("ViewVertButton");
-        if (viewVert != null) viewVert.clicked += OnBoardViewToggleClicked;
+        if (viewVert != null) viewVert.clicked += OnToggleCameraAngleClicked;
 
         var doubleBtn = root.Q<Button>("DoubleButton");
         if (doubleBtn != null) doubleBtn.clicked += OnDoubleClicked;
@@ -263,6 +234,9 @@ public class BackgammonHudController : MonoBehaviour
 
         var dropBtn = root.Q<Button>("DropDoubleButton");
         if (dropBtn != null) dropBtn.clicked += OnDropDoubleClicked;
+
+        var beaverBtn = root.Q<Button>("BeaverDoubleButton");
+        if (beaverBtn != null) beaverBtn.clicked += OnBeaverDoubleClicked;
 
         if (_moveAnimField != null)
             _moveAnimField.RegisterValueChangedCallback(evt => BackgammonSettings.MoveAnimDurationSeconds = evt.newValue);
@@ -286,6 +260,12 @@ public class BackgammonHudController : MonoBehaviour
                 BackgammonSettings.MasterVolumeLinear = evt.newValue;
                 AudioListener.volume = evt.newValue;
             });
+        if (_musicVolSlider != null)
+            _musicVolSlider.RegisterValueChangedCallback(evt =>
+            {
+                BackgammonSettings.MusicVolumeLinear = evt.newValue;
+                BackgammonSettings.RaiseMusicVolumeChanged(evt.newValue);
+            });
         if (_sfxVolSlider != null)
             _sfxVolSlider.RegisterValueChangedCallback(evt => BackgammonSettings.SfxVolumeLinear = evt.newValue);
         if (_gameSpeedSlider != null)
@@ -300,7 +280,52 @@ public class BackgammonHudController : MonoBehaviour
         LoadSettingsIntoFields();
         AudioListener.volume = BackgammonSettings.MasterVolumeLinear;
 
+        InitStatsTab(root);
+        InitTrophiesTab(root);
+        InitCollectionTab(root);
+        InitPrestigeOverlay(root);
+        InitDebugPrestigeControls(root);
         SetDoubleOfferVisible(false);
+
+        // Initialize sub-controllers
+        if (newGameModalController != null)
+            newGameModalController.Initialize(root);
+        if (gameOverModalController != null)
+            gameOverModalController.Initialize(root);
+        if (optionsModalController != null)
+            optionsModalController.Initialize(root);
+        InitPopups(root);
+        if (screenWipeController == null)
+            screenWipeController = GetComponent<ScreenWipeController>();
+
+        // Lobby overlay
+        _lobbyLayer        = root.Q<VisualElement>("LobbyLayer");
+        _lobbyCard         = root.Q<VisualElement>("LobbyCard");
+        _lobbyPlayButton   = root.Q<Button>("LobbyPlayButton");
+        _lobbyOptionsButton = root.Q<Button>("LobbyOptionsButton");
+        _lobbyQuitButton   = root.Q<Button>("LobbyQuitButton");
+
+        if (_lobbyPlayButton    != null) _lobbyPlayButton.clicked    += OnLobbyPlayClicked;
+        if (_lobbyOptionsButton != null) _lobbyOptionsButton.clicked += OnLobbyOptionsClicked;
+        if (_lobbyQuitButton    != null) _lobbyQuitButton.clicked    += OnLobbyQuitClicked;
+
+        RefreshVersionDebugLabel();
+    }
+
+    /// <summary>
+    /// Updates the bottom-right corner debug string with the app version and the active
+    /// layout (Desktop/Mobile). Safe to call any time; no-ops if the label is absent.
+    /// </summary>
+    public void RefreshVersionDebugLabel()
+    {
+        if (uiDocument == null) return;
+        var root = uiDocument.rootVisualElement;
+        if (root == null) return;
+
+        var label = root.Q<Label>("VersionDebugLabel");
+        if (label == null) return;
+
+        label.text = $"v{Application.version} \u2022 {BackgammonSettings.LayoutType}";
     }
 
     private void OnDisable()
@@ -322,13 +347,27 @@ public class BackgammonHudController : MonoBehaviour
         var runInfoBtn = root.Q<Button>("RunInfoButton");
         if (runInfoBtn != null) runInfoBtn.clicked -= ToggleSettings;
 
-        if (_modalCloseButton != null) _modalCloseButton.clicked -= HideModal;
-        if (_gameOverNextGameButton != null) _gameOverNextGameButton.clicked -= OnGameOverNextGameClicked;
+        // Mobile layout triggers
+        var mobileSettingsBtn = root.Q<Button>("SettingsButton");
+        if (mobileSettingsBtn != null) mobileSettingsBtn.clicked -= ToggleSettings;
+
+        var mobileHintBtn = root.Q<Button>("HintButton");
+        if (mobileHintBtn != null) mobileHintBtn.clicked -= OnHintsClicked;
+
+        var mobileRunInfoBtn = root.Q<Button>("RunInfoButtoon");
+        if (mobileRunInfoBtn != null) mobileRunInfoBtn.clicked -= OnNewGameClicked;
+
+        var mobileMessageBtn = root.Q<Button>("MessageButton");
+        if (mobileMessageBtn != null) mobileMessageBtn.clicked -= OnMessageClicked;
+
+        var mobileLeftProfileBtn = root.Q<Button>("LeftProfileButton");
+        if (mobileLeftProfileBtn != null) mobileLeftProfileBtn.clicked -= OnOpponentProfileClicked;
+
+        var mobileRightProfileBtn = root.Q<Button>("RightProfileButton");
+        if (mobileRightProfileBtn != null) mobileRightProfileBtn.clicked -= OnPlayerProfileClicked;
+
         if (_debugPositionApplyButton != null) _debugPositionApplyButton.clicked -= OnDebugStartPositionApplyClicked;
         if (_debugPositionUseCurrentButton != null) _debugPositionUseCurrentButton.clicked -= OnDebugStartPositionUseCurrentClicked;
-
-        if (_modalBackdrop != null)
-            _modalBackdrop.UnregisterCallback<ClickEvent>(OnModalBackdropClicked);
 
         if (_playMoveButton != null) _playMoveButton.clicked -= OnPlayMoveClicked;
         if (_undoButton != null) _undoButton.clicked -= OnUndoClicked;
@@ -342,14 +381,114 @@ public class BackgammonHudController : MonoBehaviour
         var dropBtn = root.Q<Button>("DropDoubleButton");
         if (dropBtn != null) dropBtn.clicked -= OnDropDoubleClicked;
 
+        var beaverBtn = root.Q<Button>("BeaverDoubleButton");
+        if (beaverBtn != null) beaverBtn.clicked -= OnBeaverDoubleClicked;
+
         var viewHoriz = root.Q<Button>("ViewHorizButton");
         if (viewHoriz != null) viewHoriz.clicked -= OnBoardViewToggleClicked;
 
         var viewVert = root.Q<Button>("ViewVertButton");
-        if (viewVert != null) viewVert.clicked -= OnBoardViewToggleClicked;
+        if (viewVert != null) viewVert.clicked -= OnToggleCameraAngleClicked;
         if (_debugPositionDropdown != null)
             _debugPositionDropdown.UnregisterValueChangedCallback(OnDebugPositionDropdownChanged);
+
+        if (_lobbyPlayButton    != null) _lobbyPlayButton.clicked    -= OnLobbyPlayClicked;
+        if (_lobbyOptionsButton != null) _lobbyOptionsButton.clicked -= OnLobbyOptionsClicked;
+        if (_lobbyQuitButton    != null) _lobbyQuitButton.clicked    -= OnLobbyQuitClicked;
+
+        foreach (var p in _modeProviders)
+            p.UnbindFromHud();
     }
+
+    private IHudModeProvider ProviderFor(GameModeType mode)
+        => _modeProviders.Find(p => p.SupportedMode == mode);
+
+    /// <summary>Called by NewGameModalController to start a game with the selected configuration.</summary>
+    public void StartGameWithConfig(GameModeType modeType, MoneySessionConfig config, string seedString, string startingPositionId, GameModePresetSo preset = null)
+    {
+        void DoStart()
+        {
+            _activeProvider = ProviderFor(modeType);
+            if (_activeProvider is MoneySessionModeManager ms)
+                ms.Configure(config);
+            _activeProvider?.StartGame(seedString, startingPositionId);
+            HideGameOverPopup();
+        }
+
+        if (screenWipeController != null && preset != null && BackgammonSettings.TransitionShape != 3)
+            screenWipeController.PlayWipe(preset.wipeColor, preset.wipeIcon, DoStart);
+        else
+            DoStart();
+    }
+
+    public void HideLobby(Action onComplete = null)
+    {
+        if (_lobbyCard == null || _lobbyLayer.style.display == DisplayStyle.None) return;
+
+        _lobbyLayer.style.display = DisplayStyle.None;
+        onComplete?.Invoke();
+    }
+
+    public void ShowLobby()
+    {
+        if (_lobbyLayer == null) return;
+        _lobbyLayer.style.display = DisplayStyle.Flex;
+    }
+
+    public void ExitToLobby()
+    {
+        if (gameController != null && !gameController.IsGameOver(out _))
+            SavedGameService.Save(gameController.BuildSaveData());
+
+        void DoTransition(Action midpoint)
+        {
+            if (screenWipeController != null && BackgammonSettings.TransitionShape != 3)
+                screenWipeController.PlayWipe(midpoint);
+            else
+                midpoint?.Invoke();
+        }
+
+        DoTransition(() =>
+        {
+            gameOverModalController?.HideGameOver();
+            optionsModalController?.HideModal();
+            ShowLobby();
+        });
+    }
+
+    private void OnLobbyPlayClicked()
+    {
+        void DoTransition(Action midpoint)
+        {
+            if (screenWipeController != null && BackgammonSettings.TransitionShape != 3)
+                screenWipeController.PlayWipe(midpoint);
+            else
+                midpoint?.Invoke();
+        }
+
+        if (SavedGameService.HasSavedGame)
+        {
+            DoTransition(() =>
+            {
+                var data = SavedGameService.Load();
+                SavedGameService.Delete();
+                HideLobby();
+                gameController?.RestoreFromSave(data);
+            });
+        }
+        else
+        {
+            DoTransition(() =>
+            {
+                HideLobby();
+                newGameModalController?.ShowModal();
+            });
+        }
+    }
+
+    private void OnLobbyOptionsClicked() => ToggleSettings();
+
+    private void OnLobbyQuitClicked() => Application.Quit();
 
     /// <summary>
     /// Both buttons flip between identity mapping and 23−e reverse (no stuck state when already in one mode).
@@ -370,6 +509,12 @@ public class BackgammonHudController : MonoBehaviour
         }
     }
 
+    private void OnToggleCameraAngleClicked()
+    {
+        BackgammonSettings.CameraAngle = BackgammonSettings.CameraAngle == 0 ? 1 : 0;
+        BackgammonSettings.RaiseGraphicsSettingsChanged();
+    }
+
     private void LoadSettingsIntoFields()
     {
         if (_moveAnimField != null) _moveAnimField.SetValueWithoutNotify(BackgammonSettings.MoveAnimDurationSeconds);
@@ -377,6 +522,7 @@ public class BackgammonHudController : MonoBehaviour
         if (_aiEngineDropdown != null) _aiEngineDropdown.SetValueWithoutNotify(BackgammonSettings.AiEngineType);
         if (_opponentAiToggle != null) _opponentAiToggle.SetValueWithoutNotify(BackgammonSettings.OpponentIsAi);
         if (_masterVolSlider != null) _masterVolSlider.SetValueWithoutNotify(BackgammonSettings.MasterVolumeLinear);
+        if (_musicVolSlider != null) _musicVolSlider.SetValueWithoutNotify(BackgammonSettings.MusicVolumeLinear);
         if (_sfxVolSlider != null) _sfxVolSlider.SetValueWithoutNotify(BackgammonSettings.SfxVolumeLinear);
         if (_gameSpeedSlider != null) _gameSpeedSlider.SetValueWithoutNotify(BackgammonSettings.GameSpeedSecondsPerStep);
         RefreshDebugPositionChoices();
@@ -449,6 +595,19 @@ public class BackgammonHudController : MonoBehaviour
             Debug.LogWarning($"[Backgammon][DebugStart] Failed to apply debug start PositionId pid={pid}");
     }
 
+    private void InitDebugPrestigeControls(VisualElement root)
+    {
+        var unlockAllButton = root.Q<Button>("UnlockAllCurrenciesButton");
+        if (unlockAllButton != null)
+            unlockAllButton.clicked += () =>
+            {
+                PrestigeService.UnlockAll();
+                RefreshAll(gameController);
+                RefreshTrophiesTab();
+                Debug.Log("[Debug] UnlockAll currencies triggered.");
+            };
+    }
+
     private static string ExtractPositionIdFromDropdownValue(string value)
     {
         const string separator = " | ";
@@ -462,75 +621,32 @@ public class BackgammonHudController : MonoBehaviour
 
     private void ToggleSettings()
     {
-        if (_modalLayer == null) return;
-        if (_modalLayer.style.display == DisplayStyle.Flex && _settingsContent != null && _settingsContent.style.display == DisplayStyle.Flex)
-        {
-            Debug.Log("[Backgammon][UI][Modal] ToggleSettings requested close while settings were already visible.");
-            HideModal();
-            return;
-        }
-
-        ShowSettings();
-    }
-
-    private void ShowSettings()
-    {
-        PlayPopupOpenSound();
-        SetModalVisible(true, ModalMode.Settings);
-        SwitchTab("Game");  // Always start on Game tab after modal is visible
-        Debug.Log("[Backgammon][UI][Modal] Opened modal in Options mode.");
+        if (optionsModalController != null)
+            optionsModalController.ToggleSettings();
     }
 
     private void OnHintsClicked()
     {
-        ShowHints();
+        if (optionsModalController != null)
+            optionsModalController.ShowHints();
     }
 
     public void ShowHints()
     {
-        PlayPopupOpenSound();
-        SetModalVisible(true, ModalMode.Hints);
-        Debug.Log("[Backgammon][UI][Modal] Opened modal in Hints mode.");
+        if (optionsModalController != null)
+            optionsModalController.ShowHints();
     }
 
     private void OnLegalMovesClicked()
     {
-        ToggleLegalMoves();
-    }
-
-    private void ToggleLegalMoves()
-    {
-        if (_modalLayer == null) return;
-        if (_modalLayer.style.display == DisplayStyle.Flex && _activeModalMode == ModalMode.LegalMoves)
-        {
-            Debug.Log("[Backgammon][UI][Modal] ToggleLegalMoves requested close while legal moves were already visible.");
-            HideModal();
-            return;
-        }
-
-        ShowLegalMoves();
-    }
-
-    private void ShowLegalMoves()
-    {
-        PlayPopupOpenSound();
-        SetModalVisible(true, ModalMode.LegalMoves);
-        Debug.Log("[Backgammon][UI][Modal] Opened modal in Legal Moves mode.");
+        if (optionsModalController != null)
+            optionsModalController.ToggleLegalMoves();
     }
 
     public void SetHintsText(string hintsText)
     {
-        if (_hintsLabel == null) return;
-        _hintsLabel.text = string.IsNullOrWhiteSpace(hintsText) ? "No hints available yet." : hintsText;
-        Debug.Log("[Backgammon][UI][Modal] Updated hints text.");
-    }
-
-    private void HideModal()
-    {
-        if (_modalLayer == null) return;
-        PlayPopupCloseSound();
-        _modalLayer.style.display = DisplayStyle.None;
-        Debug.Log("[Backgammon][UI][Modal] Closed modal.");
+        if (optionsModalController != null)
+            optionsModalController.SetHintsText(hintsText);
     }
 
     private void SwitchTab(string tabName)
@@ -554,11 +670,20 @@ public class BackgammonHudController : MonoBehaviour
             _debugTabContent.style.display = DisplayStyle.None;
             Debug.Log("[Backgammon][UI][Modal] Hid Debug tab");
         }
+        if (_statsTabContent != null)
+            _statsTabContent.style.display = DisplayStyle.None;
+        if (_trophiesTabContent != null)
+            _trophiesTabContent.style.display = DisplayStyle.None;
+        if (_collectionTabContent != null)
+            _collectionTabContent.style.display = DisplayStyle.None;
 
         // Remove active class from all buttons
         _gameTabButton?.RemoveFromClassList("modal-tab-button-active");
         _audioTabButton?.RemoveFromClassList("modal-tab-button-active");
         _debugTabButton?.RemoveFromClassList("modal-tab-button-active");
+        _statsTabButton?.RemoveFromClassList("modal-tab-button-active");
+        _trophiesTabButton?.RemoveFromClassList("modal-tab-button-active");
+        _collectionTabButton?.RemoveFromClassList("modal-tab-button-active");
 
         // Show selected tab and activate button
         switch (tabName)
@@ -587,162 +712,43 @@ public class BackgammonHudController : MonoBehaviour
                 }
                 _debugTabButton?.AddToClassList("modal-tab-button-active");
                 break;
+            case "Stats":
+                if (_statsTabContent != null)
+                    _statsTabContent.style.display = DisplayStyle.Flex;
+                _statsTabButton?.AddToClassList("modal-tab-button-active");
+                RefreshStatsTab();
+                break;
+            case "Trophies":
+                if (_trophiesTabContent != null)
+                    _trophiesTabContent.style.display = DisplayStyle.Flex;
+                _trophiesTabButton?.AddToClassList("modal-tab-button-active");
+                RefreshTrophiesTab();
+                break;
+            case "Collection":
+                if (_collectionTabContent != null)
+                    _collectionTabContent.style.display = DisplayStyle.Flex;
+                _collectionTabButton?.AddToClassList("modal-tab-button-active");
+                RefreshCollectionTab();
+                break;
         }
 
         Debug.Log($"[Backgammon][UI][Modal] Switched to {tabName} tab.");
     }
 
-    private void ShowNewGameModal()
-    {
-        if (_newGameModalLayer == null) return;
-        PlayPopupOpenSound();
-        _newGameModalLayer.style.display = DisplayStyle.Flex;
-        _selectedGameTypeIndex = 0;
-        UpdateGameTypeLabel();
-        Debug.Log("[Backgammon][UI][NewGameModal] Opened New Game modal.");
-    }
-
-    private void HideNewGameModal()
-    {
-        if (_newGameModalLayer == null) return;
-        PlayPopupCloseSound();
-        _newGameModalLayer.style.display = DisplayStyle.None;
-        Debug.Log("[Backgammon][UI][NewGameModal] Closed New Game modal.");
-    }
-
-    private int PresetCount => gameModePresets != null ? gameModePresets.presets.Count : 0;
-
-    private GameModePresetSo CurrentPreset()
-    {
-        if (gameModePresets == null || gameModePresets.presets.Count == 0) return null;
-        int idx = Mathf.Clamp(_selectedGameTypeIndex, 0, gameModePresets.presets.Count - 1);
-        return gameModePresets.presets[idx];
-    }
-
-    private void OnGameTypePrev()
-    {
-        _selectedGameTypeIndex--;
-        if (_selectedGameTypeIndex < 0)
-            _selectedGameTypeIndex = Mathf.Max(0, PresetCount - 1);
-        UpdateGameTypeLabel();
-        Debug.Log($"[Backgammon][UI][NewGameModal] Selected game type index: {_selectedGameTypeIndex}");
-    }
-
-    private void OnGameTypeNext()
-    {
-        _selectedGameTypeIndex++;
-        if (_selectedGameTypeIndex >= PresetCount)
-            _selectedGameTypeIndex = 0;
-        UpdateGameTypeLabel();
-        Debug.Log($"[Backgammon][UI][NewGameModal] Selected game type index: {_selectedGameTypeIndex}");
-    }
-
-    private void UpdateGameTypeLabel()
-    {
-        var preset = CurrentPreset();
-        if (preset == null) return;
-
-        if (_gameTypeLabel != null)
-            _gameTypeLabel.text = preset.displayName;
-
-        if (_gameModeDescription != null)
-            _gameModeDescription.text = preset.description;
-
-        bool isMoneySession = preset.gameModeType == GameModeType.MoneySession;
-        if (_moneySessionSettings != null)
-            _moneySessionSettings.style.display = isMoneySession ? DisplayStyle.Flex : DisplayStyle.None;
-
-        if (isMoneySession && preset.defaultConfig != null)
-        {
-            if (_baseStakeField != null) _baseStakeField.value = preset.defaultConfig.BaseStake;
-            if (_autoDoublesToggle != null) _autoDoublesToggle.value = preset.defaultConfig.AutoDoublesEnabled;
-            if (_beaversToggle != null) _beaversToggle.value = preset.defaultConfig.BeaversAllowed;
-            if (_raccoonsToggle != null) _raccoonsToggle.value = preset.defaultConfig.RaccoonsAllowed;
-            if (_ardvarksToggle != null) _ardvarksToggle.value = preset.defaultConfig.ArdvarksAllowed;
-            if (_jacobyToggle != null) _jacobyToggle.value = preset.defaultConfig.JacobyRule;
-        }
-    }
-
-    private void OnStartNewGame()
-    {
-        var preset = CurrentPreset();
-        GameModeType modeType = preset != null ? preset.gameModeType : (GameModeType)_selectedGameTypeIndex;
-        string displayName = preset != null ? preset.displayName : modeType.ToString();
-
-        Debug.Log($"[Backgammon][UI][NewGameModal] Starting new game: {displayName}");
-
-        MoneySessionConfig config = null;
-        if (modeType == GameModeType.MoneySession)
-        {
-            var defaults = preset?.defaultConfig ?? new MoneySessionConfig();
-            config = new MoneySessionConfig
-            {
-                BaseStake = _baseStakeField?.value ?? defaults.BaseStake,
-                AutoDoublesEnabled = _autoDoublesToggle?.value ?? defaults.AutoDoublesEnabled,
-                BeaversAllowed = _beaversToggle?.value ?? defaults.BeaversAllowed,
-                RaccoonsAllowed = _raccoonsToggle?.value ?? defaults.RaccoonsAllowed,
-                ArdvarksAllowed = _ardvarksToggle?.value ?? defaults.ArdvarksAllowed,
-                JacobyRule = _jacobyToggle?.value ?? defaults.JacobyRule
-            };
-            Debug.Log($"[Backgammon][UI][NewGameModal] Money Session config: BaseStake={config.BaseStake}, Jacoby={config.JacobyRule}, Beavers={config.BeaversAllowed}");
-        }
-
-        HideNewGameModal();
-        gameController?.StartNewGameWithConfig(modeType, config);
-        HideGameOverPopup();
-
-        if (_headingLabel != null)
-            _headingLabel.text = displayName;
-    }
-
-    private void OnNewGameModalBackdropClicked(ClickEvent evt)
-    {
-        if (_newGameModalBackdrop == null) return;
-        if (!ReferenceEquals(evt.target, _newGameModalBackdrop))
-            return;
-        HideNewGameModal();
-        Debug.Log("[Backgammon][UI][NewGameModal] Closed modal via backdrop click.");
-    }
-
-    private void SetModalVisible(bool isVisible, ModalMode modalMode)
-    {
-        if (_modalLayer == null) return;
-
-        _modalLayer.style.display = isVisible ? DisplayStyle.Flex : DisplayStyle.None;
-        _activeModalMode = modalMode;
-
-        bool showSettings = modalMode == ModalMode.Settings;
-        bool showHints = modalMode == ModalMode.Hints;
-        bool showLegalMoves = modalMode == ModalMode.LegalMoves;
-
-        if (_modalTitleLabel != null)
-            _modalTitleLabel.text = showSettings ? "Options" : showHints ? "Hints" : "Legal Moves";
-        if (_settingsContent != null)
-            _settingsContent.style.display = showSettings ? DisplayStyle.Flex : DisplayStyle.None;
-        if (_hintsContent != null)
-            _hintsContent.style.display = showHints ? DisplayStyle.Flex : DisplayStyle.None;
-        if (_legalMovesContent != null)
-            _legalMovesContent.style.display = showLegalMoves ? DisplayStyle.Flex : DisplayStyle.None;
-
-        if (showHints && _hintsLabel != null && string.IsNullOrWhiteSpace(_hintsLabel.text))
-            _hintsLabel.text = "Hints appear here.";
-    }
-
-    private void OnModalBackdropClicked(ClickEvent evt)
-    {
-        if (_modalBackdrop == null) return;
-        if (!ReferenceEquals(evt.target, _modalBackdrop))
-            return;
-
-        Debug.Log("[Backgammon][UI][Modal] Backdrop click detected. Closing modal.");
-        HideModal();
-        evt.StopPropagation();
-    }
+    // New Game Modal methods removed - now handled by NewGameModalController
+    // Options Modal methods removed - now handled by OptionsModalController
 
     public void SetDoubleOfferVisible(bool visible)
     {
         if (_takeDropPanel == null) return;
         _takeDropPanel.style.display = visible ? DisplayStyle.Flex : DisplayStyle.None;
+
+        var beaverBtn = _takeDropPanel.Q<Button>("BeaverDoubleButton");
+        if (beaverBtn != null)
+        {
+            bool canBeaver = visible && (gameController?.CanCurrentPlayerBeaver() ?? false);
+            beaverBtn.style.display = canBeaver ? DisplayStyle.Flex : DisplayStyle.None;
+        }
     }
 
     private void OnRollClicked()
@@ -753,7 +759,23 @@ public class BackgammonHudController : MonoBehaviour
 
     private void OnNewGameClicked()
     {
-        ShowNewGameModal();
+        if (newGameModalController != null)
+            newGameModalController.ShowModal();
+    }
+
+    private void OnMessageClicked()
+    {
+        ShowMessagePopup();
+    }
+
+    private void OnPlayerProfileClicked()
+    {
+        ShowPlayerProfilePopup();
+    }
+
+    private void OnOpponentProfileClicked()
+    {
+        ShowOpponentProfilePopup();
     }
 
     private void OnPlayMoveClicked()
@@ -782,38 +804,21 @@ public class BackgammonHudController : MonoBehaviour
         gameController?.RespondDoubleDrop();
     }
 
-    private void OnGameOverNextGameClicked()
+    private void OnBeaverDoubleClicked()
     {
-        Debug.Log("[Backgammon][UI][GameEnd] Next game requested from popup.");
-        gameController?.NewGame();
-        HideGameOverPopup();
+        gameController?.OfferBeaver();
     }
 
     public void ShowGameOverPopup(string summaryText)
     {
-        if (_gameOverPopupLayer == null)
-            return;
-
-        _gameOverPopupShown = true;
-        PlayPopupOpenSound();
-        _gameOverPopupLayer.style.display = DisplayStyle.Flex;
-        if (_gameOverPopupTitleLabel != null)
-            _gameOverPopupTitleLabel.text = "Game Over";
-        if (_gameOverPopupSummaryLabel != null)
-            _gameOverPopupSummaryLabel.text = string.IsNullOrWhiteSpace(summaryText) ? "Game finished." : summaryText;
-        Debug.Log($"[Backgammon][UI][GameEnd] Popup shown summary=\"{summaryText}\"");
+        if (gameOverModalController != null)
+            gameOverModalController.ShowGameOver(summaryText);
     }
 
     public void HideGameOverPopup()
     {
-        if (_gameOverPopupLayer == null)
-            return;
-        if (_gameOverPopupShown)
-        {
-            PlayPopupCloseSound();
-            _gameOverPopupShown = false;
-        }
-        _gameOverPopupLayer.style.display = DisplayStyle.None;
+        if (gameOverModalController != null)
+            gameOverModalController.HideGameOver();
     }
 
     public static bool ShouldEnableRollButton(bool isGameOver, bool hasRolledThisTurn, bool isBusy, bool canPlayerAct)
@@ -920,63 +925,39 @@ public class BackgammonHudController : MonoBehaviour
             }
         }
 
-        if (_matchScoreValue != null)
+        // Delegate all mode-specific labels to the active provider
+        if (_activeProvider != null)
         {
-            if (ctrl.CurrentGameMode == GameModeType.MoneySession)
+            if (_matchScoreValue != null) _matchScoreValue.text = _activeProvider.ScoreDisplay;
+            if (_gamesValue != null)
             {
-                int p1 = ctrl.MoneySessionPlayer1Score;
-                int p2 = ctrl.MoneySessionPlayer2Score;
-                _matchScoreValue.text = $"${p1} vs ${p2}";
+                string gd = _activeProvider.GamesDisplay;
+                _gamesValue.style.display = gd != null ? DisplayStyle.Flex : DisplayStyle.None;
+                if (gd != null) _gamesValue.text = gd;
             }
-            else
-            {
-                _matchScoreValue.text = $"{ctrl.CurrentMatchScore}";
-            }
+            if (_stakeValue   != null) _stakeValue.text   = _activeProvider.StakeDisplay;
+            if (_headingLabel != null) _headingLabel.text = _activeProvider.HeadingDisplay;
+            _activeProvider.RefreshModeHud(uiDocument.rootVisualElement, ctrl);
         }
-
-        if (_targetMatchScoreLabel != null)
-            _targetMatchScoreLabel.text = $"Target Score: {ctrl.CurrentMatchTargetScore}";
 
         if (_chipsValue != null)
-        {
-            _chipsValue.text = $"{ctrl.CurrentMatchBaseStake}";
-        }
+            _chipsValue.text = ctrl.CurrentMatchBaseStake.ToString();
 
         if (_multiplierValue != null)
             _multiplierValue.text = ctrl.State.CubeValue.ToString();
 
-        if (_gamesValue != null)
-        {
-            if (ctrl.CurrentGameMode == GameModeType.MoneySession)
-            {
-                _gamesValue.text = $"{ctrl.MoneySessionGamesPlayed}";
-            }
-            else
-            {
-                int maxGames = Mathf.Max(1, ctrl.CurrentMatchMaxGames);
-                int gamesLeft = Mathf.Max(0, maxGames - ctrl.CurrentMatchGamesPlayed);
-                _gamesValue.text = $"{gamesLeft}/{maxGames}";
-            }
-        }
-
         if (_rollsValue != null)
-            _rollsValue.text = ctrl.RollsThisGame.ToString();
-
-        if (_headingLabel != null)
-            _headingLabel.text = "Money Session";
-
-        if (_stakeValue != null)
-        {
-            if (ctrl.CurrentGameMode == GameModeType.MoneySession)
-                _stakeValue.text = ctrl.MoneySessionBaseStake > 0 ? $"${ctrl.MoneySessionBaseStake}" : "—";
-            else
-                _stakeValue.text = $"${ctrl.RunCurrency}";
-        }
+            _rollsValue.text = ctrl.PlayerRollsThisGame.ToString();
 
         if (_pipCountPlayerValue != null)
             _pipCountPlayerValue.text = ctrl.State != null ? ctrl.CalculatePipCountPlayer1().ToString() : "—";
         if (_pipCountAiValue != null)
             _pipCountAiValue.text = ctrl.State != null ? ctrl.CalculatePipCountPlayer2().ToString() : "—";
+
+        if (pipCountPlayerWorldLabel != null)
+            pipCountPlayerWorldLabel.text = ctrl.State != null ? ctrl.CalculatePipCountPlayer1().ToString() : "—";
+        if (pipCountAiWorldLabel != null)
+            pipCountAiWorldLabel.text = ctrl.State != null ? ctrl.CalculatePipCountPlayer2().ToString() : "—";
 
         if (_rollButton != null)
             _rollButton.SetEnabled(ShouldEnableRollButtonForPhase(
@@ -1017,109 +998,27 @@ public class BackgammonHudController : MonoBehaviour
 
         if (isGameOver)
         {
-            _legalScroll?.Clear();
-            _lastLegalSignature = null;
+            if (optionsModalController != null)
+                optionsModalController.ClearLegalList();
         }
         else
-            RebuildLegalListIfChanged(ctrl);
-    }
-
-    private void RebuildLegalListIfChanged(BackgammonGameController ctrl)
-    {
-        string signature = ComputeLegalSignature(ctrl.CurrentLegalTurns);
-        if (signature == _lastLegalSignature)
-            return;
-        _lastLegalSignature = signature;
-        RebuildLegalList(ctrl);
-    }
-
-    public static string ComputeLegalSignature(IReadOnlyList<Turn> legals)
-    {
-        if (legals == null || legals.Count == 0) return "none";
-        var sb = new StringBuilder(legals.Count * 8);
-        for (int i = 0; i < legals.Count; i++)
         {
-            Turn t = legals[i];
-            if (t == null || t.Moves == null || t.Moves.Count == 0)
-            {
-                sb.Append("e;");
-                continue;
-            }
-
-            Move first = t.Moves[0];
-            sb.Append(first.From).Append('>').Append(first.To);
-            if (first.IsHit) sb.Append('h');
-            sb.Append(';');
+            if (optionsModalController != null)
+                optionsModalController.RebuildLegalListIfChanged(ctrl.CurrentLegalTurns);
         }
 
-        return sb.ToString();
+        RefreshStatsTab();
     }
 
-    private void RebuildLegalList(BackgammonGameController ctrl)
-    {
-        using var rebuildScope = HudRebuildLegalsMarker.Auto();
-        if (_legalScroll == null) return;
-        _legalListRebuildCount++;
-        _legalScroll.Clear();
-        IReadOnlyList<Turn> legals = ctrl.CurrentLegalTurns;
-        bool hasMoves = legals.Count > 0;
-        if (_legalMovesEmptyLabel != null)
-            _legalMovesEmptyLabel.style.display = hasMoves ? DisplayStyle.None : DisplayStyle.Flex;
-
-        if (legals.Count == 0)
-        {
-            _selectedLegalIndex = 0;
-            Debug.LogWarning($"[Backgammon][UI][LegalMoves] Rebuild produced no legal moves. playerOnRoll={ctrl.State.PlayerOnRoll}, hasRolled={ctrl.HasRolledThisTurn}");
-            return;
-        }
-
-        if (_selectedLegalIndex >= legals.Count)
-            _selectedLegalIndex = 0;
-
-        bool hasRanking = BackgammonAIService.TryEvaluateAllTurns(
-            ctrl.State, ctrl.Match, legals, out var ranked);
-
-        int count = hasRanking ? ranked.Count : legals.Count;
-        for (int i = 0; i < count; i++)
-        {
-            int idx = i;
-            Turn turn = hasRanking ? ranked[i].turn : legals[i];
-            float equity = hasRanking ? ranked[i].equity : float.NaN;
-
-            string label;
-            if (hasRanking)
-            {
-                string star = i == 0 ? "★ " : "   ";
-                string scoreStr = $"{equity:+0.00;-0.00}";
-                label = $"{star}{scoreStr}  {turn}";
-            }
-            else
-            {
-                label = turn.ToString();
-            }
-
-            var row = new VisualElement { style = { flexDirection = FlexDirection.Row, marginBottom = 4 } };
-            var btn = new Button(() =>
-            {
-                _selectedLegalIndex = idx;
-                ctrl.PreviewTurnHighlights(turn);
-            }) { text = label };
-            btn.style.flexGrow = 1;
-            if (i == 0 && hasRanking)
-                btn.style.color = new StyleColor(new Color(0.7f, 1f, 0.7f));
-            row.Add(btn);
-            _legalScroll.Add(row);
-        }
-
-        Debug.Log($"[Backgammon][UI][LegalMoves] Rebuilt {legals.Count} moves (ranked={hasRanking}).");
-        if (enableUndoPerformanceLogs)
-            Debug.Log($"[Backgammon][Undo][Perf] legalListRebuildCount={_legalListRebuildCount} legalCount={legals.Count}");
-    }
+    // Legal moves rebuild methods removed - now handled by OptionsModalController
 
     // ========== UI Feedback System ==========
 
-    private void PlayPopupOpenSound() => PlayUiFeedback(UiFeedbackEventType.PopupOpen);
-    private void PlayPopupCloseSound() => PlayUiFeedback(UiFeedbackEventType.PopupClose);
+    internal void PlayPopupOpenSound() => PlayUiFeedback(UiFeedbackEventType.PopupOpen);
+    internal void PlayPopupCloseSound() => PlayUiFeedback(UiFeedbackEventType.PopupClose);
+
+    /// <summary>Public method for sub-controllers to trigger UI feedback.</summary>
+    public void TriggerUiFeedback(UiFeedbackEventType eventType) => PlayUiFeedback(eventType);
 
     private void PlayUiFeedback(UiFeedbackEventType eventType)
     {

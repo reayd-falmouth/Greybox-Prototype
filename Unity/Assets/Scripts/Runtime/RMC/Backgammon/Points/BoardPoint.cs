@@ -9,6 +9,7 @@ public class BoardPoint : MonoBehaviour
 
     [Header("Configuration")]
     public bool isBottomRow;
+    public bool isBearOffPoint = false;
     public Vector3 inwardDirection;
     public Vector3 stackOffset;
 
@@ -50,13 +51,31 @@ public class BoardPoint : MonoBehaviour
 
     public Vector3 GetPositionForIndex(int index)
     {
-        int floorIndex = index % maxBaseStack;
-        int verticalLayer = index / maxBaseStack;
+        // For bear-off points: start at exact anchor position (no wall offset)
+        // For regular points: apply wall offset
+        Vector3 pos = transform.position + (isBearOffPoint ? Vector3.zero : stackOffset);
+
+        // Bearoff points: treat as maxBaseStack=1 (all vertical stacking)
+        int effectiveMaxStack = isBearOffPoint ? 1 : maxBaseStack;
+
+        // Horizontal first, then vertical layers
+        int floorIndex = index % effectiveMaxStack;
+        int verticalLayer = index / effectiveMaxStack;
 
         // Position = Point Origin + Initial Wall Offset + (Horizontal Stack * Width) + (Vertical Stack * Height)
-        Vector3 pos = transform.position + stackOffset;
         pos += inwardDirection * (floorIndex * (checkerDiameter * 1.02f));
-        pos += Vector3.up * (verticalLayer * checkerThickness);
+
+        // For bear-off points: stack along Z (since checkers are rotated 90° in X)
+        // For regular points: stack along Y (vertical)
+        if (isBearOffPoint)
+        {
+            Vector3 stackDirection = isBottomRow ? Vector3.forward : Vector3.back;
+            pos += stackDirection * (verticalLayer * checkerThickness);
+        }
+        else
+        {
+            pos += Vector3.up * (verticalLayer * checkerThickness);
+        }
 
         return pos;
     }
@@ -68,7 +87,17 @@ public class BoardPoint : MonoBehaviour
         Vector3 targetPos = GetNextStackPosition();
 
         checkers.Add(checkerObj);
-        checker.MoveToPosition(targetPos, transform, animated);
+
+        // Calculate rotation for bear-off points
+        Quaternion? targetRotation = null;
+        if (isBearOffPoint)
+        {
+            // Bottom row: 90° X rotation, Top row: -90° X rotation
+            float xRotation = isBottomRow ? 90f : -90f;
+            targetRotation = Quaternion.Euler(xRotation, 0f, 0f);
+        }
+
+        checker.MoveToPosition(targetPos, transform, animated, targetRotation);
     }
 
     public GameObject RemoveTopChecker()
@@ -129,6 +158,11 @@ public class BoardPoint : MonoBehaviour
         MaterialPropertyBlock props = new MaterialPropertyBlock();
         props.SetColor("_BaseColor", col);
         pointRenderer.SetPropertyBlock(props);
+    }
+
+    public void RefreshColor()
+    {
+        ApplyColor(_highlighted ? highlightTint : normalColor);
     }
 
     public void SetHighlighted(bool on, Color? overrideTint = null)

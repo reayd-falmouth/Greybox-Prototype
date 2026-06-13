@@ -1,0 +1,35 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 8dd07e8bc2a04588972f6a78112fb439, type: 3}
+  m_Name: BoardStylePrototype
+  m_EditorClassIdentifier: 
+  id: prototype_board
+  displayName: Prototype Pattern
+  description: A stripped-down test board of black-and-white geometry and tools.
+  gameType: 0
+  sortByOrder: 10
+  locked: 1
+  uiThemeColor: {r: 1, g: 1, b: 1, a: 1}
+  transitionColour: {r: 1, g: 1, b: 1, a: 1}
+  iconColour: {r: 0.8018868, g: 0.8018868, b: 0.8018868, a: 1}
+  boardStyle: 8
+  tablePrefab: {fileID: 5853252865313913534, guid: 41fac046c309e7247a907e85c7bcae43, type: 3}
+  boardSprite: {fileID: 21300000, guid: e3a952c21e3134e428d1de779c3a9c1b, type: 3}
+  rightProfileChecker: {fileID: 21300000, guid: 4d43f588e197e0547a19ff01149f210a, type: 3}
+  leftProfileChecker: {fileID: 21300000, guid: 2701f495d2f036a45a45d5864c7ec123, type: 3}
+  whiteCheckerSprite: {fileID: 21300000, guid: 301c773acc4addb4093949c2aa4238d6, type: 3}
+  blackCheckerSprite: {fileID: 21300000, guid: 93575a88d3c9b7d4fb65a969bf212308, type: 3}
+  lobbyCardIcon: {fileID: 21300000, guid: 1999c5201ac9e4e4eb160059d355c8e7, type: 3}
+  fromLobby: {fileID: 21300000, guid: 1999c5201ac9e4e4eb160059d355c8e7, type: 3}
+  toLobby: {fileID: 0}
+  anteListJson: {fileID: 4900000, guid: c56e0165aaf716544836fa0703f99f54, type: 3}
+  trophyDef: {fileID: 0}
