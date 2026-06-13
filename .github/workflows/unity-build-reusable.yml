@@ -103,16 +103,17 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v6
         with:
-          lfs: true
+          lfs: false # Set to false so checkout doesn't fail before authentication
 
-      - name: Setup third-party assets from S3
-        uses: ./.github/actions/setup-thirdparty-assets
-        with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: ${{ vars.S3_THIRDPARTY_REGION || 'eu-west-1' }}
-          s3-bucket: ${{ vars.S3_THIRDPARTY_BUCKET || 'greybox-prototype-unity-3rdparty-assets-eu-west-1-093581297635' }}
-          s3-object-key: ${{ vars.S3_THIRDPARTY_OBJECT_KEY || 'thirdparty-ci.zip' }}
+      - name: Configure Git LFS and Pull Assets (Cross-Platform)
+        shell: bash
+        run: |
+          git config lfs.url "https://${GIT_LFS_USERNAME}:${GIT_LFS_PASSWORD}@${GIT_LFS_ENDPOINT}/lfs"
+          git lfs pull
+        env:
+          GIT_LFS_USERNAME: ${{ secrets.GIT_LFS_USERNAME }}
+          GIT_LFS_PASSWORD: ${{ secrets.GIT_LFS_PASSWORD }}
+          GIT_LFS_ENDPOINT: ${{ env.GIT_LFS_ENDPOINT }}
 
       - name: Patch third-party asmdefs (Cinemachine, EngineCore)
         shell: bash
@@ -210,16 +211,17 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v6
         with:
-          lfs: true
-
-      - name: Setup third-party assets from S3
-        uses: ./.github/actions/setup-thirdparty-assets
-        with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: ${{ vars.S3_THIRDPARTY_REGION || 'eu-west-1' }}
-          s3-bucket: ${{ vars.S3_THIRDPARTY_BUCKET || 'greybox-prototype-unity-3rdparty-assets-eu-west-1-093581297635' }}
-          s3-object-key: ${{ vars.S3_THIRDPARTY_OBJECT_KEY || 'thirdparty-ci.zip' }}
+          lfs: false # Set to false so checkout doesn't fail before authentication
+          
+      - name: Configure Git LFS and Pull Assets (Cross-Platform)
+        shell: bash
+        run: |
+          git config lfs.url "https://${GIT_LFS_USERNAME}:${GIT_LFS_PASSWORD}@${GIT_LFS_ENDPOINT}/lfs"
+          git lfs pull
+        env:
+          GIT_LFS_USERNAME: ${{ secrets.GIT_LFS_USERNAME }}
+          GIT_LFS_PASSWORD: ${{ secrets.GIT_LFS_PASSWORD }}
+          GIT_LFS_ENDPOINT: ${{ env.GIT_LFS_ENDPOINT }}
 
       - name: Patch third-party asmdefs (Cinemachine, EngineCore)
         shell: bash
