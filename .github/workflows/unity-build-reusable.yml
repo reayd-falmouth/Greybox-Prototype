@@ -119,7 +119,7 @@ jobs:
         env:
           GIT_LFS_USERNAME: ${{ secrets.GIT_LFS_USERNAME }}
           GIT_LFS_PASSWORD: ${{ secrets.GIT_LFS_PASSWORD }}
-          GIT_LFS_ENDPOINT: ${{ env.GIT_LFS_ENDPOINT }}
+          GIT_LFS_ENDPOINT: ${{ secrets.GIT_LFS_ENDPOINT }}
 
       - name: Patch third-party asmdefs (Cinemachine, EngineCore)
         shell: bash
@@ -227,7 +227,7 @@ jobs:
         env:
           GIT_LFS_USERNAME: ${{ secrets.GIT_LFS_USERNAME }}
           GIT_LFS_PASSWORD: ${{ secrets.GIT_LFS_PASSWORD }}
-          GIT_LFS_ENDPOINT: ${{ env.GIT_LFS_ENDPOINT }}
+          GIT_LFS_ENDPOINT: ${{ secrets.GIT_LFS_ENDPOINT }}
 
       - name: Patch third-party asmdefs (Cinemachine, EngineCore)
         shell: bash
